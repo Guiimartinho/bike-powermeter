@@ -1,0 +1,10 @@
+pmeter.glb
+_drc.json
+_*.svg
+*.net
+__pycache__/
+pmeter.rpt
+_drc_all.json
+*.glb
+3d/real/
+_legivel.pdf
