@@ -92,4 +92,4 @@ flowchart TB
 
 ## Créditos e licença
 
-Projeto de Luiz Guilherme Ito. Referências abertas: o como fazer de Keith Wakeham (2013) e os projetos `stevejarvis/powermeter` e `gsoros/ESPM`. Licença a definir pelo dono; o material do ANT+ (perfis, código sob a ANT+ Shared Source License) nunca entra no repositório.
+Projeto de Luiz Guilherme Ito. As referências técnicas (notas de aplicação dos fabricantes de componentes, normas e artigos) estão em [`docs/06-medicao-e-calibracao.md`](docs/06-medicao-e-calibracao.md). Licença a definir pelo dono; o material do ANT+ (perfis, código sob a ANT+ Shared Source License) nunca entra no repositório.

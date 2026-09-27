@@ -2,7 +2,7 @@
 
 O Bike Power Meter é um medidor de potência para bicicleta de código aberto, par do [GNSS Bike Computer](https://github.com/Guiimartinho/gnss-bike-computer): mesma base de firmware (Zephyr, nRF Connect SDK v3.3.0, nRF54LM20A, BLE e ANT+), mesma cadeia de CAD gerada por script e conferida por dry run, e o ciclocomputador como banco de teste e como configurador.
 
-**Nesta página:** [O que mede](#o-que-mede) · [Decisão](#decisão) · [Fases](#fases) · [Referências do mercado](#referências-do-mercado) · [Estado](#estado)
+**Nesta página:** [O que mede](#o-que-mede) · [Decisão](#decisão) · [Fases](#fases) · [A classe de produto](#a-classe-de-produto) · [Estado](#estado)
 
 ## O que mede
 
@@ -18,7 +18,7 @@ Potência é torque vezes velocidade angular. O torque vem de uma ponte de exten
 
 ## Decisão
 
-Fase 1 é um **módulo no braço esquerdo do pedivela que já existe**, no molde do U2e V4, do Stages e do 4iiii: sem usinagem, com precedentes abertos, aproveitando tudo do ciclocomputador. O pedal (eixo usinado com a eletrônica dentro) é a fase 2, com a mesma placa encolhida e o mesmo firmware.
+Fase 1 é um **módulo no braço esquerdo do pedivela que já existe**, o formato mais comum entre os produtos comerciais dessa classe: sem usinagem, aproveitando tudo do ciclocomputador. O pedal (eixo usinado com a eletrônica dentro) é a fase 2, com a mesma placa encolhida e o mesmo firmware.
 
 ```mermaid
 flowchart LR
@@ -37,14 +37,9 @@ A lista fechada de componentes, com o datasheet de cada peça, está em [`../har
 4. Placa própria, pod impresso e envasado, conector magnético de carga, USB e SWD.
 5. Fase 2: eixo de pedal.
 
-## Referências do mercado
+## A classe de produto
 
-| Produto | O que é | Números publicados |
-|---|---|---|
-| U2e V4 (Brasil) | Módulo instalado no pedivela do cliente, no laboratório da U2e | 20 g, LiPo, 52 h, ±2,5 %, ANT+ e BLE, IPX7 |
-| U2e PRX (Brasil) | Eixo de pedal para pedais Shimano de estrada, lado esquerdo | 82 g, 47 h, ±1,5 %, IP67, R$ 2.800 a 3.500 |
-| Sensitivus SG53 (Dinamarca) | Módulo de eixo, OEM e kit DIY | 10 × 30 × 6 mm, 18 g, 3 mW, ±2 %, ANT+ e BLE certificados |
-| Keith Wakeham V3 (2013) | O como fazer aberto de referência | AD623 + ADC de 16 bits + ANT+, US$ 334 |
+Os números que um módulo de braço comercial publica hoje, e que este projeto toma como piso: 20 g com bateria, cerca de 50 h de uso contínuo por carga, ±1,5 a ±2,5 % de precisão, 0 a 2000 W, 10 a 200 rpm, ANT+ e BLE, IPX7. Nenhum fabricante publica as dimensões do módulo; as deste projeto saem dos componentes e da medida do braço, em [`02-hardware.md`](02-hardware.md).
 
 ## Estado
 
