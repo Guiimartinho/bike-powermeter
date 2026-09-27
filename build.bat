@@ -1,16 +1,16 @@
 @echo off
 setlocal
 REM ============================================================================
-REM Compila o zephyr_app (stravaV10 em Zephyr) com o nRF Connect SDK.
+REM Compila o zephyr_app (o firmware do medidor de potencia) com o nRF Connect SDK.
 REM
 REM   build.bat            build incremental em zephyr_app\build
 REM   build.bat pristine   apaga zephyr_app\build e compila do zero
 REM
-REM Alvo: BOARD (padrao nrf52840dk/nrf52840, com os pinos da placa
-REM myStravaB em zephyr_app\boards\nrf52840dk_nrf52840.overlay), com sysbuild.
-REM Versao do SDK e do toolchain: tools\fw\ncs_env.bat.
+REM Alvo: BOARD (padrao nrf54lm20dk/nrf54lm20a/cpuapp, com os perifericos do
+REM pod em zephyr_app\boards\nrf54lm20dk_nrf54lm20a_cpuapp.overlay), com
+REM sysbuild e MCUboot. Versao do SDK e do toolchain: tools\fw\ncs_env.bat.
 REM Defina BUILD_DIR para compilar em outra pasta e BOARD para outro alvo
-REM (por exemplo nrf54lm20dk/nrf54lm20a/cpuapp).
+REM (a placa do pod: pmboard/nrf54lm20a/cpuapp, em zephyr_app\boards\pm).
 REM Defina NOPAUSE=1 para nao esperar tecla no fim.
 REM Defina ANT=1 para compilar com o ANT: o add-on sdk-ant em SDK_ANT_DIR
 REM (padrao %NCS_ROOT%\sdk-ant), zephyr_app\modules\ant_ncs33_compat e
@@ -24,7 +24,7 @@ set "APP_DIR=%~dp0zephyr_app"
 if not defined BUILD_DIR set "BUILD_DIR=%APP_DIR%\build"
 REM Um BUILD_DIR relativo vale a partir da pasta atual: o build roda no zephyr_app.
 for %%I in ("%BUILD_DIR%") do set "BUILD_DIR=%%~fI"
-if not defined BOARD set "BOARD=nrf52840dk/nrf52840"
+if not defined BOARD set "BOARD=nrf54lm20dk/nrf54lm20a/cpuapp"
 set "PRISTINE=auto"
 if /i "%~1"=="pristine" set "PRISTINE=always"
 

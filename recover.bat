@@ -1,7 +1,7 @@
 @echo off
 setlocal
 REM ============================================================================
-REM Recupera um nRF52840 ou nRF54 protegido: apaga TODA a memoria e a UICR
+REM Recupera um nRF54L protegido: apaga TODA a memoria e a UICR
 REM e libera a porta de debug. Use antes do flash.bat quando a gravacao falhar
 REM por protecao.
 REM
@@ -13,7 +13,7 @@ REM ============================================================================
 call "%~dp0tools\fw\ncs_env.bat"
 if errorlevel 1 goto :fail
 
-if not defined BOARD set "BOARD=nrf52840dk/nrf52840"
+if not defined BOARD set "BOARD=nrf54lm20dk/nrf54lm20a/cpuapp"
 if not defined FAMILY (
     echo %BOARD%| findstr /i "nrf54l" >nul && (set "FAMILY=nrf54l") || (set "FAMILY=nrf52")
 )

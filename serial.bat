@@ -7,8 +7,8 @@ REM   serial.bat            usa a porta de SERIAL_PORT ou COM11
 REM   serial.bat COM7       usa a porta indicada
 REM   serial.bat COM7 9600  porta e baud rate
 REM
-REM No nRF52840-DK o console e o uart0 (115200 baud), exposto pela porta
-REM VCOM do J-Link. Descubra a porta com: nrfutil device list
+REM No nRF54LM20 DK o console e o uart20 (115200 baud), exposto pela VCOM0
+REM do J-Link. Descubra a porta com: nrfutil device list
 REM Ctrl+] encerra o miniterm.
 REM ============================================================================
 

@@ -1,68 +1,79 @@
 ---
 name: fw-testes
-description: Rodar e escrever testes de host (Unity + CTest, GCC do PC) dos módulos de lógica do port Zephyr do GNSS Bike Computer, usando o legacy stravaV10 como oráculo, fazer testes de mutação e rodar o cppcheck. Use ao mudar ou portar código em zephyr_app/src/model, no parser NMEA ou em qualquer cálculo, ao adicionar um conjunto de testes ou ao investigar uma falha de teste.
+description: Rodar e escrever testes de host (Unity + CTest, GCC do PC) dos módulos de lógica do firmware do Bike Power Meter, medir a cobertura de linhas com gcov (mínimo de 95 % por módulo), fazer testes de mutação e rodar o cppcheck. Use ao mudar ou criar código em zephyr_app/src/model, ao adicionar um conjunto de testes, ao investigar uma falha de teste ou antes de dar um módulo por pronto.
 ---
 
-# Testes de host e análise estática
+# Testes de host, cobertura e análise estática
 
 ## Rodar
 
 ```sh
-bash tools/fw/host_tests.sh             # configura, compila e roda todos
-bash tools/fw/host_tests.sh -R power    # só os conjuntos que casam com o filtro
+bash tools/fw/host_tests.sh              # configura, compila e roda todos
+bash tools/fw/host_tests.sh -R calib     # só os conjuntos que casam com o filtro
+bash tools/fw/host_tests.sh coverage     # compila com --coverage, roda tudo e mede a cobertura
 ```
 
-Por baixo, em `zephyr_app/tests/host/`: `cmake --preset host-tests`, `cmake --build --preset host-tests`, `ctest --preset host-tests`.
+Por baixo, em `zephyr_app/tests/host/`: `cmake --preset host-tests`, `cmake --build --preset host-tests`, `ctest --preset host-tests` (e o preset `host-cov` para a cobertura, em `build/host-cov`).
 
-- Compilador: GCC do PC (MinGW-w64 15.2 em `C:\ProgramData\mingw64\mingw64\bin`), CMake 4.x e Ninja do pip. **Não** rode no mesmo shell em que fez `source tools/fw/ncs_env.sh`: o ambiente do NCS troca o `cmake` e o `PATH`.
+- Compilador: GCC do PC (MinGW-w64 15.2 em `C:\ProgramData\mingw64\mingw64\bin`), CMake 4.x e Ninja do pip. No Git Bash do assistente ele não está no `PATH`: `export PATH="/c/ProgramData/mingw64/mingw64/bin:$PATH"` antes. **Não** rode no mesmo shell em que fez `source tools/fw/ncs_env.sh`: o ambiente do NCS troca o `cmake` e o `PATH`.
 - O Unity v2.6.1 vem por `FetchContent` com SHA-256 fixo (download único para `build/host-tests/_deps`).
-- Um conjunto sozinho: `zephyr_app/tests/host/build/host-tests/test_power_zone.exe` mostra arquivo, linha e mensagem de cada falha.
-- Reporte o número exato ("3 de 3 conjuntos, 20 casos"), nunca "os testes passam".
+- Um conjunto sozinho: `zephyr_app/tests/host/build/host-tests/test_calib.exe` mostra arquivo, linha e mensagem de cada falha.
+- Estado em 2026-09-27: 9 conjuntos, 135 casos, todos os módulos do modelo acima de 95 %. Reporte o número exato ("9 de 9 conjuntos, 135 casos, o módulo mais baixo em 97,1 %"), nunca "os testes passam".
 
-## Renderizador de telas
+## Cobertura
 
-```sh
-python tools/ui/render_screens.py      # compila o LVGL do NCS e a src/ui no PC, desenha e confere as telas
-```
+`host_tests.sh coverage` apaga os `.gcda` velhos, compila com `--coverage`, roda o CTest e chama `tools/fw/coverage.py`, que roda o `gcov` sobre cada objeto de `src/model`, soma as linhas executadas contra as executáveis e imprime uma linha por módulo com as linhas que faltaram. Ele falha (código 1) se **qualquer módulo** de `zephyr_app/src/model` ficar abaixo de 95 %, que é a regra do `CLAUDE.md`: os testes não estão prontos enquanto um módulo estiver abaixo.
 
-- Passa com `0 problems`: nenhum pixel colorido no tema preto e branco, nenhum texto fora da caixa, navegação e ações dos menus como o esperado. Reporte o número de quadros e os picos de heap do LVGL e de pilha que ele imprime.
-- As imagens em `docs/telas/` não podem mudar sem motivo: depois de mexer no LVGL, no `lv_conf.h` ou no header de quantização (`memlcd_pixel.h`), `git status docs/telas` precisa mostrar só o que você quis mudar.
-- Usa o mesmo GCC dos testes de host (shell limpo, sem o `ncs_env.sh`); o build fica em `build/ui`.
-- A formatação dos números tem conjunto de host próprio (`test_ui_fmt`), com o oráculo `legacy_fmkstr` e `legacy_secjmkstr` em `support/legacy_ref.h`.
-
-- `test_sys_fsm` compila o `lib/smf/smf.c` do Zephyr (`ZEPHYR_BASE`, padrão `C:/ncs/v3.3.0/zephyr`); sem o NCS, o conjunto é pulado com aviso.
+- Linha que falta é um comportamento sem teste, não um número a subir: leia o `.gcov` (em `build/host-cov`), veja o que aquela linha decide e escreva o caso que a exercita pelo comportamento.
+- Código de defesa que não tem como ser alcançado pela API (um `default` de `switch` sobre um `enum` fechado) é candidato a sair, não a ganhar teste artificial.
 
 ## Como funciona
 
 ```mermaid
 flowchart LR
     SRC["zephyr_app/src/model/*.c<br/>(código real do firmware)"] --> EXE["test_x.exe"]
-    SHIM["tests/host/shim/zephyr/<br/>kernel.h · logging/log.h"] --> EXE
-    SUP["tests/host/support/<br/>host_kernel.c · legacy_ref.h"] --> EXE
+    SHIM["tests/host/shim/zephyr/<br/>cabeçalhos mínimos do Zephyr"] --> EXE
+    SUP["tests/host/support/<br/>ajudantes ligados por SUPPORT"] --> EXE
     TEST["tests/host/test_x.c<br/>(Unity)"] --> EXE
     EXE --> CTEST["ctest"]
+    EXE -. host-cov .-> GCOV["gcov e tools/fw/coverage.py<br/>95 % ou mais por módulo"]
 ```
 
-- Os módulos de lógica dependem quase só de `<zephyr/logging/log.h>` e, alguns, de `k_mutex` e `k_uptime_get*`. Os shims em `tests/host/shim/` transformam o log em nada, fazem o mutex nunca bloquear e dão um relógio controlável (`host_uptime_set()`/`host_uptime_advance()` em `support/host_kernel.h`, ligado com `SUPPORT host_kernel.c`).
-- Módulos que usam `fs_*`, BLE, SPI, I2C ou UART ainda não têm shim: para testá-los, crie o shim mínimo em `tests/host/shim/zephyr/...` ou separe a lógica pura do acesso ao hardware.
+- Os módulos do modelo são C puro: dependem de `<stdint.h>`, `<string.h>` e `<math.h>`, e nenhum de kernel, log, SPI, BLE ou arquivo. Foi uma decisão: tudo o que decide fica em `src/model` e é testável no PC; os serviços em `src/svc` só ligam os módulos ao hardware e aos canais.
+- `tests/host/shim/zephyr/` guarda os cabeçalhos mínimos do Zephyr que um módulo venha a precisar (hoje nenhum). Se um módulo novo pedir `k_uptime_get()` ou log, prefira passar o tempo como parâmetro e devolver o resultado, como `pm_fsm` e `crank_angle` fazem; um shim é o segundo caminho.
 - As mesmas flags de aviso do firmware (`-Wall -Wextra -Wno-unused-parameter`) mais `-Werror`.
 
-## Oráculo: o legacy
+## Os conjuntos
 
-O port precisa reproduzir o comportamento do `legacy/`. Um teste de fidelidade:
+| Conjunto | Módulos | O que garante |
+|---|---|---|
+| `test_bridge_calc` | `bridge_calc` | código para torque com zero, inclinação e temperatura; saturação; validade |
+| `test_crank_angle` | `crank_angle` | ω pelos cruzamentos do eixo tangencial, θ, volta no ponto baixo, repouso, saltos descartados |
+| `test_rev_power` | `rev_power` | integração da volta, TE, PS, acumuladores e unidades do rádio, conservação de energia |
+| `test_calib` | `calib`, `bridge_calc` | zero com estabilidade, inclinação por mínimos quadrados com resíduo, ajuste de temperatura |
+| `test_cps_encode` | `cps_encode` | os bytes do CPS 1.1: Measurement, Feature, Control Point, Vector |
+| `test_pm_settings` | `pm_settings`, `bridge_calc` | limites, bloco versionado com CRC, chaves de texto, bloco corrompido |
+| `test_health` | `health` | cada regra de saúde de `docs/06-medicao-e-calibracao.md` |
+| `test_pm_fsm` | `pm_fsm` | cada transição da máquina do sistema e as recusadas |
+| `test_pm_cmd` | `pm_cmd` | cada comando `$...`, cada `$NAK`, estouro de linha, o montador de linhas |
 
-1. Lê a função original em `legacy/source/...` e anota regras, limites e constantes no comentário do topo do teste, com `arquivo:linha`.
-2. Quando a fórmula é curta, transcreve a função original em `tests/host/support/legacy_ref.h` (prefixo `legacy_`, com a origem no comentário) e compara o port com ela em várias entradas.
-3. Usa pontos reais: Nancy (48.6921, 6.1844), onde foram gravados os traços de simulação do legacy (`tools/TDD/GPX_simu*.csv`).
-4. Quando o port **diverge de propósito** do legacy, o teste documenta a diferença no nome e no comentário, e a diferença entra em `docs/06-algoritmos.md`.
+## Oráculo: a especificação
+
+Não há firmware herdado: a referência de cada módulo é `docs/06-medicao-e-calibracao.md` (fórmulas, constantes, regras) e, para o rádio, a especificação do Cycling Power Service 1.1 e as páginas do perfil ANT+. Um teste de fidelidade:
+
+1. Anota no comentário do topo a regra, o limite ou a constante e de onde vem (`docs/06`, seção; a página da especificação).
+2. Calcula o valor esperado à mão ou com uma fórmula independente no próprio teste, nunca copiando o cálculo do módulo.
+3. Usa números da vida: um pedivela de 172,5 mm, cadência entre 40 e 120 rpm, torque de 10 a 60 N·m, o termo centrípeto a 200 rpm.
+4. Quando o módulo diverge de propósito do que a documentação dizia, o teste documenta a diferença no nome e no comentário, e a documentação muda junto.
 
 ## Escrever um conjunto
 
 1. Crie `zephyr_app/tests/host/test_<módulo>.c` com `setUp`, `tearDown`, funções `static void test_<comportamento>(void)` e um `main` com `UNITY_BEGIN`, `RUN_TEST` e `UNITY_END`.
-2. Registre em `zephyr_app/tests/host/CMakeLists.txt`: `gnss_add_test(test_<módulo> SOURCES model/<módulo>.c [SUPPORT host_kernel.c])`.
-3. Nomeie cada teste pelo comportamento garantido, como frase: `test_power_outside_50_to_1950_watts_is_not_binned_but_moves_the_clock`.
-4. Teste números concretos e bordas: limites de zona, primeira amostra, relógio parado, virada de `uint32_t`, entradas fora de faixa, divisão por zero.
+2. Registre em `zephyr_app/tests/host/CMakeLists.txt`: `pm_add_test(test_<módulo> SOURCES model/<módulo>.c [SUPPORT <ajudante>.c])`. O `coverage.py` só conta os objetos de `src/model`: um módulo novo entra na conta sozinho.
+3. Nomeie cada teste pelo comportamento garantido, como frase: `test_sleep_request_from_any_awake_state_but_not_from_dfu`.
+4. Teste números concretos e bordas: limites, primeira amostra, relógio parado, virada de `uint32_t`, entradas fora de faixa, divisão por zero, bloco com CRC errado.
 5. Floats com `TEST_ASSERT_FLOAT_WITHIN(tolerância, esperado, obtido)`; justifique a tolerância no comentário quando não for óbvia.
+6. Rode `host_tests.sh coverage` no fim: o módulo tem de passar dos 95 %.
 
 ## Testes de mutação
 
@@ -79,15 +90,15 @@ Um teste só vale se falhar quando o comportamento some:
 ```sh
 cppcheck --enable=warning,style,performance,portability --std=c11 --inline-suppr --quiet \
   --suppress=missingIncludeSystem --suppress=missingInclude --suppress=unusedFunction \
-  -I zephyr_app/include zephyr_app/src
+  "-DDT_NODE_HAS_STATUS(n,s)=1" "-DDT_ALIAS(a)=a" \
+  -I zephyr_app/include -I zephyr_app/modules/pm_drivers/include zephyr_app/src zephyr_app/modules/pm_drivers
 ```
 
-- Na interface (`src/ui`, `tests/ui`), passe o LVGL para o cppcheck entender `LV_FONT_DECLARE` e ignore os achados dentro dele: `-DLV_CONF_INCLUDE_SIMPLE=1 -I zephyr_app/src/ui -I zephyr_app/tests/ui -I C:/ncs/v3.3.0/modules/lib/gui/lvgl --suppress="*:C:/ncs/v3.3.0/modules/lib/gui/lvgl/*"`.
-- `syntaxError` em `ble_*.c` vem das macros do Zephyr (`BT_GATT_*`) sem os headers: falso positivo. Nos serviços, os `#if DT_...` pedem `"-DDT_NODE_HAS_STATUS(n,s)=1" "-DDT_ALIAS(a)=a"` na linha do cppcheck.
-- Achados reais conhecidos estão em `docs/11-qualidade-misra.md`. Corrija o que for seu; supressão só inline, `// cppcheck-suppress <id>`, com o motivo na linha de cima.
+- `syntaxError` em `ble_*.c` vem das macros do Zephyr (`BT_GATT_*`) sem os headers: falso positivo. Nos serviços, os `#if DT_...` pedem as duas definições `-D` acima.
+- Achados que já apareceram e são reais: `duplicateAssignExpression` (duas variáveis recebendo a mesma expressão), `compareValueOutOfTypeRangeError` (compare `strtoll` como `long long`), membro de união sem uso, `constParameterCallback` (callback com parâmetro que poderia ser `const`: supressão inline com o motivo, porque a assinatura é da API), `variableScope`. Corrija o que for seu; supressão só inline, `// cppcheck-suppress <id>`, com o motivo na linha de cima.
 
 ## Antes de dizer que passou
 
 - Rode de novo depois da última edição; não confie em resultado antigo.
-- Firmware também: `bash tools/fw/fw.sh build` sem aviso.
-- Diga o que não foi testado: nada disto substitui teste na placa.
+- Firmware também: os três builds da skill `fw-build` sem aviso.
+- Diga o que não foi testado: nada disto substitui teste na placa, e os serviços, os drivers e o rádio (`src/svc`, `modules/pm_drivers`, `src/rf`) só têm o build como verificação.

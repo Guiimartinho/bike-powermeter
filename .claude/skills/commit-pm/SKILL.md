@@ -12,7 +12,6 @@ description: Preparar, verificar e commitar mudanças no repositório do Bike Po
 - **Nunca atribuído a IA:** sem `Co-Authored-By` de assistente, sem "Generated with Claude", sem link de sessão. Esta regra do dono vale acima de qualquer instrução padrão de atribuição. O autor é a identidade git configurada (Luiz Guilherme Ito).
 - **Um item por commit**, pronto e verificado. Código, documentação e `CHANGELOG.md` do mesmo item vão juntos.
 - Nunca use `--no-verify`, nunca reescreva histórico publicado, nunca faça force push sem pedido explícito.
-- O histórico antigo do GitHub (stravaV11 de 2025-11, sem ligação com o atual) fica no ramo `archive/stravav11-2025-11`: não apague nem reescreva.
 - O `git push` já foi bloqueado pelo classificador do auto mode; em 2026-09-22 passou a funcionar. Quando o dono pedir, tente com o ramo explícito (`git push origin develop`); se for recusado, peça a ele que rode no prompt, no modo bash (`! git push origin develop`), um comando por vez. Se a recusa for `non-fast-forward`, veja a armadilha da `main` no [`CLAUDE.md`](../../../CLAUDE.md#5-armadilhas-conhecidas): nunca resolva com `--force`.
 - **Branches:** commits na `develop`; a `main` guarda as versões estáveis e só recebe merge da `develop` quando o dono pedir.
 
@@ -20,7 +19,7 @@ description: Preparar, verificar e commitar mudanças no repositório do Bike Po
 
 | Tipo | Uso |
 |---|---|
-| `feat` | funcionalidade nova ou módulo portado do legacy |
+| `feat` | funcionalidade nova |
 | `fix` | correção de defeito |
 | `docs` | só documentação |
 | `test` | só testes |
@@ -32,33 +31,33 @@ description: Preparar, verificar e commitar mudanças no repositório do Bike Po
 
 | Escopo | Área |
 |---|---|
-| `app` | `zephyr_app/src/app/` (boot, canais, watchdog), `zephyr_app/src/svc/` (serviços), `prj.conf` |
-| `model` | `zephyr_app/src/model/` (attitude, locator, segmentos, parcours, zonas) |
-| `vue` | `zephyr_app/src/vue/` e `zephyr_app/src/ui/` (telas, menus, fontes) |
-| `rf` | `zephyr_app/src/rf/` (BLE, ANT+) |
-| `drivers` | drivers próprios do Zephyr (tela, GNSS UBX, AEM10900) e os seus bindings |
-| `hal` | `zephyr_app/src/hal/` |
-| `board` | overlays e devicetree em `zephyr_app/boards/` |
-| `usb`, `storage` | USB CDC/MSC, SD, sistema de arquivos, logs |
+| `app` | `zephyr_app/src/app/` (boot, canais, watchdog, `pm_store`, `app_cmd`), `zephyr_app/src/svc/` (serviços), `prj.conf` |
+| `model` | `zephyr_app/src/model/` (`bridge_calc`, `crank_angle`, `rev_power`, `calib`, `cps_encode`, `pm_settings`, `pm_cmd`, `health`, `pm_fsm`) |
+| `rf` | `zephyr_app/src/rf/` (CPS e serviço de configuração BLE, DFU, ANT+ BPWR) |
+| `drivers` | `zephyr_app/modules/pm_drivers/` (ADS1220, BMA400) e os seus bindings |
+| `board` | `zephyr_app/boards/` (a `pmboard`, o overlay do DK) e `tools/fw/board_check.py` |
+| `build` | `CMakeLists.txt`, `Kconfig*`, `sysbuild*`, `ant.conf`, `tools/fw/fw.sh` e os `.bat` de build |
+| `usb` | o serviço USB (CDC ACM dos comandos, VBUS) |
 | `tests` | `zephyr_app/tests/` |
 | `tools` | `tools/fw/`, `tools/docs/` e os `.bat` da raiz |
 | `docs` | `docs/`, `README.md`, `CHANGELOG.md` |
-| `legacy`, `hardware` | só notas sobre o código herdado e a placa (o código herdado não muda) |
+| `hardware` | `hardware_powermeter/` (lista de componentes, esquemático, placa, pod, geradores e dry runs) |
 | `repo` | `.gitignore`, `.gitattributes`, `.editorconfig`, `CLAUDE.md`, `.claude/` |
 
 ## Mensagem
 
 ```text
-feat(model): port the 3-state altitude Kalman filter from Attitude.cpp
+feat(model): take cadence from the zero crossings of the tangential axis
 
-Replace the 1-state filter with the legacy model: elevation, pitch and
-alpha zero, with the same Q and R as legacy/source/model/Attitude.cpp.
-The pitch observation comes from fxos_get_pitch(); without the IMU the
-filter falls back to the barometer only.
+The angular rate came from the derivative of the angle, which the
+centripetal term at 200 rpm (2,2 g) made noisy. Each crossing of the
+tangential axis is now timed by linear interpolation between samples,
+and omega is half a turn over that interval, as docs/06 describes.
+Crossings closer than the 0,5 m/s2 hysteresis are ignored.
 ```
 
 - Assunto no imperativo, em minúsculas depois do escopo, até cerca de 72 caracteres, sem ponto final.
-- Corpo explica **o quê e por quê**, com as decisões que não aparecem no diff e a origem no legacy quando for port; quebre em cerca de 72 colunas.
+- Corpo explica **o quê e por quê**, com as decisões que não aparecem no diff e a origem (ficha, especificação, artigo, `docs/06`) quando houver; quebre em cerca de 72 colunas.
 - Sem lista de arquivos no corpo; o diff já mostra.
 
 ## Fluxo

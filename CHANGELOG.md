@@ -6,6 +6,7 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Corrigido
 
+- Os `.bat` da raiz vinham do ciclocomputador com o nRF52840 DK como alvo padrão, que este projeto não tem, e sem o `tools/fw/ncs_env.bat` que eles chamam: passam ao nRF54LM20 DK, como o `fw.sh`, com o ambiente do `cmd` copiado; e as skills de build, testes, threads, documentação e commit descrevem este firmware, os seus três alvos e a regra dos 95 % de cobertura, em vez do port do stravaV10 (2026-09-27).
 - O orçamento de consumo de `docs/02` contava a ponte ligada 15 % do tempo; o ADS1220 integra a conversão inteira, e a ponte de 1 kΩ fica ligada enquanto se mede: 3,9 mA pedalando, abaixo das 50 h do requisito, com as três saídas para o dono decidir (2026-09-27).
 
 ### Adicionado

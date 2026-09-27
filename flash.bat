@@ -8,8 +8,8 @@ REM   flash.bat keep     apaga so as faixas do firmware (mantem a particao de se
 REM
 REM Com mais de um J-Link conectado, defina NRF_SERIAL com o numero de serie
 REM mostrado por: nrfutil device list
-REM BOARD escolhe a familia do nrfutil (nrf54l para nrf54lm20dk/..., nrf52 no
-REM padrao); FAMILY a define direto.
+REM BOARD escolhe a familia do nrfutil (nrf54l no padrao nrf54lm20dk/...,
+REM nrf52 para qualquer outra); FAMILY a define direto.
 REM Defina NOPAUSE=1 para nao esperar tecla no fim.
 REM ============================================================================
 
@@ -29,7 +29,7 @@ if not defined FIRMWARE (
 set "ERASE=ERASE_ALL"
 if /i "%~1"=="keep" set "ERASE=ERASE_RANGES_TOUCHED_BY_FIRMWARE"
 
-if not defined BOARD set "BOARD=nrf52840dk/nrf52840"
+if not defined BOARD set "BOARD=nrf54lm20dk/nrf54lm20a/cpuapp"
 if not defined FAMILY (
     echo %BOARD%| findstr /i "nrf54l" >nul && (set "FAMILY=nrf54l") || (set "FAMILY=nrf52")
 )
