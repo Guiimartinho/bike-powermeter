@@ -52,7 +52,19 @@ O piso deste projeto é o que um módulo de braço comercial da mesma classe pub
 | ANT+ e BLE | os mesmos |
 | bateria LiPo recarregável, carga por USB magnético | os mesmos |
 
-**As dimensões não são publicadas em lugar nenhum**, e isso foi verificado, não suposto: a página do produto, a do outro modelo, a loja e a lista de produtos montados não trazem nenhum número em milímetro. A única medida física publicada é a massa. Por isso o alvo de envelope de [`02-hardware.md`](02-hardware.md#requisitos) é **derivação nossa**, a partir da célula, da placa e da parede do pod, e o limite duro continua sendo a face interna do braço do dono, que precisa ser medida. Para ter um baseline dimensional de verdade só há dois caminhos: medir uma unidade, ou perguntar ao suporte do fabricante, que atende.
+**As dimensões não são publicadas em lugar nenhum**, e isso foi verificado, não suposto: a página do produto, a do outro modelo, a loja e a lista de produtos montados não trazem nenhum número em milímetro. A única medida física publicada é a massa.
+
+### O envelope da classe, medido por fotogrametria
+
+Sem número publicado, as dimensões foram **medidas na foto de imprensa do fabricante** em 2026-09-27, com régua conhecida na própria imagem: o módulo aparece colado num braço Shimano FC-M8100 marcado **170**, e a distância entre o centro do furo do eixo e o do furo do pedal é exatamente 170 mm. Isso dá 0,1319 mm por pixel ao longo do braço. A escala foi conferida por um segundo caminho independente: os dois contatos de carga do módulo medem 19,8 px entre centros, ou seja **2,6 mm**, o passo padrão de 2,5 mm de pino pogo, e a cabeça de cada contato dá 1,3 a 1,6 mm, também padrão.
+
+| Medida | Estimativa | Confiança |
+|---|---|---|
+| Comprimento ao longo do braço | **37 a 39 mm** | boa: referência de 170 mm na mesma direção, com duas pontas ampliadas e conferidas |
+| Largura atravessada | **18 a 22 mm** | média: depende da inclinação do plano, estimada pela elipse do furo do pedal |
+| Altura | **9 a 13 mm** | fraca: nenhuma foto tem vista de perfil; o intervalo sai do volume que a massa de 20 g exige |
+
+**O que isso muda:** o alvo de 60 mm de comprimento que este projeto vinha perseguindo já era generoso. A classe faz o mesmo aparelho em **cerca de 38 mm**, quase a metade. Largura e altura do nosso desenho estão na mesma faixa; o comprimento não está. O alvo de [`02-hardware.md`](02-hardware.md#requisitos) passa a ser esse, com a ressalva de que é medida de foto e não de paquímetro: uma unidade medida à mão continua sendo o que fecharia o assunto.
 
 ## Estado
 

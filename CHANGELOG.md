@@ -4,6 +4,10 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ## [Não lançado]
 
+### Medido
+
+- **O envelope da classe, por fotogrametria, porque ninguém o publica** (2026-09-27). A foto de imprensa do fabricante traz o módulo colado num braço Shimano FC-M8100 marcado 170, e o centro do furo do eixo ao centro do furo do pedal são exatamente 170 mm: 0,1319 mm por pixel. A escala foi conferida por um segundo caminho, os dois contatos de carga do módulo, que dão 2,6 mm entre centros, o passo padrão de 2,5 mm de pino pogo, com cabeças de 1,3 a 1,6 mm. Resultado: **37 a 39 mm de comprimento**, 18 a 22 de largura e 9 a 13 de altura, esta última fraca porque nenhuma foto tem perfil. O alvo do projeto passa de 60 para **38 mm de comprimento**: o que se perseguia já era quase o dobro do que a classe faz.
+
 ### Decidido
 
 - **Extensômetros de 5 kΩ** no lugar de 1 kΩ (dono, 2026-09-27): a ponte cai de 3,0 para 0,6 mA e o total pedalando de 3,9 para 1,5 mA, o que faz as 50 h fecharem com uma célula de 100 mAh em vez de não fecharem com 150. O ruído térmico de 5 kΩ em 10 Hz é 0,03 µV, contra 0,26 µV do conversor, então não se paga em resolução. Falta confirmar que existe padrão de cisalhamento a 45° nessa resistência; se não existir, a saída é o modo duty-cycle do conversor, não voltar a 1 kΩ.
