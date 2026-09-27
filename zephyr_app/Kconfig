@@ -1,0 +1,61 @@
+# Options of the bike power meter itself (NCS v3.3.0).
+#
+# The application Kconfig sources the Zephyr one at the end, as the Zephyr
+# application development guide describes.
+
+menu "Bike power meter"
+
+config PM_ANT_DEVICE_TYPE_CHECK
+	bool
+	default y
+	help
+	  Placeholder so the menu is never empty: the ANT+ channel numbers of
+	  the Bicycle Power profile come from the sdk-ant add-on
+	  (ant_profiles/bpwr/ant_bpwr.h), never from this repository.
+
+config PM_HW_REVISION
+	int "Hardware revision reported over ANT+ (page 80) and in the DIS"
+	default 1
+	range 0 255
+
+config PM_MODEL_NUMBER
+	int "Model number reported over ANT+ (page 80)"
+	default 1
+	range 0 65535
+
+config PM_ANT_MANUFACTURER_ID
+	int "ANT+ manufacturer id (page 80); 255 is the development value of the profile"
+	default 255
+	range 0 65535
+
+config PM_STATUS_PERIOD_MS
+	int "Period of the status characteristic and of the 1 Hz measurement, ms"
+	default 1000
+	range 250 5000
+
+config PM_IDLE_BURST_PERIOD_MS
+	int "In Idle, one burst of bridge samples every this many ms (auto zero and health)"
+	default 10000
+	range 1000 60000
+
+config PM_IMU_AXIS_RADIAL
+	int "Axis of the accelerometer along the crank arm (0 X, 1 Y, 2 Z)"
+	default 0
+	range 0 2
+	help
+	  A fact of the board on the arm, to be confirmed on the pod: the axis
+	  that points from the axle to the pedal.
+
+config PM_IMU_AXIS_TANGENTIAL
+	int "Axis of the accelerometer across the arm, in the plane of rotation (0 X, 1 Y, 2 Z)"
+	default 1
+	range 0 2
+
+config PM_IMU_RADIAL_SIGN
+	int "Sign that makes the radial axis positive outward (1 or -1)"
+	default 1
+	range -1 1
+
+endmenu
+
+source "Kconfig.zephyr"

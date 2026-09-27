@@ -9,18 +9,21 @@ O que existe, o que foi verificado e como, e o que falta. Nada rodou em placa: n
 | Data | O que |
 |---|---|
 | 2026-09-27 | estrutura do repositório, documentação de requisitos, arquitetura, protocolos e método de medição com referências; lista de componentes fechada por datasheet |
-| 2026-09-27 | os nove módulos do modelo escritos e testados no PC: 133 casos, 100 % das linhas, doze mutações mortas |
+| 2026-09-27 | os nove módulos do modelo escritos e testados no PC: 134 casos, 100 % das linhas, doze mutações mortas |
+| 2026-09-27 | o firmware embarcado inteiro escrito e compilando com zero avisos no nRF54LM20 DK e com `ANT=1`; nunca executado |
 
 ```mermaid
 flowchart LR
-    A["1 · base<br/>feito: docs, lista, modelo puro"] --> B["2 · firmware embarcado<br/>serviços, drivers, BLE, ANT+, DFU, USB"]
+    A["1 · base<br/>feito: docs, lista, modelo puro"] --> B["2 · firmware embarcado<br/>feito: compila com zero avisos<br/>falta: rodar no DK"]
     B --> C["3 · placa e pod<br/>esquemático, placa de 4 camadas, pod, dry runs"]
     C --> D["4 · bancada<br/>massas, prova de estrada até ±2 %"]
     D --> E["5 · fase 2<br/>eixo de pedal"]
     classDef done fill:#2e7d32,color:#ffffff
     classDef pending fill:#ef6c00,color:#ffffff
     class A done
-    class B,C,D,E pending
+    classDef partial fill:#f9a825,color:#000000
+    class B partial
+    class C,D,E pending
 ```
 
 ## Modelo
@@ -45,7 +48,20 @@ O estimador de ângulo mudou do que a primeira versão de [04](04-arquitetura-fi
 
 ## Firmware embarcado
 
-A fazer, na ordem de [04](04-arquitetura-firmware.md): base (`main`, canais, watchdog, settings), drivers próprios (ADS1220; e o BMA400, porque o `bosch,bma4xx` da árvore do Zephyr usa o mapa de registradores do BMA422, com os dados em `0x12` e a configuração em `0x40`, e o BMA400 tem outro, com os dados em `0x04` e a configuração em `0x19`: o driver reconhece o chip ID `0x90` com um aviso e não o opera), serviços (`sample`, `motion`, `compute`, `radio`, `power`, `usb`), BLE (CPS, DIS, BAS, serviço de configuração), ANT+ (`ant_bpwr` do add-on, com `ANT=1`), MCUboot com mcumgr por BLE e recuperação serial pelo USB, build sem aviso no nRF54LM20 DK.
+Escrito em 2026-09-27, na forma de [04](04-arquitetura-firmware.md), e **compilando com zero avisos** para o nRF54LM20 DK (`bash tools/fw/fw.sh build`: 290.276 B de FLASH e 119.404 B de RAM, mais o MCUboot) e com o ANT+ (`ANT=1`: 325.556 B e 124.068 B). **Nada rodou**: não há DK com as placas de avaliação ligadas, e nenhuma linha abaixo foi vista funcionando.
+
+| Parte | Onde | Estado |
+|---|---|---|
+| base: `main`, canais do zbus, watchdog por thread, `pm_store` (settings, ZMS no nRF54L), `app_cmd` | `zephyr_app/src/app` | compila; a persistência do bloco de 60 bytes usa o subsistema settings com um handler estático |
+| driver do ADS1220 (`ti,ads1220`): conversão contínua e única, monitor da referência, power-down, DRDY por GPIO | `zephyr_app/modules/pm_drivers/drivers/adc` | compila; registradores e comandos da SBAS501D; não testado |
+| driver do BMA400 (`bosch,bma400`): API de sensor, trigger de dados prontos e de despertar no INT1, modos de energia | `zephyr_app/modules/pm_drivers/drivers/sensor` | compila; o `bosch,bma4xx` da árvore usa o mapa do BMA422 (dados em `0x12`, configuração em `0x40`) e não serve; não testado |
+| serviços `sample`, `motion`, `compute`, `power`, `radio`, `usb` | `zephyr_app/src/svc` | compilam; pilhas medidas ([04](04-arquitetura-firmware.md#pilhas-e-prioridades)) |
+| BLE: CPS (Measurement, Feature, Location, Control Point, Vector), serviço de configuração (comando, resposta, bloco, estado), DIS, BAS | `zephyr_app/src/rf/ble_cps.c`, `ble_cfg.c` | compila; os bytes vêm do modelo testado; a tabela GATT não foi vista por um cliente |
+| DFU por BLE (mcumgr SMP, MCUboot pelo sysbuild) | `zephyr_app/src/rf/dfu.c` | compila; recusa pedalando ou com bateria fraca; a recuperação serial do MCUboot pelo USB fica para a bancada |
+| ANT+ BPWR (páginas 1, 16, 18, 80, 81) pelo `ant_bpwr` do add-on | `zephyr_app/src/rf/ant_bpwr.c` | compila com `ANT=1`; a chave e o perfil são do add-on |
+| overlay do nRF54LM20 DK com os pinos de [02](02-hardware.md#pinos-do-módulo) | `zephyr_app/boards` | compila; a placa própria (`pmboard`) entra quando o esquemático fechar |
+
+O que falta no firmware: rodar no DK com as placas de avaliação; a placa própria no devicetree; a recuperação serial do MCUboot; medir as pilhas na placa (`CONFIG_THREAD_ANALYZER`); o consumo real contra o orçamento de [02](02-hardware.md#orçamento-de-consumo).
 
 ## Hardware
 

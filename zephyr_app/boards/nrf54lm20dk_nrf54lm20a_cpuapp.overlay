@@ -1,0 +1,195 @@
+/*
+ * nRF54LM20 DK (nrf54lm20dk/nrf54lm20a/cpuapp): development target of the
+ * pod board, which carries the nRF54LM20A in the MinewSemi ME54BS13.
+ *
+ * The DK has none of the peripherals of the pod. This overlay puts them on
+ * free pins of the DK, with the pins of docs/02-hardware.md (Pinos do
+ * módulo, column "No DK"), so evaluation boards of the ADS1220, the BMA400,
+ * the TMP117 and the MAX17048 can be wired to them:
+ *
+ *   Bridge and IMU SPI (spi22)  SCK P3.03, MOSI P3.00, MISO P3.01;
+ *                               ADS1220 CS P3.02, DRDY P3.06;
+ *                               BMA400 CS P3.05, INT1 P3.04
+ *   Sensor I2C (i2c23)          SDA P1.29, SCL P1.03: TMP117 0x48, MAX17048 0x36
+ *   Excitation                  P1.10 (TPS22916 ON)
+ *   Charger pins                CHG P1.11, ERR P1.12 (open drain, pulled up)
+ *   Ship mode                   SHPACT P1.25
+ *   Gauge alert                 P1.22
+ *   LEDs                        LEDs 0, 1 and 2 of the DK
+ *   Console                     uart20 (VCOM0 of the DK), from the board files
+ *   USB                         the USB-C of the DK (usbhs)
+ *
+ * Two rules of the nRF54LM20A shape the map: SCL of a TWIM and SCK of a
+ * SPIM must sit on clock pins (P1.03 and P3.03 are), and P1.01 and P1.02
+ * leave reset as NFC pins and are not used.
+ *
+ * The services find the devices by these aliases: bridge-adc,
+ * bridge-excitation, imu0, temp0, fuel-gauge0, charger-status,
+ * charger-error, ship-activate, led-r, led-g, led-b and watchdog0 (docs/02).
+ * A device that does not answer is left out.
+ */
+
+/ {
+    aliases {
+        bridge-adc = &ads1220;
+        bridge-excitation = &exc_en;
+        imu0 = &bma400;
+        temp0 = &tmp117;
+        fuel-gauge0 = &max17048;
+        charger-status = &chg_n;
+        charger-error = &err_n;
+        ship-activate = &ship_act;
+        led-r = &led0;
+        led-g = &led1;
+        led-b = &led2;
+    };
+
+    /* outputs of the pod: the excitation switch and the ship-mode pin */
+    pm_outputs {
+        compatible = "gpio-leds";
+
+        exc_en: exc_en {
+            gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+            label = "Bridge excitation";
+        };
+
+        ship_act: ship_act {
+            gpios = <&gpio1 25 GPIO_ACTIVE_HIGH>;
+            label = "nPM1100 SHPACT";
+        };
+    };
+
+    /* inputs of the pod: the charger pins are open drain, low when active */
+    pm_inputs {
+        compatible = "gpio-keys";
+
+        chg_n: chg_n {
+            gpios = <&gpio1 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            label = "nPM1100 CHG";
+        };
+
+        err_n: err_n {
+            gpios = <&gpio1 12 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            label = "nPM1100 ERR";
+        };
+
+        gauge_alrt: gauge_alrt {
+            gpios = <&gpio1 22 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+            label = "MAX17048 ALRT";
+        };
+    };
+};
+
+/* Hardware watchdog behind the task watchdog (alias watchdog0 of the DK) */
+&wdt31 {
+    status = "okay";
+};
+
+/*
+ * The bridge converter and the accelerometer share spi22 on port P3, each
+ * with its own chip select. SPI mode 1 for the ADS1220 and mode 0 for the
+ * BMA400: the drivers set it per transfer.
+ */
+&spi22 {
+    status = "okay";
+    cs-gpios = <&gpio3 2 GPIO_ACTIVE_LOW>, <&gpio3 5 GPIO_ACTIVE_LOW>;
+    pinctrl-0 = <&spi22_default>;
+    pinctrl-1 = <&spi22_sleep>;
+    pinctrl-names = "default", "sleep";
+
+    /*
+     * ADS1220 on the bridge: AIN0-AIN1 differential, gain 128, 175 SPS in
+     * normal mode, the excitation on REFP0/REFN0 as reference (docs/06,
+     * Amostragem). SCLK at most 6,6 MHz (150 ns period): 4 MHz here.
+     */
+    ads1220: ads1220@0 {
+        compatible = "ti,ads1220";
+        reg = <0>;
+        spi-max-frequency = <4000000>;
+        drdy-gpios = <&gpio3 6 GPIO_ACTIVE_LOW>;
+        gain = <128>;
+        data-rate = <175>;
+        mux = <0>;
+        vref = "refp0";
+    };
+
+    /* BMA400: 100 Hz, ±4 g (the centripetal term at 200 rpm is 2,2 g), INT1 */
+    bma400: bma400@1 {
+        compatible = "bosch,bma400";
+        reg = <1>;
+        spi-max-frequency = <4000000>;
+        int1-gpios = <&gpio3 4 GPIO_ACTIVE_HIGH>;
+        range = <4>;
+        odr = <100>;
+        osr = <0>;
+    };
+};
+
+/* Sensors: SCL on P1.03, a clock pin, with SDA on P1.29 */
+&i2c23 {
+    status = "okay";
+    clock-frequency = <I2C_BITRATE_FAST>;
+    pinctrl-0 = <&i2c23_default>;
+    pinctrl-1 = <&i2c23_sleep>;
+    pinctrl-names = "default", "sleep";
+
+    /* TI TMP117, ADD0 to ground: 0x48; one conversion a second, 8 averaged */
+    tmp117: tmp117@48 {
+        compatible = "ti,tmp11x";
+        reg = <0x48>;
+        odr = <0x200>;
+        oversampling = <0x20>;
+    };
+
+    /* Analog Devices MAX17048, fixed address 0x36 */
+    max17048: max17048@36 {
+        compatible = "maxim,max17048";
+        reg = <0x36>;
+    };
+};
+
+/* USB: the serial of the commands. The DK brings the USB-C of the SoC out. */
+&usbhs {
+    status = "okay";
+};
+
+&zephyr_udc0 {
+    cdc_acm_uart0: cdc_acm_uart0 {
+        compatible = "zephyr,cdc-acm-uart";
+    };
+};
+
+&pinctrl {
+    spi22_default: spi22_default {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 3, 3)>,
+                    <NRF_PSEL(SPIM_MOSI, 3, 0)>,
+                    <NRF_PSEL(SPIM_MISO, 3, 1)>;
+        };
+    };
+
+    spi22_sleep: spi22_sleep {
+        group1 {
+            psels = <NRF_PSEL(SPIM_SCK, 3, 3)>,
+                    <NRF_PSEL(SPIM_MOSI, 3, 0)>,
+                    <NRF_PSEL(SPIM_MISO, 3, 1)>;
+            low-power-enable;
+        };
+    };
+
+    i2c23_default: i2c23_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 1, 29)>,
+                    <NRF_PSEL(TWIM_SCL, 1, 3)>;
+            bias-pull-up;
+        };
+    };
+
+    i2c23_sleep: i2c23_sleep {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SDA, 1, 29)>,
+                    <NRF_PSEL(TWIM_SCL, 1, 3)>;
+            low-power-enable;
+        };
+    };
+};

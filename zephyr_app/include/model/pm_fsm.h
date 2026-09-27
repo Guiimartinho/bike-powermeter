@@ -20,7 +20,7 @@
 extern "C" {
 #endif
 
-enum pm_state {
+enum pm_sysstate {
     PM_ST_BOOT = 0,     /**< services starting */
     PM_ST_IDLE,         /**< awake, crank still */
     PM_ST_ACTIVE,       /**< pedalling, or still for less than idle_after_ms */
@@ -53,7 +53,7 @@ struct pm_fsm_cfg {
 
 struct pm_fsm {
     struct pm_fsm_cfg cfg;
-    enum pm_state state;
+    enum pm_sysstate state;
     bool moving;
     uint32_t still_since_ms;
     uint32_t cal_since_ms;
@@ -78,12 +78,12 @@ pm_err_t pm_fsm_event(struct pm_fsm *f, enum pm_event ev, uint32_t now_ms);
 /** Time passes: the timers of Active, Idle and Calibrating */
 void pm_fsm_tick(struct pm_fsm *f, uint32_t now_ms);
 
-enum pm_state pm_fsm_state(const struct pm_fsm *f);
+enum pm_sysstate pm_fsm_state(const struct pm_fsm *f);
 
 /** Whether the converter and the accelerometer sample at full rate in this state */
-bool pm_fsm_measuring(enum pm_state s);
+bool pm_fsm_measuring(enum pm_sysstate s);
 
-const char *pm_fsm_state_name(enum pm_state s);
+const char *pm_fsm_state_name(enum pm_sysstate s);
 
 #ifdef __cplusplus
 }

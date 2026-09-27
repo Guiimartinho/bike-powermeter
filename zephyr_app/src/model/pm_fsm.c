@@ -195,17 +195,17 @@ void pm_fsm_tick(struct pm_fsm *f, uint32_t now_ms)
     }
 }
 
-enum pm_state pm_fsm_state(const struct pm_fsm *f)
+enum pm_sysstate pm_fsm_state(const struct pm_fsm *f)
 {
     return f->state;
 }
 
-bool pm_fsm_measuring(enum pm_state s)
+bool pm_fsm_measuring(enum pm_sysstate s)
 {
     return (s == PM_ST_ACTIVE) || (s == PM_ST_CALIBRATING);
 }
 
-const char *pm_fsm_state_name(enum pm_state s)
+const char *pm_fsm_state_name(enum pm_sysstate s)
 {
     return (s < PM_ST_COUNT) ? names[s] : "?";
 }

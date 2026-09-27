@@ -1,0 +1,10 @@
+# Drivers of the bike power meter that the Zephyr of the NCS does not have:
+# the TI ADS1220 bridge converter and the Bosch BMA400 accelerometer (the
+# bosch,bma4xx driver of the tree carries the BMA422 register map). Added by
+# zephyr_app/CMakeLists.txt to every build.
+name: pm_drivers
+build:
+  cmake: .
+  kconfig: Kconfig
+  settings:
+    dts_root: .

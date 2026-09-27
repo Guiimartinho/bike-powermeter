@@ -1,0 +1,5 @@
+# Compatibility of the sdk-ant v2.1.1 add-on with NCS v3.3.0 (see ../Kconfig).
+# Loaded only by ANT builds: tools/fw/fw.sh or build.bat with ANT=1.
+name: ant_ncs33_compat
+build:
+  kconfig: Kconfig

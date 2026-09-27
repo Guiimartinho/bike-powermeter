@@ -1,0 +1,15 @@
+# Sysbuild Kconfig of the zephyr_app (NCS v3.3.0).
+#
+# MCUboot goes in on the boards carrying the nRF54LM20A: the pod board of
+# the project and the nRF54LM20 DK it is developed on. Both leave 920 KB per
+# image slot (zephyr/dts/vendor/nordic/nrf54lm20a_cpuapp_partition.dtsi).
+#
+# The default below comes before the source line on purpose: in a choice the
+# first default that applies wins, and the one of Zephyr (BOOTLOADER_NONE)
+# would win otherwise.
+
+choice BOOTLOADER
+	default BOOTLOADER_MCUBOOT if BOARD_NRF54LM20DK || BOARD_PMBOARD
+endchoice
+
+source "share/sysbuild/Kconfig"

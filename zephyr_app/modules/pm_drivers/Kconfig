@@ -1,0 +1,8 @@
+# SPDX-License-Identifier: CC-BY-NC-4.0
+
+menu "Bike power meter drivers"
+
+rsource "drivers/adc/Kconfig"
+rsource "drivers/sensor/Kconfig"
+
+endmenu

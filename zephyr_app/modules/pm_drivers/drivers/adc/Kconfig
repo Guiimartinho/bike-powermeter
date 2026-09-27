@@ -1,0 +1,23 @@
+# SPDX-License-Identifier: CC-BY-NC-4.0
+
+config PM_ADC_ADS1220
+	bool "ADS1220 bridge converter (ti,ads1220)"
+	default y
+	depends on DT_HAS_TI_ADS1220_ENABLED
+	select SPI
+	select GPIO
+	help
+	  TI ADS1220 24-bit converter with PGA, read on its DRDY edge by the
+	  sample service through drivers/adc/ads1220.h.
+
+if PM_ADC_ADS1220
+
+config PM_ADC_ADS1220_INIT_PRIORITY
+	int "Init priority of the converter, after the SPI bus"
+	default 75
+
+module = PM_ADC_ADS1220
+module-str = ads1220
+source "subsys/logging/Kconfig.template.log_config"
+
+endif

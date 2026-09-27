@@ -24,12 +24,12 @@ flowchart LR
 
 | Serviço | Thread | O que faz | Dorme em |
 |---|---|---|---|
-| `sample` | prioridade 4 | liga a excitação, dispara a conversão, recebe o DRDY pela ISR (que só copia o código para um ring e acorda a thread), aplica mediana e a calibração, publica `chan_torque` a 175 Hz | semáforo do ring, 1 s de tick |
-| `motion` | 5 | lê o BMA400 pela API de sensor no INT1, estima θ e ω, detecta a volta e o repouso, publica `chan_crank` (por amostra) e `chan_motion_state` (parado, pedalando) | trigger do sensor |
-| `compute` | 5 | casa torque e ângulo pelo carimbo, integra a volta, publica `chan_power` a cada volta e um resumo a 1 Hz; executa calibrações a pedido e as verificações de saúde | caixa de entrada |
-| `radio` | 6 | BLE: anúncio, conexão, CPS (Measurement, Feature, Location, Control Point, Vector), DIS, BAS, serviço de configuração; ANT+: perfil BPWR do add-on, com o callback de calibração; converte pedidos em `chan_cmd` | caixa de entrada |
-| `power` | 9 | MAX17048, pinos CHG e ERR do nPM1100, política de sono (parado > 30 s: conversor em power-down, IMU em low-power com interrupção de movimento, rádio anunciando devagar), bateria fraca e crítica | caixa de entrada, 1 s |
-| `usb` | 8 | porta serial de comandos (os mesmos do serviço de configuração, em texto) quando há cabo | caixa de entrada |
+| `sample` | prioridade 4 | em `Active` e `Calibrating` liga a excitação, põe o ADS1220 em conversão contínua e, a cada DRDY (a ISR só deixa uma mensagem na caixa de entrada), lê o código pelo SPI, aplica a mediana de três e a calibração e publica `chan_torque` a 175 Hz; lê o TMP117 a 1 Hz (`chan_temp`) e o monitor da referência no início de cada período (`chan_excitation`); em `Idle` faz uma rajada de 8 conversões a cada `CONFIG_PM_IDLE_BURST_PERIOD_MS` para o auto-zero e a saúde, com o conversor em power-down e a excitação desligada entre elas; nos outros estados tudo fica desligado | caixa de entrada, 50 ms em contínuo |
+| `motion` | 5 | o driver próprio do BMA400 dispara o trigger de dados prontos no INT1 (a ISR dá um semáforo à thread do driver, que dá outro à do serviço); a thread lê os três eixos pela API de sensor, escolhe o radial e o tangencial por `CONFIG_PM_IMU_AXIS_*` (um fato da placa no braço, a confirmar no pod) e o sinal pelo `tangential_sign` da configuração, roda `crank_update()` e publica `chan_crank` por amostra e `chan_motion_state` quando ω passa de zero a algo ou volta a zero; em `Sleep` põe o sensor em low-power com a interrupção de despertar armada, que também acorda o SoC do System OFF | semáforo, 20 ms |
+| `compute` | 5 | a cada torque usa o ω da última amostra do acelerômetro (`Δθ = ω·Δt`) e alimenta `rev_power_feed()`; fecha a volta no evento do ponto baixo e publica `chan_power` e `chan_vector` (16 bins de torque por ângulo); a 1 Hz publica o estado (`rev_power_status`, zero depois de 3 s sem volta) e `chan_health`; executa as calibrações de [06](06-medicao-e-calibracao.md#calibração) a pedido (`$ZERO`, `$SLOPE`, `$TEMP`, o control point, a página do ANT+), coletando as amostras da ponte e respondendo em `chan_cmd_result`; revisa o zero sozinho a cada 30 s parado, dentro do passo configurado | caixa de entrada, 1 s |
+| `radio` | 6 | sobe o ANT (com `ANT=1`) antes do Bluetooth, anuncia como `PM-XXXX` (os dois últimos bytes do endereço) com o CPS e o BAS; leva `chan_power` à Measurement do CPS e às páginas 16 e 18 do ANT+, `chan_vector` ao Vector, `chan_battery` ao BAS e `chan_health` ao estado do serviço de configuração; responde em `chan_cmd_result` pela origem do comando (linha `$ACK`/`$NAK` no serviço de configuração, indicação do control point, resposta de calibração do ANT+); o control point roda na thread de recepção do BT e só decide, publica e responde; em `Sleep` anuncia a cada 2 s | caixa de entrada, 1 s |
+| `power` | 9 | roda a máquina `pm_fsm` com os eventos da caixa de entrada (movimento, cabo, comandos, atualização) e o seu `tick` de 1 s, e publica `chan_system_state`; a cada 10 s lê o MAX17048 (API de fuel gauge) e os pinos CHG e ERR do nPM1100 e publica `chan_battery`; crítico a 2 % sem carga; `$SLEEP` põe o SoC em System OFF depois de publicar `Sleep` (o `motion` arma o despertar), `$SHIP` levanta o SHPACT por 300 ms com o cabo fora; `$DFU` é o pedido de atualização à máquina | caixa de entrada, 1 s |
+| `usb` | 8 | porta serial de comandos (CDC ACM, as mesmas linhas do serviço de configuração), com a ISR só movendo bytes para um ring; publica `chan_vbus` pelos eventos do stack USB, que é como o `power` sabe do cabo | caixa de entrada, 100 ms |
 
 Regras que valem para todos: ISR não processa; sem alocação depois do boot; cada serviço só publica nos seus canais e nunca chama outro serviço; toda espera tem tempo máximo abaixo do watchdog de 4 s.
 
@@ -44,7 +44,13 @@ Regras que valem para todos: ISR não processa; sem alocação depois do boot; c
 | `chan_cmd` | `{id, arg[]}`: zero, calibrar inclinação com massa m, gravar configuração, ler configuração, entrar em DFU, dormir | radio, usb | compute, sample, power |
 | `chan_system_state` | `{state}` da máquina do sistema | power | todos |
 | `chan_battery` | `{soc_pct, mv, charging, fault}` | power | radio |
-| `chan_health` | `{flags}` (ponte aberta, excitação, IMU parado, temperatura, zero deslocado) | compute | radio |
+| `chan_health` | `{flags, temp_c, code, zero, ref_mv}` (os flags de [06](06-medicao-e-calibracao.md#saúde-do-sensor)) | compute | radio |
+| `chan_temp`, `chan_excitation` | temperatura da ponte a 1 Hz; monitor da referência em mV | sample | compute |
+| `chan_vector` | `{rev_count, last_event_1024, first_angle_deg, torque_1_32[16]}` | compute | radio |
+| `chan_cmd_result` | `{id, source, err, value, text[48]}`: a resposta de um comando, pela origem | compute, power, app | radio, usb |
+| `chan_vbus` | `{present}` | usb | power |
+| `chan_settings` | a configuração em vigor mudou (`struct pm_settings`) | app (`pm_store`) | todos |
+| `chan_dfu` | `{phase, percent}` | radio | power |
 
 ## Máquina do sistema
 
@@ -98,11 +104,24 @@ Lógica pura, sem tipos do Zephyr, em `src/model/`, um módulo por assunto, cada
 
 ## Atualização
 
-MCUboot pelo sysbuild, como no ciclocomputador: mcumgr SMP sobre BLE para a atualização pelo celular ou pelo ciclocomputador, e a recuperação serial do MCUboot sobre USB CDC no conector magnético para o cabo. O serviço `radio` recusa a atualização pedalando ou com bateria abaixo de 30 %, e confirma a imagem nova só depois de o serviço `sample` produzir uma volta válida.
+MCUboot pelo sysbuild, como no ciclocomputador: mcumgr SMP sobre BLE (`src/rf/dfu.c` com os hooks do mcumgr) para a atualização pelo celular ou pelo ciclocomputador. O hook de cada bloco recusa a atualização com o pedivela girando ou com a bateria abaixo de 30 % sem cabo, e o progresso vai em `chan_dfu`. A imagem nova é confirmada quando o serviço `radio` sobe (os serviços partiram e o rádio respondeu: a imagem funciona); confirmar só depois de uma volta válida, como a primeira versão desta página dizia, deixaria uma atualização feita em casa reverter no reinício seguinte se ninguém pedalasse. A recuperação serial do MCUboot pelo USB fica para quando o DK estiver na bancada: o CDC ACM dentro do MCUboot no nRF54LM20A ainda não foi compilado aqui.
 
 ## Pilhas e prioridades
 
-Valores de partida, a medir com `CONFIG_STACK_USAGE` antes de fechar: `sample` 1536 B, `motion` 2048 B (atan2 e a API de sensor), `compute` 3072 B (mínimos quadrados em float), `radio` 2048 B mais a thread RX do BT, `power` 1536 B, `usb` 2048 B, `main` 2048 B. Prioridades como na tabela dos serviços; `sample` acima de tudo porque perder uma amostra desloca a integral da volta.
+Medidas com `CONFIG_STACK_USAGE` em 2026-09-27 (os quadros das funções do projeto; as chamadas ao Zephyr, o `snprintf` com float do picolibc, cerca de 500 B, e o empilhamento de exceção com FPU, 200 B, somados por cima):
+
+| Thread | Maiores quadros medidos | Cadeia estimada | Pilha |
+|---|---|---|---|
+| `sample` | `sample_thread` 184 B (rajada inclusa), `drdy_isr` 80 | ≈ 0,9 KB (SPI, I2C, publicação) | 2048 B |
+| `motion` | `motion_thread` 248 B (amostra inclusa), `crank_update` 64 | ≈ 1,2 KB | 2560 B |
+| `compute` | `compute_thread` 336 B (calibrações inclusas), `rev_power_close` 72 | ≈ 1,4 KB (respostas com float) | 3072 B |
+| `radio` | `radio_thread` 264 B, `cp_request` 104, `ble_cps_notify_vector` 104 | ≈ 2 KB (`bt_enable` e a carga dos bonds) | 3072 B |
+| `power` | `power_thread` 112 B, `publish_state` 56 | ≈ 1,5 KB (fuel gauge, `LOG_PANIC` do desligamento) | 3072 B |
+| `usb` | `usb_thread` 184 B, `app_cmd_handle` 248, `pm_cmd_parse` 360 | ≈ 1,8 KB (respostas com float) | 3072 B |
+| thread RX do BT | `write_cmd` → `app_cmd_handle` 248 → `pm_cmd_parse` 360, `read_cfg` 168 | ≈ 1,5 KB sobre o uso do stack | `CONFIG_BT_RX_STACK_SIZE` 4096 |
+| thread do driver BMA400 | `bma400_thread` (leitura de estado pelo SPI) | ≈ 0,5 KB | 1536 B |
+
+Toda pilha fica com pelo menos 1 KB de folga sobre a cadeia estimada; a confirmação com `CONFIG_THREAD_ANALYZER` na placa é o próximo passo. Prioridades como na tabela dos serviços; `sample` acima de tudo porque perder uma amostra desloca a integral da volta.
 
 ## Testes e cobertura
 

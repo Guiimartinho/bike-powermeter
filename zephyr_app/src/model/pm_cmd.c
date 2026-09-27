@@ -148,7 +148,7 @@ pm_err_t pm_cmd_parse(const char *line, size_t len, struct pm_cmd *cmd)
         enum pm_cmd_id id;
     } plain[] = {
         { "ZERO", PM_CMD_ZERO }, { "DFU", PM_CMD_DFU }, { "SLEEP", PM_CMD_SLEEP },
-        { "INFO", PM_CMD_INFO }, { "LOG", PM_CMD_LOG },
+        { "SHIP", PM_CMD_SHIP }, { "INFO", PM_CMD_INFO }, { "LOG", PM_CMD_LOG },
     };
 
     (void)memset(cmd, 0, sizeof(*cmd));

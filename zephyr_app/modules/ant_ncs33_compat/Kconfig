@@ -1,0 +1,13 @@
+# The ANT add-on (sdk-ant v2.1.1) targets sdk-nrf v3.2.4 and still tests the
+# SoC series symbols that NCS v3.3.0 (Zephyr 4.3.99) deprecated and no longer
+# sets: SOC_SERIES_NRF52X picks the nRF52 libant.a, and SOC_SERIES_NRF54LX the
+# nRF54L library and its SWI0x interrupt names. Selecting them again keeps the
+# add-on unmodified; the build then prints one "Deprecated symbol" warning.
+# The conditions test the SoC symbols because the old series symbols select
+# the new ones: testing SOC_SERIES_NRF52 here would be a dependency loop.
+
+config ANT_NCS33_COMPAT
+	bool "Set the SoC series symbols that sdk-ant v2.1.1 tests"
+	default y if ANT
+	select SOC_SERIES_NRF52X if SOC_NRF52832 || SOC_NRF52840
+	select SOC_SERIES_NRF54LX if SOC_NRF54L05 || SOC_NRF54L10 || SOC_NRF54L15 || SOC_NRF54LM20A

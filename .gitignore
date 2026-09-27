@@ -38,3 +38,6 @@ zephyr_app/src/rf/ant/sensor_pages.c
 hardware_powermeter/datasheets/*
 !hardware_powermeter/datasheets/README.md
 !hardware_powermeter/datasheets/.gitignore
+
+# Logs de build da raiz (fw.sh > build_*.log)
+/build_*.log

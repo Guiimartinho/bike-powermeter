@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: CC-BY-NC-4.0
+
+config PM_SENSOR_BMA400
+	bool "BMA400 accelerometer (bosch,bma400)"
+	default y
+	depends on DT_HAS_BOSCH_BMA400_ENABLED
+	depends on SENSOR
+	select SPI
+	select GPIO
+	help
+	  Bosch BMA400 on SPI by the Zephyr sensor API, with the data-ready
+	  and wake-up triggers on INT1. The bosch,bma4xx driver of the tree
+	  carries the BMA422 register map and does not operate this part.
+
+if PM_SENSOR_BMA400
+
+config PM_SENSOR_BMA400_THREAD_STACK_SIZE
+	int "Stack of the trigger thread"
+	default 1536
+	help
+	  The interrupt only gives a semaphore; this thread calls the handler
+	  of the motion service, which gives another semaphore and returns.
+
+config PM_SENSOR_BMA400_THREAD_PRIORITY
+	int "Priority of the trigger thread"
+	default 4
+
+module = PM_SENSOR_BMA400
+module-str = bma400
+source "subsys/logging/Kconfig.template.log_config"
+
+endif

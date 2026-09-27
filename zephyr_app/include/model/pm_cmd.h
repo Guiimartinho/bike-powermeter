@@ -4,7 +4,8 @@
  *        port (docs/05, Serviço de configuração)
  *
  * One line, `$NAME,arg,...`, ended by CR, LF or both; the answer is
- * `$ACK[,payload]` or `$NAK,code,name`. The same lines come over the BLE
+ * `$ACK[,payload]` or `$NAK,code,name`. $SLEEP and $SHIP are the two ways
+ * out of docs/02 (Pinos do módulo). The same lines come over the BLE
  * configuration characteristic and over the USB serial port, so the bike
  * computer and a terminal drive the meter the same way.
  */
@@ -39,7 +40,8 @@ enum pm_cmd_id {
     PM_CMD_CFG_SET,         /**< $CFG,SET,key,value */
     PM_CMD_CFG_SAVE,        /**< $CFG,SAVE */
     PM_CMD_DFU,             /**< $DFU */
-    PM_CMD_SLEEP,           /**< $SLEEP */
+    PM_CMD_SLEEP,           /**< $SLEEP: System OFF, the crank wakes the pod */
+    PM_CMD_SHIP,            /**< $SHIP: ship mode of the PMIC, the cable wakes the pod */
     PM_CMD_INFO,            /**< $INFO */
     PM_CMD_LOG,             /**< $LOG */
     PM_CMD_COUNT

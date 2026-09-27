@@ -39,6 +39,8 @@ static void test_plain_commands_with_and_without_terminators(void)
     TEST_ASSERT_EQUAL(PM_CMD_DFU, c.id);
     TEST_ASSERT_EQUAL(PM_OK, parse("$SLEEP"));
     TEST_ASSERT_EQUAL(PM_CMD_SLEEP, c.id);
+    TEST_ASSERT_EQUAL(PM_OK, parse("$SHIP"));
+    TEST_ASSERT_EQUAL(PM_CMD_SHIP, c.id);
     TEST_ASSERT_EQUAL(PM_OK, parse("$INFO"));
     TEST_ASSERT_EQUAL(PM_CMD_INFO, c.id);
     TEST_ASSERT_EQUAL(PM_OK, parse("$LOG"));

@@ -59,7 +59,7 @@ Lista completa, com o datasheet e os números de cada peça: [`hardware_powermet
 
 ## Início rápido
 
-Pré-requisitos e comandos são os do ciclocomputador ([`docs/03-ambiente-build.md`](docs/03-ambiente-build.md)): NCS v3.3.0 em `C:\ncs`, scripts em `tools/fw/`, `ANT=1` para o add-on `sdk-ant`, testes de host por `bash tools/fw/host_tests.sh`. Ainda não há `zephyr_app/CMakeLists.txt`: o firmware começa na fase 2 do roteiro.
+Pré-requisitos e comandos são os do ciclocomputador ([`docs/03-ambiente-build.md`](docs/03-ambiente-build.md)): NCS v3.3.0 em `C:\ncs`, scripts em `tools/fw/`, `ANT=1` para o add-on `sdk-ant`, testes de host por `bash tools/fw/host_tests.sh`. O firmware compila para o nRF54LM20 DK com zero avisos (`bash tools/fw/fw.sh build`) e com o ANT+ (`ANT=1`), mas nunca rodou em placa: não há hardware montado.
 
 ## Estrutura
 

@@ -1,0 +1,36 @@
+# SPDX-License-Identifier: CC-BY-NC-4.0
+
+description: |
+  Bosch BMA400 3-axis accelerometer on SPI (4-wire), by the Zephyr sensor
+  API with a data-ready trigger on INT1 and the wake-up interrupt of the low
+  power mode. Register map from BST-BMA400-DS000-14 revision 2.3. Not the
+  bosch,bma4xx driver of the Zephyr tree, whose register map is the one of
+  the BMA422.
+
+compatible: "bosch,bma400"
+
+include: [sensor-device.yaml, spi-device.yaml]
+
+properties:
+  int1-gpios:
+    type: phandle-array
+    required: true
+    description: "The INT1 pin, push-pull, active high (INT12_IO_CTRL)."
+
+  range:
+    type: int
+    default: 4
+    enum: [2, 4, 8, 16]
+    description: "Full scale in g (ACC_CONFIG1 acc_range)."
+
+  odr:
+    type: int
+    default: 100
+    enum: [12, 25, 50, 100, 200, 400, 800]
+    description: "Output data rate of acc_filt1 in Hz (ACC_CONFIG1 acc_odr; 12 means 12,5)."
+
+  osr:
+    type: int
+    default: 0
+    enum: [0, 1, 2, 3]
+    description: "Oversampling of the normal mode (ACC_CONFIG1 osr): 0 is the lowest current."

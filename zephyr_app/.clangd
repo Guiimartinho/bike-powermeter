@@ -1,0 +1,5 @@
+# O firmware compila com o toolchain do Zephyr: o clangd usa a base de
+# compilação do build do DK (tools/fw/fw.sh build). Os testes de host e o
+# modelo têm a sua própria em tests/host/.clangd e src/model/.clangd.
+CompileFlags:
+  CompilationDatabase: build/zephyr_app
