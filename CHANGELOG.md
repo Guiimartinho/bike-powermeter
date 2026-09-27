@@ -6,6 +6,8 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Corrigido
 
+- A lista de componentes dizia que o `bosch,bma4xx` da árvore opera o BMA400; ele reconhece o chip ID `0x90` com um aviso e usa o mapa de registradores do BMA422, que é outro. A coluna passa a dizer "Não: driver próprio", como já diziam `docs/04` e o `CLAUDE.md` (2026-09-27).
+
 - A orientação do acelerômetro na placa era suposição do firmware e não estava em documento nenhum. `docs/02` passa a trazer o requisito eixo a eixo, com a convenção de sinais medida na seção 8.2 da ficha do BMA400, e diz qual é o elo que ainda falta medir: se o `+X` do footprint é o `+X` do encapsulamento. Um palpite errado aqui troca radial por tangencial e a potência sai errada sem sinal de erro (2026-09-27).
 - **A atualização por BLE não funcionaria e a calibração era escrita por qualquer um.** O serviço SMP herdava o padrão do Zephyr, que com o gerenciador de segurança ligado exige emparelhamento **autenticado**: um pod sem tela nem teclado emparelha por Just Works e nunca chega a esse nível, então a característica seria impossível de escrever. E as características de comando e de configuração aceitavam escrita sem cifra nenhuma, de qualquer rádio ao alcance. As três passam a exigir ligação cifrada, que é o nível que o aparelho alcança (2026-09-27).
 - `docs/05` descrevia o serviço de configuração sem dar os UUID, que existiam só no código: sem eles ninguém escreve o app. Os cinco estão na tabela, com a regra de formação e como o aparelho é achado (2026-09-27).
@@ -14,6 +16,14 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 - O orçamento de consumo de `docs/02` contava a ponte ligada 15 % do tempo; o ADS1220 integra a conversão inteira, e a ponte de 1 kΩ fica ligada enquanto se mede: 3,9 mA pedalando, abaixo das 50 h do requisito, com as três saídas para o dono decidir (2026-09-27).
 
 ### Adicionado
+
+- Hardware de ponta a ponta, gerado por script: o esquemático em 4 folhas (57 peças, 45 nós, ERC sem erro, netlist conferido pino a pino), a placa de 60 × 16 mm em 4 camadas (57 peças, 546 segmentos, 179 vias, **DRC com 0 erros**, 77 das 110 ligações fechadas) e o pod de 65,4 × 19,4 × 10,5 mm com 17,0 g estimados. PDF do esquemático, PDF das camadas, desenho de montagem, vistas 3D da placa e do pod, e STL da concha e da tampa (2026-09-27).
+- Cadeia de CAD portada do ciclocomputador para `hardware_powermeter/cad/` e `pod/`, com as tabelas desta placa e três correções medidas no roteador (ordem das ligações a partir do pino mais próximo; pescoço dentro do campo de pads; isolação reservada pela trilha mais larga, que trocou 17 ligações por zero erro de DRC) (2026-09-27).
+- Regra `ME7`: o land pattern do módulo de rádio comparado pad a pad com um desenho independente do mesmo módulo. **80 pads, desvio máximo 0,000 mm** — a primeira conferência independente de um footprint que a ficha não publica (2026-09-27).
+- Regra `IM1`: os eixos do acelerômetro medidos na placa contra a seção 8.2 da ficha. O resultado **reprova**: o `X` do sensor fica tangencial e o `Y` radial, ao contrário do que `PM_IMU_AXIS_RADIAL` e `_TANGENTIAL` supõem ([`hardware_powermeter/04`](hardware_powermeter/04-placa.md#a-orientação-do-acelerômetro)) (2026-09-27).
+- Regras `TX1` e `TX2` (`cad/sch_legivel.py`): a legibilidade do esquemático medida no PDF exportado, palavra por palavra. Achou 81 pares de texto sobrepostos; as correções do gerador (altura real do glifo, 2,43 mm e não 1,27; mais espaço entre peças vizinhas) levaram a 38 (2026-09-27).
+- Doze regras de dry run do pod (`PD1` a `PD12`), que mudaram quatro medidas do desenho no mesmo dia: o teto subiu para 3,2 mm porque quem o fixa é o conector da célula, a célula encolheu para 23 mm por causa do rasgo dos fios da ponte, a aba da tampa afinou e o rasgo estreitou (2026-09-27).
+- Documentos de hardware 02 a 08: esquemático, lista de nós, placa, materiais, conectores e pontos de teste, pod e o relatório de dry run (2026-09-27).
 
 - O `tools/fw/board_check.py` passa a conferir também o **esquemático**: todo pino do módulo na tabela de `docs/02` está numa rede de `hardware_powermeter/cad/nets.py`, e vice-versa, e nenhum pino do módulo aparece em duas redes. É o que impede a placa de ser fabricada com uma pinagem e o firmware compilado com outra, que só a bancada acusaria. Os 19 pinos batem nos três lados: silício, documento e esquemático (2026-09-27).
 
