@@ -17,7 +17,7 @@ from urllib.parse import unquote
 
 # Upstream stravaV10 material (legacy/, libraries/, tools/) keeps its own docs;
 # docs/historico/ holds superseded documents kept as written.
-SKIP_DIRS = {".git", "node_modules", "Lib", "Scripts", "legacy", "libraries", "tools", "hardware", "historico"}
+SKIP_DIRS = {".git", "node_modules", "Lib", "Scripts", "legacy", "libraries", "tools", "hardware", "historico", "datasheets", "build"}
 # Project files that live inside skipped folders.
 OWN_FILES = {"legacy/README.md", "docs/historico/README.md"}
 LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
