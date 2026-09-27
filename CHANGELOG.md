@@ -6,6 +6,7 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Corrigido
 
+- A orientação do acelerômetro na placa era suposição do firmware e não estava em documento nenhum. `docs/02` passa a trazer o requisito eixo a eixo, com a convenção de sinais medida na seção 8.2 da ficha do BMA400, e diz qual é o elo que ainda falta medir: se o `+X` do footprint é o `+X` do encapsulamento. Um palpite errado aqui troca radial por tangencial e a potência sai errada sem sinal de erro (2026-09-27).
 - **A atualização por BLE não funcionaria e a calibração era escrita por qualquer um.** O serviço SMP herdava o padrão do Zephyr, que com o gerenciador de segurança ligado exige emparelhamento **autenticado**: um pod sem tela nem teclado emparelha por Just Works e nunca chega a esse nível, então a característica seria impossível de escrever. E as características de comando e de configuração aceitavam escrita sem cifra nenhuma, de qualquer rádio ao alcance. As três passam a exigir ligação cifrada, que é o nível que o aparelho alcança (2026-09-27).
 - `docs/05` descrevia o serviço de configuração sem dar os UUID, que existiam só no código: sem eles ninguém escreve o app. Os cinco estão na tabela, com a regra de formação e como o aparelho é achado (2026-09-27).
 - A linha do SWD na tabela de pinos de `docs/02` dizia que o reset vai ao conector magnético junto com `SWDIO` e `SWDCLK`; o conector tem seis contatos e não leva o reset, que existe só no Tag-Connect, como o esquemático sempre mostrou (2026-09-27).

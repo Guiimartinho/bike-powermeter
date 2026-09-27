@@ -137,6 +137,18 @@ Os aliases que o firmware usa são `bridge-adc`, `bridge-excitation`, `imu0`, `t
 | Analógico | ponte e ADS1220 num canto, longe do buck e do módulo; filtro RC nas entradas e na referência como o datasheet do ADS1220 pede; retorno de terra da ponte direto ao AVSS |
 | Montagem | tudo de um lado, para o pod ser raso; o módulo é a peça mais alta (2,4 mm) |
 
+### Orientação do acelerômetro
+
+Este é um requisito **da placa sobre o firmware**, e hoje o firmware só o supõe: `CONFIG_PM_IMU_AXIS_RADIAL` e `CONFIG_PM_IMU_AXIS_TANGENTIAL` nascem em X e Y, com a ajuda do Kconfig dizendo que é "um fato da placa, a confirmar". Como o pod é colado na face interna do braço, o plano da placa é o plano de rotação do pedivela, e daí saem três exigências:
+
+| Eixo do BMA400 | Onde tem de apontar | Por quê |
+|---|---|---|
+| Z | normal à placa, para fora da face que leva o ponto do pino 1 | é o eixo lateral, ao longo do eixo central; lê perto de zero sempre, e é o que sobra |
+| X | ao longo do braço, positivo **para fora**, do eixo central para o pedal | é o radial de [06](06-medicao-e-calibracao.md#ângulo-e-cadência), onde entra o termo centrípeto `ω²r` |
+| Y | atravessado ao braço, no plano de rotação | é o tangencial, cujos cruzamentos de zero dão `ω` |
+
+A convenção de sinais é a da seção 8.2 da ficha BST-BMA400-DS000-14: X e Y no plano do encapsulamento, Z saindo da face de cima, e aceleração na direção indicada dá leitura positiva. **O que ainda falta medir** é o último elo: se o `+X` do footprint da biblioteca (`Package_LGA:LGA-12_2x2mm_P0.5mm`) é o `+X` do encapsulamento, o que depende do canto do pino 1, e de que ponta da placa fica o eixo central. Enquanto isso não for medido contra o desenho da ficha, os dois `CONFIG_PM_IMU_AXIS_*` são palpite, e um palpite errado troca radial por tangencial: a cadência sai do termo centrípeto e a potência sai errada sem nenhum sinal de erro. Medir isso é a mesma regra da orientação de modelo STEP: mede-se no desenho do fabricante e vira verificação automática, não se conclui por intuição.
+
 ## Pod
 
 O pod é desenhado em volta da placa e da célula pela mesma ideia do case do ciclocomputador: um gerador e um dry run próprio. Pilha de altura, de baixo para cima: cola de fixação ao braço (0,5 mm), fundo do pod (1,0), célula (4,0), placa (0,8) com o módulo (2,4), tampa (1,0): 9,7 mm. O alvo de 8,5 mm exige a célula ao lado da placa, não sob ela: 60 × 20 mm de área comportam célula de 30 × 20 e placa de 48 × 16 lado a lado só com a placa de 28 mm. A decisão entre os dois arranjos é do dry run, com a medida do braço.

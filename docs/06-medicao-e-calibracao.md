@@ -39,7 +39,7 @@ Os dois fluxos (ponte e acelerômetro) são carimbados com o mesmo relógio e ca
 
 ## Ângulo e cadência
 
-O acelerômetro está fixo ao braço, no plano de rotação. Os dois eixos no plano leem a gravidade girando mais os termos do movimento:
+O acelerômetro está fixo ao braço, no plano de rotação; qual eixo do encapsulamento é o radial e qual é o tangencial é um fato da placa, com o requisito e o elo que ainda falta medir em [02](02-hardware.md#orientação-do-acelerômetro). Os dois eixos no plano leem a gravidade girando mais os termos do movimento:
 
 ```latex
 a_t = g\,\sin\theta + \alpha r, \qquad a_r = g\,\cos\theta + \omega^{2} r
