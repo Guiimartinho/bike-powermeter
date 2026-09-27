@@ -6,6 +6,7 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Corrigido
 
+- `docs/05` descrevia o serviço de configuração sem dar os UUID, que existiam só no código: sem eles ninguém escreve o app. Os cinco estão na tabela, com a regra de formação e como o aparelho é achado (2026-09-27).
 - A linha do SWD na tabela de pinos de `docs/02` dizia que o reset vai ao conector magnético junto com `SWDIO` e `SWDCLK`; o conector tem seis contatos e não leva o reset, que existe só no Tag-Connect, como o esquemático sempre mostrou (2026-09-27).
 - Os `.bat` da raiz vinham do ciclocomputador com o nRF52840 DK como alvo padrão, que este projeto não tem, e sem o `tools/fw/ncs_env.bat` que eles chamam: passam ao nRF54LM20 DK, como o `fw.sh`, com o ambiente do `cmd` copiado; e as skills de build, testes, threads, documentação e commit descrevem este firmware, os seus três alvos e a regra dos 95 % de cobertura, em vez do port do stravaV10 (2026-09-27).
 - O orçamento de consumo de `docs/02` contava a ponte ligada 15 % do tempo; o ADS1220 integra a conversão inteira, e a ponte de 1 kΩ fica ligada enquanto se mede: 3,9 mA pedalando, abaixo das 50 h do requisito, com as três saídas para o dono decidir (2026-09-27).

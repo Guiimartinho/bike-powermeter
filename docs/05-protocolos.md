@@ -20,14 +20,17 @@ Mais Device Information (0x180A: fabricante, modelo, série, versões de hardwar
 
 ## Serviço de configuração
 
-Serviço GATT próprio (UUID de 128 bits do projeto), com o mesmo canal de comandos em texto que o ciclocomputador usa pelo NUS, para que o mesmo app e a mesma tela sirvam aos dois:
+Serviço GATT próprio, com o mesmo canal de comandos em texto que o ciclocomputador usa pelo NUS, para que o mesmo app e a mesma tela sirvam aos dois. Os UUID são de 128 bits, deste projeto, e seguem `7d1f000N-4c8e-4a3b-9e2f-5b6a7c8d9e01`, com `N` de 1 a 5 (`zephyr_app/src/rf/ble_cfg.c`). São estes os números que o app procura:
 
-| Característica | Propriedades | Conteúdo |
-|---|---|---|
-| Comando | write | linha de texto `$CMD,arg,...` |
-| Resposta | notify | linha de texto `$ACK[,carga]` ou `$NAK,código,nome` (`pm_cmd`) |
-| Configuração | read, write | o bloco de 60 bytes de `pm_settings`: versão (uint16), comprimento do pedivela (0,5 mm), raio do sensor (mm), lado (5 esquerdo, 6 direito), sinal do eixo tangencial, zero, inclinação (µN·m/contagem), `T0` e `k1..k3` (float IEEE 754), taxa de amostragem, auto-zero e o seu passo, número ANT+, data de calibração, nome (12 bytes) e CRC-16/CCITT-FALSE; tudo little-endian, campo a campo, sem CBOR (o mesmo bloco vai ao subsistema settings do Zephyr e os testes de host o fixam byte a byte). Um bloco de outra versão ou com CRC errado é recusado e nada muda |
-| Estado | notify, 1 Hz | flags de saúde, temperatura da ponte, código bruto, zero em uso, tensão da bateria |
+| Característica | UUID | Propriedades | Conteúdo |
+|---|---|---|---|
+| (o serviço) | `7d1f0001-4c8e-4a3b-9e2f-5b6a7c8d9e01` | — | o serviço de configuração |
+| Comando | `7d1f0002-4c8e-4a3b-9e2f-5b6a7c8d9e01` | write | linha de texto `$CMD,arg,...` |
+| Resposta | `7d1f0003-4c8e-4a3b-9e2f-5b6a7c8d9e01` | notify | linha de texto `$ACK[,carga]` ou `$NAK,código,nome` (`pm_cmd`) |
+| Configuração | `7d1f0004-4c8e-4a3b-9e2f-5b6a7c8d9e01` | read, write | o bloco de 60 bytes de `pm_settings`: versão (uint16), comprimento do pedivela (0,5 mm), raio do sensor (mm), lado (5 esquerdo, 6 direito), sinal do eixo tangencial, zero, inclinação (µN·m/contagem), `T0` e `k1..k3` (float IEEE 754), taxa de amostragem, auto-zero e o seu passo, número ANT+, data de calibração, nome (12 bytes) e CRC-16/CCITT-FALSE; tudo little-endian, campo a campo, sem CBOR (o mesmo bloco vai ao subsistema settings do Zephyr e os testes de host o fixam byte a byte). Um bloco de outra versão ou com CRC errado é recusado e nada muda |
+| Estado | `7d1f0005-4c8e-4a3b-9e2f-5b6a7c8d9e01` | notify, 1 Hz | flags de saúde, temperatura da ponte, código bruto, zero em uso, tensão da bateria |
+
+O aparelho anuncia como `PM-XXXX`, com os dois últimos bytes do endereço BLE, e traz no anúncio o Cycling Power Service e o de bateria; o de configuração é achado depois da conexão, pela descoberta de serviços.
 
 Comandos (`pm_cmd`, nome sem distinção de maiúsculas, linha de até 63 caracteres terminada por CR, LF ou os dois): `$ZERO` (zero com critério de estabilidade), `$SLOPE,m_g,L_mm[,DOWN]` (um ponto de inclinação com a massa em gramas e o braço em mm; `DOWN` marca o ponto na descida da carga, para a histerese; `$SLOPE,END` fecha o ajuste e devolve inclinação, resíduo e histerese), `$TEMP,BEGIN`, `$TEMP,POINT` e `$TEMP,END` (curva de temperatura), `$CFG,GET[,chave]`, `$CFG,SET,chave,valor` e `$CFG,SAVE`, `$DFU`, `$SLEEP` (System OFF; o pedivela acorda o módulo pelo INT1 do BMA400), `$SHIP` (ship mode do nPM1100; só o cabo acorda; recusado com o cabo posto), `$INFO`, `$LOG` (só na serial). As chaves de `$CFG` são `crank` (mm, em passos de 0,5), `radius` (mm), `side` (`L` ou `R`), `sign` (`1` ou `-1`), `zero`, `slope`, `t0`, `k1`, `k2`, `k3`, `tempcal`, `rate` (20, 45, 90, 175, 330, 600 ou 1000 SPS), `autozero`, `azstep`, `ant`, `caldate` (`AAAA-MM-DD` ou `0`) e `name`. Toda escrita de configuração é validada pelo modelo (`pm_settings`: um valor fora da faixa devolve `$NAK,1,EINVAL` e nada muda), gravada pelo subsistema settings do Zephyr com `$CFG,SAVE` e confirmada na resposta. O emparelhamento com o ciclocomputador escreve comprimento do pedivela e lado e dispara `$ZERO`.
 
