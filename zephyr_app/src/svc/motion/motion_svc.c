@@ -190,6 +190,18 @@ static void one_sample(void)
         axes[i] = sensor_value_to_float(&a[i]);
     }
 
+    /*
+     * The three symbols describe a board, so a wrong set is a wrong board,
+     * not a wrong number: the same axis twice puts the lateral index
+     * outside the array, and a zero sign makes the radial read zero for
+     * ever. Either way the angle comes out wrong in silence, so both are
+     * caught at compile time instead.
+     */
+    BUILD_ASSERT(CONFIG_PM_IMU_AXIS_RADIAL != CONFIG_PM_IMU_AXIS_TANGENTIAL,
+                 "the radial and tangential axes must be different axes");
+    BUILD_ASSERT((CONFIG_PM_IMU_RADIAL_SIGN == 1) || (CONFIG_PM_IMU_RADIAL_SIGN == -1),
+                 "the radial sign is 1 or -1, never 0");
+
     float a_r = (float)CONFIG_PM_IMU_RADIAL_SIGN * axes[CONFIG_PM_IMU_AXIS_RADIAL];
     float a_t = axes[CONFIG_PM_IMU_AXIS_TANGENTIAL];
     float a_l = axes[3 - CONFIG_PM_IMU_AXIS_RADIAL - CONFIG_PM_IMU_AXIS_TANGENTIAL];

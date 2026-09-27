@@ -139,15 +139,19 @@ Os aliases que o firmware usa são `bridge-adc`, `bridge-excitation`, `imu0`, `t
 
 ### Orientação do acelerômetro
 
-Este é um requisito **da placa sobre o firmware**, e hoje o firmware só o supõe: `CONFIG_PM_IMU_AXIS_RADIAL` e `CONFIG_PM_IMU_AXIS_TANGENTIAL` nascem em X e Y, com a ajuda do Kconfig dizendo que é "um fato da placa, a confirmar". Como o pod é colado na face interna do braço, o plano da placa é o plano de rotação do pedivela, e daí saem três exigências:
+Este é um requisito **da placa sobre o firmware**. Como o pod é colado na face interna do braço, o plano da placa é o plano de rotação do pedivela, e daí saem três exigências:
 
-| Eixo do BMA400 | Onde tem de apontar | Por quê |
+| Papel | Onde tem de apontar | Por quê |
 |---|---|---|
-| Z | normal à placa, para fora da face que leva o ponto do pino 1 | é o eixo lateral, ao longo do eixo central; lê perto de zero sempre, e é o que sobra |
-| X | ao longo do braço, positivo **para fora**, do eixo central para o pedal | é o radial de [06](06-medicao-e-calibracao.md#ângulo-e-cadência), onde entra o termo centrípeto `ω²r` |
-| Y | atravessado ao braço, no plano de rotação | é o tangencial, cujos cruzamentos de zero dão `ω` |
+| Lateral | normal à placa, para fora da face que leva o ponto do pino 1 | é o eixo ao longo do eixo central; lê perto de zero sempre, e é o que sobra |
+| Radial | ao longo do braço, positivo **para fora**, do eixo central para o pedal | é o radial de [06](06-medicao-e-calibracao.md#ângulo-e-cadência), onde entra o termo centrípeto `ω²r` |
+| Tangencial | atravessado ao braço, no plano de rotação | os cruzamentos de zero dele dão `ω` |
 
-A convenção de sinais é a da seção 8.2 da ficha BST-BMA400-DS000-14: X e Y no plano do encapsulamento, Z saindo da face de cima, e aceleração na direção indicada dá leitura positiva. **O que ainda falta medir** é o último elo: se o `+X` do footprint da biblioteca (`Package_LGA:LGA-12_2x2mm_P0.5mm`) é o `+X` do encapsulamento, o que depende do canto do pino 1, e de que ponta da placa fica o eixo central. Enquanto isso não for medido contra o desenho da ficha, os dois `CONFIG_PM_IMU_AXIS_*` são palpite, e um palpite errado troca radial por tangencial: a cadência sai do termo centrípeto e a potência sai errada sem nenhum sinal de erro. Medir isso é a mesma regra da orientação de modelo STEP: mede-se no desenho do fabricante e vira verificação automática, não se conclui por intuição.
+A convenção de sinais é a da seção 8.2 da ficha BST-BMA400-DS000-14: X e Y no plano do encapsulamento, Z saindo da face de cima, e aceleração na direção indicada dá leitura positiva.
+
+**Medido em 2026-09-27**, lendo a tabela de orientação da ficha contra o canto do pino 1 do footprint (`Package_LGA:LGA-12_2x2mm_P0.5mm`) e a rotação do `U401` na placa: o **Y** do encapsulamento fica ao longo do braço e o **X** atravessado, e o `+Y` aponta para a ponta da placa que fica do lado do eixo central. Daí os valores do firmware: `CONFIG_PM_IMU_AXIS_RADIAL = 1` (Y), `CONFIG_PM_IMU_AXIS_TANGENTIAL = 0` (X) e `CONFIG_PM_IMU_RADIAL_SIGN = -1`, que é o que faz o radial crescer para fora. Antes dessa medida os três eram palpite, e o palpite estava **invertido**.
+
+Os dois lados não podem se mover sozinhos: a regra `IM1` do dry run da placa mede a orientação do `U401` e reprova enquanto a placa e esses símbolos discordarem. Trocar radial por tangencial mete o termo centrípeto dentro da cadência e a potência sai errada sem nenhum sinal de erro, e é por isso que isto é verificação automática e não comentário. É a mesma regra da orientação de modelo STEP: mede-se no desenho do fabricante, nunca se conclui por intuição.
 
 ## Pod
 
@@ -156,3 +160,5 @@ O pod é desenhado em volta da placa e da célula pela mesma ideia do case do ci
 ## Conector magnético
 
 Seis pinos pogo, ímã com polaridade, passo de 2,0 a 2,5 mm, 1 A por pino, banho de ouro, face plana vedada por junta e envasada por trás. O cabo termina em USB-A (5 V, GND, D+, D−) e numa saída SWD de 10 vias (Cortex Debug) para o J-Link. Proteção: TPD4E05U06 nos quatro sinais, 100 Ω em série no SWD, e o VBUS entra no nPM1100, que é entrada; nada sai do pod pelos pinos sem cabo. O fornecedor é escolhido com o desenho do footprint, que entra na cadeia de CAD como as outras peças, com o corpo 3D medido.
+
+**Altura mínima do corpo: 3,2 mm**, requisito que saiu do desenho do pod e não do circuito. O conector atravessa a tampa e a face dele fica num poço, abaixo do topo, para não bater na perna do ciclista; se o corpo for mais baixo que a soma do teto com a espessura da tampa, a face fica abaixo da superfície de baixo dela e a cabeça magnética do cabo não alcança. A regra `PD3` do dry run do pod mede as três condições juntas ([`hardware_powermeter/07`](../hardware_powermeter/07-pod.md#o-conector-magnético-na-tampa)). Leve esse número junto do passo e da corrente na hora de escolher a peça.

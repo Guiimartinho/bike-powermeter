@@ -40,21 +40,34 @@ config PM_IDLE_BURST_PERIOD_MS
 
 config PM_IMU_AXIS_RADIAL
 	int "Axis of the accelerometer along the crank arm (0 X, 1 Y, 2 Z)"
-	default 0
+	default 1
 	range 0 2
 	help
-	  A fact of the board on the arm, to be confirmed on the pod: the axis
-	  that points from the axle to the pedal.
+	  A fact of the board, measured on 2026-09-27 and not guessed: the
+	  orientation table of BST-BMA400-DS000-14 section 8.2, read against the
+	  pin 1 corner of the U401 footprint and the part's rotation on the
+	  board, puts the package's Y along the arm and its X across it. The
+	  requirement these three symbols satisfy is in docs/02-hardware.md,
+	  "Orientacao do acelerometro", and rule IM1 of the board's dry run
+	  fails while the board and these values disagree. Swapping radial and
+	  tangential feeds the centripetal term into the cadence and the power
+	  comes out wrong with no error anywhere, so neither side moves alone.
 
 config PM_IMU_AXIS_TANGENTIAL
 	int "Axis of the accelerometer across the arm, in the plane of rotation (0 X, 1 Y, 2 Z)"
-	default 1
+	default 0
 	range 0 2
 
 config PM_IMU_RADIAL_SIGN
 	int "Sign that makes the radial axis positive outward (1 or -1)"
-	default 1
+	default -1
 	range -1 1
+	help
+	  The package's positive Y points at the left end of the board, which is
+	  the axle side, and the model wants radial positive outward, from the
+	  axle to the pedal: hence -1. The tangential sign is not here; it is
+	  the tangential_sign setting, so the same firmware serves a pod on
+	  either crank arm.
 
 endmenu
 
