@@ -48,7 +48,7 @@ O dono é um desenvolvedor brasileiro de eletrônica embarcada que quer investig
 
 ## 3. Comandos essenciais
 
-Os mesmos do ciclocomputador, em Git Bash na raiz: `bash tools/fw/fw.sh build [pristine]`, `ANT=1 bash tools/fw/fw.sh build pristine`, `bash tools/fw/fw.sh flash|recover|devices|size`, `bash tools/fw/host_tests.sh`, `python tools/docs/mermaid_check.py`, `python tools/docs/links_check.py`. Equivalentes no `cmd`: `build.bat`, `flash.bat`, `recover.bat`, `serial.bat COMx`. O build do DK e o com `ANT=1` compilam com zero avisos desde 2026-09-27; os testes de host cobrem o modelo (`bash tools/fw/host_tests.sh coverage`).
+Os mesmos do ciclocomputador, em Git Bash na raiz: `bash tools/fw/fw.sh build [pristine]`, `ANT=1 bash tools/fw/fw.sh build pristine`, `bash tools/fw/fw.sh flash|recover|devices|size`, `bash tools/fw/host_tests.sh` (e `coverage`), `BOARD=pmboard/nrf54lm20a/cpuapp BUILD_DIR=zephyr_app/build_custom bash tools/fw/fw.sh build` para a placa própria, `python tools/fw/board_check.py` (o mapa de pinos da placa contra o silício e contra a tabela de `docs/02`), `python tools/docs/mermaid_check.py`, `python tools/docs/links_check.py`. Equivalentes no `cmd`: `build.bat`, `flash.bat`, `recover.bat`, `serial.bat COMx`. O build do DK e o com `ANT=1` compilam com zero avisos desde 2026-09-27; os testes de host cobrem o modelo (`bash tools/fw/host_tests.sh coverage`).
 
 ## 4. Estado e próximos passos
 

@@ -1,0 +1,16 @@
+identifier: pmboard/nrf54lm20a/cpuapp
+name: Bike power meter crank pod nRF54LM20A Application MCU
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+sysbuild: true
+ram: 512
+flash: 2028
+supported:
+  - gpio
+  - i2c
+  - spi
+  - watchdog
+  - usbd
+vendor: pm

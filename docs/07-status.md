@@ -59,9 +59,9 @@ Escrito em 2026-09-27, na forma de [04](04-arquitetura-firmware.md), e **compila
 | BLE: CPS (Measurement, Feature, Location, Control Point, Vector), serviço de configuração (comando, resposta, bloco, estado), DIS, BAS | `zephyr_app/src/rf/ble_cps.c`, `ble_cfg.c` | compila; os bytes vêm do modelo testado; a tabela GATT não foi vista por um cliente |
 | DFU por BLE (mcumgr SMP, MCUboot pelo sysbuild) | `zephyr_app/src/rf/dfu.c` | compila; recusa pedalando ou com bateria fraca; a recuperação serial do MCUboot pelo USB fica para a bancada |
 | ANT+ BPWR (páginas 1, 16, 18, 80, 81) pelo `ant_bpwr` do add-on | `zephyr_app/src/rf/ant_bpwr.c` | compila com `ANT=1`; a chave e o perfil são do add-on |
-| overlay do nRF54LM20 DK com os pinos de [02](02-hardware.md#pinos-do-módulo) | `zephyr_app/boards` | compila; a placa própria (`pmboard`) entra quando o esquemático fechar |
+| overlay do nRF54LM20 DK e a placa própria `pmboard` (`zephyr_app/boards/pm/pmboard`), os dois com os pinos de [02](02-hardware.md#pinos-do-módulo) | `zephyr_app/boards` | compilam; `tools/fw/board_check.py` confere o devicetree da placa contra o silício e contra a tabela de [02], nos dois sentidos |
 
-O que falta no firmware: rodar no DK com as placas de avaliação; a placa própria no devicetree; a recuperação serial do MCUboot; medir as pilhas na placa (`CONFIG_THREAD_ANALYZER`); o consumo real contra o orçamento de [02](02-hardware.md#orçamento-de-consumo).
+O que falta no firmware: rodar no DK com as placas de avaliação; a recuperação serial do MCUboot; medir as pilhas na placa (`CONFIG_THREAD_ANALYZER`); o consumo real contra o orçamento de [02](02-hardware.md#orçamento-de-consumo).
 
 ## Hardware
 

@@ -1,0 +1,258 @@
+/*
+ * Bike power meter: the crank pod board, with the nRF54LM20A on the
+ * MinewSemi ME54BS13 module.
+ *
+ * Every device the pod carries, on the pins it carries them on
+ * (docs/02-hardware.md, Pinos do módulo); the pin map and the two rules of
+ * the part that shape it are in pmboard-pinctrl.dtsi. The same aliases as
+ * the DK overlay, so the services do not change between the two targets.
+ *
+ * Nothing here has been built: the board is being drawn from the same pin
+ * table (hardware_powermeter/cad), and no unit exists.
+ */
+
+/dts-v1/;
+
+#include <nordic/nrf54lm20a_cpuapp.dtsi>
+#include <vendor/nordic/nrf54lm20a_cpuapp_partition.dtsi>
+#include "pmboard-pinctrl.dtsi"
+
+/ {
+	compatible = "pm,pmboard-nrf54lm20a-cpuapp";
+	model = "Bike power meter crank pod (nRF54LM20A)";
+
+	chosen {
+		zephyr,code-partition = &slot0_partition;
+		zephyr,sram = &cpuapp_sram;
+		zephyr,flash-controller = &rram_controller;
+		zephyr,flash = &cpuapp_rram;
+		/* the console lives on two test pads under the potting */
+		zephyr,console = &uart20;
+		zephyr,shell-uart = &uart20;
+		zephyr,uart-mcumgr = &uart20;
+	};
+
+	aliases {
+		bridge-adc = &ads1220;
+		bridge-excitation = &exc_en;
+		imu0 = &bma400;
+		temp0 = &tmp117;
+		fuel-gauge0 = &max17048;
+		charger-status = &chg_n;
+		charger-error = &err_n;
+		ship-activate = &ship_act;
+		led-r = &led_r;
+		led-g = &led_g;
+		led-b = &led_b;
+		watchdog0 = &wdt31;
+	};
+
+	/* outputs: the excitation switch, the ship-mode pin, the LED (active low) */
+	pm_outputs {
+		compatible = "gpio-leds";
+
+		exc_en: exc_en {
+			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+			label = "Bridge excitation";
+		};
+
+		ship_act: ship_act {
+			gpios = <&gpio1 25 GPIO_ACTIVE_HIGH>;
+			label = "nPM1100 SHPACT";
+		};
+
+		led_r: led_r {
+			gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+			label = "LED red";
+		};
+
+		led_g: led_g {
+			gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+			label = "LED green";
+		};
+
+		led_b: led_b {
+			gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+			label = "LED blue";
+		};
+	};
+
+	/* inputs: the charger pins are open drain, low when active */
+	pm_inputs {
+		compatible = "gpio-keys";
+
+		chg_n: chg_n {
+			gpios = <&gpio1 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "nPM1100 CHG";
+		};
+
+		err_n: err_n {
+			gpios = <&gpio1 12 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "nPM1100 ERR";
+		};
+
+		gauge_alrt: gauge_alrt {
+			gpios = <&gpio1 22 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			label = "MAX17048 ALRT";
+		};
+	};
+};
+
+&cpuapp_sram {
+	status = "okay";
+};
+
+&hfpll {
+	clock-frequency = <DT_FREQ_M(128)>;
+};
+
+/* The module carries the two crystals; load capacitors are internal */
+&lfxo {
+	load-capacitors = "internal";
+	load-capacitance-femtofarad = <17000>;
+};
+
+&hfxo {
+	load-capacitors = "internal";
+	load-capacitance-femtofarad = <15000>;
+};
+
+&vregmain {
+	status = "okay";
+	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
+&vregusb {
+	status = "okay";
+};
+
+&grtc {
+	owned-channels = <0 1 2 3 4 5 6 7 8 9 10 11>;
+	child-owned-channels = <3 4 7 8 9 10 11>;
+	status = "okay";
+};
+
+&clock {
+	status = "okay";
+};
+
+&radio {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpio2 {
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&gpiote20 {
+	status = "okay";
+};
+
+&gpiote30 {
+	status = "okay";
+};
+
+/* Hardware watchdog behind the task watchdog of the services */
+&wdt31 {
+	status = "okay";
+};
+
+/* ---- Console on the test pads ---- */
+&uart20 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart20_default>;
+	pinctrl-1 = <&uart20_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/*
+ * ---- Bridge converter and accelerometer ----
+ *
+ * One bus, two chip selects: the ADS1220 on P2.05 with DRDY on P2.03, the
+ * BMA400 on P2.07 with INT1 on P2.08. SPI mode 1 for the converter and
+ * mode 0 for the accelerometer: the drivers set it per transfer.
+ */
+&spi00 {
+	status = "okay";
+	cs-gpios = <&gpio2 5 GPIO_ACTIVE_LOW>, <&gpio2 7 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi00_default>;
+	pinctrl-1 = <&spi00_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	/*
+	 * ADS1220 on the bridge: AIN0-AIN1 differential, gain 128, 175 SPS in
+	 * normal mode, the excitation on REFP0/REFN0 as reference (docs/06,
+	 * Amostragem). SCLK at most 6,6 MHz (150 ns period): 4 MHz here.
+	 */
+	ads1220: ads1220@0 {
+		compatible = "ti,ads1220";
+		reg = <0>;
+		spi-max-frequency = <4000000>;
+		drdy-gpios = <&gpio2 3 GPIO_ACTIVE_LOW>;
+		gain = <128>;
+		data-rate = <175>;
+		mux = <0>;
+		vref = "refp0";
+	};
+
+	/* BMA400: 100 Hz, ±4 g (the centripetal term at 200 rpm is 2,2 g), INT1 */
+	bma400: bma400@1 {
+		compatible = "bosch,bma400";
+		reg = <1>;
+		spi-max-frequency = <4000000>;
+		int1-gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>;
+		range = <4>;
+		odr = <100>;
+		osr = <0>;
+	};
+};
+
+/* ---- Temperature of the bridge and the fuel gauge ---- */
+&i2c23 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	pinctrl-0 = <&i2c23_default>;
+	pinctrl-1 = <&i2c23_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	/* TI TMP117, ADD0 to ground: 0x48; one conversion a second, 8 averaged */
+	tmp117: tmp117@48 {
+		compatible = "ti,tmp11x";
+		reg = <0x48>;
+		odr = <0x200>;
+		oversampling = <0x20>;
+	};
+
+	/* Analog Devices MAX17048, fixed address 0x36 */
+	max17048: max17048@36 {
+		compatible = "maxim,max17048";
+		reg = <0x36>;
+	};
+};
+
+/*
+ * ---- USB: the serial of the commands, through the magnetic connector ----
+ *
+ * The label zephyr_udc0 is what the DK's board files give the controller;
+ * the USB service finds the port by the node label cdc_acm_uart0.
+ */
+zephyr_udc0: &usbhs {
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
