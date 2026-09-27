@@ -98,6 +98,32 @@
 	};
 };
 
+/*
+ * Partitions: MCUboot with the USB serial recovery takes 96 KB, and each
+ * image slot gives up 16 KB (sysbuild/mcuboot.overlay carries the same
+ * three nodes for the bootloader image; the two must agree).
+ */
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+
+&boot_partition {
+	reg = <0x0 DT_SIZE_K(96)>;
+};
+
+&cpuapp_rram {
+	partitions {
+		slot0_partition: partition@18000 {
+			label = "image-0";
+			reg = <0x18000 DT_SIZE_K(904)>;
+		};
+
+		slot1_partition: partition@fa000 {
+			label = "image-1";
+			reg = <0xfa000 DT_SIZE_K(904)>;
+		};
+	};
+};
+
 &cpuapp_sram {
 	status = "okay";
 };

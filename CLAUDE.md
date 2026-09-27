@@ -63,12 +63,18 @@ Valem todas as do `CLAUDE.md` do ciclocomputador (west de dentro do `zephyr_app`
 
 | Armadilha | Como evitar |
 |---|---|
-| A ponte de 350 Ω a 3 V drena 8,6 mA, mais que todo o resto do módulo | ponte de 1 kΩ e excitação chaveada só na amostra; nunca ponte ligada direto ao trilho |
+| A ponte fica ligada enquanto o conversor converte: o ADS1220 integra a conversão inteira (SBAS501D 8.3.6) e não existe "janela da amostra" menor que ela; a ponte de 1 kΩ a 3 V drena 3 mA, e a de 350 Ω 8,6 mA | excitação pela TPS22916 ligada só em `Active`, `Calibrating` e nas rajadas de `Idle`, desligada no resto; a autonomia de 50 h não fecha com 1 kΩ, e as saídas (5 kΩ, duty-cycle com excitação chaveada, 200 mAh) estão em `docs/02` para o dono decidir |
 | Medição não ratiométrica deriva com a tensão do buck | a excitação da ponte vai aos pinos REFP0/REFN0 do ADS1220; referência interna só para o sensor de temperatura |
 | Extensômetro colado errado é o erro que nenhum firmware corrige | seguir o guia da Micro-Measurements (preparação, AE-10, proteção), medir linearidade e histerese na bancada antes de qualquer firmware |
-| O driver `bma4xx` do Zephyr reconhece o BMA400 mas avisa que foi testado só com BMA422 e BMA400 | conferir na placa cada registrador usado; o aviso de log é esperado |
+| O driver `bosch,bma4xx` do Zephyr reconhece o chip ID `0x90` do BMA400 com um aviso, mas usa o mapa de registradores do BMA422 (dados em `0x12`, configuração em `0x40`); o BMA400 tem outro (`0x04`, `0x19`) | driver próprio em `zephyr_app/modules/pm_drivers/drivers/sensor` (`bosch,bma400`), da ficha BST-BMA400-DS000-14 |
 | Pinos SWD expostos no conector magnético | TVS TPD4E05U06 e 100 Ω em série; nada sai do pod pelos pinos sem cabo |
 | Material do ANT+ (`ant_bpwr`, páginas) fica em `C:\ncs\sdk-ant` | referenciar pelo build com `ANT=1`, nunca copiar para o repositório |
+| Com os cabeçalhos dos perfis do `sdk-ant` (`ant_profiles/bpwr/ant_bpwr.h`), incluir `ant_init.h` dá tipos conflitantes com `ant_host_init.h`; e um `LOG_MODULE_REGISTER(ant_bpwr)` colide com o módulo de log do próprio perfil | inclua só `ant_key_manager.h`, `ant_parameters.h` e o perfil (o `ant_host_init.h` vem com ele e declara `ant_init()` e `ant_cb_register()`); nome de log próprio (`rf_ant`) |
+| `enum pm_state` já existe no Zephyr (`zephyr/pm/state.h`) e quebra qualquer arquivo que inclua os dois | a máquina do sistema é `enum pm_sysstate` |
+| A prioridade de `DEVICE_DT_INST_DEFINE` tem de ser um literal: uma expressão (`CONFIG_SPI_INIT_PRIORITY + 1`) vira nome de seção inválido e o link para com `Undefined initialization levels used` | um símbolo Kconfig próprio (`PM_ADC_ADS1220_INIT_PRIORITY`) |
+| Um binding YAML com `description:` em texto simples contendo `: ` ou `[` é YAML inválido e o build para em `isn't valid YAML` | descrição entre aspas ou em bloco `\|` |
+| Existindo `zephyr_app/sysbuild/mcuboot.overlay`, o sysbuild deixa de aplicar o `app.overlay` do próprio MCUboot, que é quem diz `zephyr,code-partition = &boot_partition`: o bootloader sai linkado no slot 0 (`FLASH_LOAD_OFFSET` 0x18000) e o build passa sem aviso | repita a linha no overlay e confira `CONFIG_FLASH_LOAD_OFFSET=0x0` em `build/mcuboot/zephyr/.config` a cada mudança de partição |
+| O MCUboot com a recuperação serial pelo USB CDC ACM não cabe nos 64 KB do layout do fabricante (estourou 23.668 B) | layout do projeto: MCUboot em 96 KB e slots de 904 KB, nos três devicetrees (placa própria, overlay do DK, `sysbuild/mcuboot.overlay`), que têm de concordar |
 
 ## 6. Skills do projeto
 

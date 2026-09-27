@@ -267,6 +267,41 @@ static void test_battery_critical_from_idle_sleep_and_calibrating(void)
     TEST_ASSERT_EQUAL(PM_ST_IDLE, pm_fsm_state(&f));
 }
 
+static void test_sleep_request_from_any_awake_state_but_not_from_dfu(void)
+{
+    /* pedalling: the rider asked, so the crank counts as still from now */
+    ready();
+    pedal(1000U);
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_SLEEP_REQUEST, 2000U));
+    TEST_ASSERT_EQUAL(PM_ST_SLEEP, pm_fsm_state(&f));
+    TEST_ASSERT_FALSE(f.moving);
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_SLEEP_REQUEST, 2001U));   /* again: fine */
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_WAKE, 3000U));
+    TEST_ASSERT_EQUAL(PM_ST_IDLE, pm_fsm_state(&f));
+
+    /* idle, calibrating and low battery may sleep too */
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_SLEEP_REQUEST, 4000U));
+    TEST_ASSERT_EQUAL(PM_ST_SLEEP, pm_fsm_state(&f));
+    pm_fsm_init(&f, NULL, 0U);
+    ready();
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_CAL_REQUEST, 1000U));
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_SLEEP_REQUEST, 2000U));
+    TEST_ASSERT_EQUAL(PM_ST_SLEEP, pm_fsm_state(&f));
+    pm_fsm_init(&f, NULL, 0U);
+    ready();
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_BATTERY_CRITICAL, 1000U));
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_SLEEP_REQUEST, 2000U));
+    TEST_ASSERT_EQUAL(PM_ST_SLEEP, pm_fsm_state(&f));
+
+    /* not while booting, not while an update is being applied */
+    pm_fsm_init(&f, NULL, 0U);
+    TEST_ASSERT_EQUAL(PM_ESTATE, pm_fsm_event(&f, PM_EV_SLEEP_REQUEST, 10U));
+    ready();
+    TEST_ASSERT_EQUAL(PM_OK, pm_fsm_event(&f, PM_EV_DFU_REQUEST, 1000U));
+    TEST_ASSERT_EQUAL(PM_ESTATE, pm_fsm_event(&f, PM_EV_SLEEP_REQUEST, 2000U));
+    TEST_ASSERT_EQUAL(PM_ST_DFU, pm_fsm_state(&f));
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -282,5 +317,6 @@ int main(void)
     RUN_TEST(test_dfu_from_sleep_and_the_soc_is_capped);
     RUN_TEST(test_battery_critical_stops_everything_until_it_charges);
     RUN_TEST(test_battery_critical_from_idle_sleep_and_calibrating);
+    RUN_TEST(test_sleep_request_from_any_awake_state_but_not_from_dfu);
     return UNITY_END();
 }

@@ -1,0 +1,57 @@
+/*
+ * MCUboot image of the zephyr_app (sysbuild applies this file to the
+ * bootloader only, by its name).
+ *
+ * The serial recovery over the USB CDC ACM of the nRF54LM20A does not fit
+ * the 64 KB the vendor layout gives MCUboot (it overflowed by 23.668 B on
+ * 2026-09-27): the bootloader takes 96 KB and each image slot gives up
+ * 16 KB, down to 904 KB. The application overlays carry the same three
+ * nodes, and the two must agree: zephyr,code-partition of the app is
+ * slot0_partition. The RRAM erases in 4 KB blocks, which every offset and
+ * size below respects.
+ *
+ * The CDC ACM port below is the one MCUboot listens on, reached through
+ * the magnetic connector; the application has its own port in its own
+ * devicetree.
+ */
+
+/delete-node/ &slot0_partition;
+/delete-node/ &slot1_partition;
+
+&boot_partition {
+	reg = <0x0 DT_SIZE_K(96)>;
+};
+
+&cpuapp_rram {
+	partitions {
+		slot0_partition: partition@18000 {
+			label = "image-0";
+			reg = <0x18000 DT_SIZE_K(904)>;
+		};
+
+		slot1_partition: partition@fa000 {
+			label = "image-1";
+			reg = <0xfa000 DT_SIZE_K(904)>;
+		};
+	};
+};
+
+/ {
+	chosen {
+		/*
+		 * MCUboot's own app.overlay says this and is left out once a
+		 * sysbuild/mcuboot.overlay exists: without it the bootloader is
+		 * linked into slot 0 (seen on 2026-09-27: FLASH_LOAD_OFFSET 0x18000).
+		 */
+		zephyr,code-partition = &boot_partition;
+		zephyr,uart-mcumgr = &boot_cdc_acm;
+	};
+};
+
+&usbhs {
+	status = "okay";
+
+	boot_cdc_acm: cdc_acm_boot {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};

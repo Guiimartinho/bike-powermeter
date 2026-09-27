@@ -194,14 +194,10 @@ static void on_cmd(const struct app_cmd_msg *c)
 
     switch (c->id) {
     case PM_CMD_SLEEP:
-        /* every state that measures or idles may sleep; the answer goes first */
-        err = (pm_fsm_state(&fsm) == PM_ST_DFU) ? PM_ESTATE : PM_OK;
+        /* the answer goes first; the motion service arms the wake-up on the state */
+        err = event(PM_EV_SLEEP_REQUEST);
         app_cmd_reply(c->id, c->source, (uint8_t)err, 0, NULL);
         if (err == PM_OK) {
-            /* the motion service arms the wake-up on this state */
-            (void)pm_fsm_event(&fsm, PM_EV_STILL, k_uptime_get_32());
-            fsm.state = PM_ST_SLEEP;
-            publish_state();
             go_to_sleep();
         }
         break;

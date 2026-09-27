@@ -164,6 +164,21 @@ pm_err_t pm_fsm_event(struct pm_fsm *f, enum pm_event ev, uint32_t now_ms)
             f->still_since_ms = now_ms;
         }
         return PM_OK;
+    case PM_EV_SLEEP_REQUEST:
+        /* from any awake state, even pedalling: the rider asked for it */
+        switch (f->state) {
+        case PM_ST_ACTIVE:
+        case PM_ST_IDLE:
+        case PM_ST_CALIBRATING:
+        case PM_ST_LOW_BATTERY:
+            go_still(f, now_ms);
+            f->state = PM_ST_SLEEP;
+            return PM_OK;
+        case PM_ST_SLEEP:
+            return PM_OK;
+        default:
+            return PM_ESTATE;
+        }
     default:
         return PM_EINVAL;
     }

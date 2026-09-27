@@ -88,7 +88,7 @@ Lógica pura, sem tipos do Zephyr, em `src/model/`, um módulo por assunto, cada
 | `pm_settings` | estrutura de configuração, limites, bloco versionado com CRC, chaves de texto | valores fora de faixa, bloco corrompido ou de outra versão |
 | `pm_cmd` | as linhas `$CMD,...`, as respostas `$ACK` e `$NAK`, o montador de linhas | cada comando, cada recusa, estouro de linha |
 | `health` | flags de saúde a partir dos sinais | cada regra de [06](06-medicao-e-calibracao.md#saúde-do-sensor) |
-| `pm_fsm` | a máquina do sistema | cada transição e as recusadas |
+| `pm_fsm` | a máquina do sistema, com o pedido de `$SLEEP` como evento | cada transição e as recusadas |
 | `pm_wire` | leitura e escrita little-endian (só cabeçalho) | pelos dois módulos que o usam |
 
 ## Drivers
@@ -104,7 +104,7 @@ Lógica pura, sem tipos do Zephyr, em `src/model/`, um módulo por assunto, cada
 
 ## Atualização
 
-MCUboot pelo sysbuild, como no ciclocomputador: mcumgr SMP sobre BLE (`src/rf/dfu.c` com os hooks do mcumgr) para a atualização pelo celular ou pelo ciclocomputador. O hook de cada bloco recusa a atualização com o pedivela girando ou com a bateria abaixo de 30 % sem cabo, e o progresso vai em `chan_dfu`. A imagem nova é confirmada quando o serviço `radio` sobe (os serviços partiram e o rádio respondeu: a imagem funciona); confirmar só depois de uma volta válida, como a primeira versão desta página dizia, deixaria uma atualização feita em casa reverter no reinício seguinte se ninguém pedalasse. A recuperação serial do MCUboot pelo USB fica para quando o DK estiver na bancada: o CDC ACM dentro do MCUboot no nRF54LM20A ainda não foi compilado aqui.
+MCUboot pelo sysbuild, como no ciclocomputador: mcumgr SMP sobre BLE (`src/rf/dfu.c` com os hooks do mcumgr) para a atualização pelo celular ou pelo ciclocomputador. O hook de cada bloco recusa a atualização com o pedivela girando ou com a bateria abaixo de 30 % sem cabo, e o progresso vai em `chan_dfu`. A imagem nova é confirmada quando o serviço `radio` sobe (os serviços partiram e o rádio respondeu: a imagem funciona); confirmar só depois de uma volta válida, como a primeira versão desta página dizia, deixaria uma atualização feita em casa reverter no reinício seguinte se ninguém pedalasse. A recuperação serial do MCUboot pelo USB (`sysbuild/mcuboot.conf` e `sysbuild/mcuboot.overlay`): o pod não tem botão, então a cada partida o MCUboot sobe o USB e espera 1 s por um pedido de recuperação (mcumgr por SMP) na porta CDC ACM dele, pelo conector magnético, e só então carrega a aplicação. O stack USB dentro do MCUboot não cabe nos 64 KB do layout do fabricante (estourou por 23.668 B em 2026-09-27): o bootloader fica com 96 KB e cada slot desce de 920 KB para 904 KB, nos três devicetrees (a placa própria, o overlay do DK e o do MCUboot), que têm de concordar.
 
 ## Pilhas e prioridades
 

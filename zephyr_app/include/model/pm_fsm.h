@@ -41,6 +41,7 @@ enum pm_event {
     PM_EV_DFU_REQUEST,      /**< an update was requested */
     PM_EV_BATTERY_CRITICAL, /**< the fuel gauge says critical */
     PM_EV_CHARGING,         /**< a charger is connected and charging */
+    PM_EV_SLEEP_REQUEST,    /**< $SLEEP: System OFF with the crank as the wake source */
     PM_EV_COUNT
 };
 
