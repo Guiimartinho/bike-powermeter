@@ -90,11 +90,11 @@ Um teste só vale se falhar quando o comportamento some:
 ```sh
 cppcheck --enable=warning,style,performance,portability --std=c11 --inline-suppr --quiet \
   --suppress=missingIncludeSystem --suppress=missingInclude --suppress=unusedFunction \
-  "-DDT_NODE_HAS_STATUS(n,s)=1" "-DDT_ALIAS(a)=a" \
+  "-DDT_NODE_HAS_STATUS(n,s)=1" "-DDT_NODE_HAS_STATUS_OKAY(n)=1" "-DDT_ALIAS(a)=a" \
   -I zephyr_app/include -I zephyr_app/modules/pm_drivers/include zephyr_app/src zephyr_app/modules/pm_drivers
 ```
 
-- `syntaxError` em `ble_*.c` vem das macros do Zephyr (`BT_GATT_*`) sem os headers: falso positivo. Nos serviços, os `#if DT_...` pedem as duas definições `-D` acima.
+- `syntaxError` em `ble_*.c` vem das macros do Zephyr (`BT_GATT_*`) sem os headers: falso positivo. Nos serviços, os `#if DT_...` pedem as três definições `-D` acima; sem a `DT_NODE_HAS_STATUS_OKAY` o cppcheck para no `motion_svc.c` com `failed to evaluate #if condition` e não analisa o arquivo, o que **parece** um arquivo limpo e não é.
 - Achados que já apareceram e são reais: `duplicateAssignExpression` (duas variáveis recebendo a mesma expressão), `compareValueOutOfTypeRangeError` (compare `strtoll` como `long long`), membro de união sem uso, `constParameterCallback` (callback com parâmetro que poderia ser `const`: supressão inline com o motivo, porque a assinatura é da API), `variableScope`. Corrija o que for seu; supressão só inline, `// cppcheck-suppress <id>`, com o motivo na linha de cima.
 
 ## Antes de dizer que passou
