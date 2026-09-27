@@ -1,0 +1,4 @@
+# O modelo é C puro e compila nos testes de host: o clangd usa a base de
+# compilação deles (criada pelo host_tests.sh) enquanto o firmware não tem a sua.
+CompileFlags:
+  CompilationDatabase: ../../tests/host/build/host-tests

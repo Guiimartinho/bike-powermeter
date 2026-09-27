@@ -12,15 +12,30 @@
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
+    },
+    {
+      "name": "host-cov",
+      "displayName": "Testes de host com cobertura (gcov)",
+      "inherits": "host-tests",
+      "cacheVariables": {
+        "PM_COVERAGE": "ON"
+      }
     }
   ],
   "buildPresets": [
-    { "name": "host-tests", "configurePreset": "host-tests" }
+    { "name": "host-tests", "configurePreset": "host-tests" },
+    { "name": "host-cov", "configurePreset": "host-cov" }
   ],
   "testPresets": [
     {
       "name": "host-tests",
       "configurePreset": "host-tests",
+      "output": { "outputOnFailure": true },
+      "execution": { "noTestsAction": "error" }
+    },
+    {
+      "name": "host-cov",
+      "configurePreset": "host-cov",
       "output": { "outputOnFailure": true },
       "execution": { "noTestsAction": "error" }
     }
