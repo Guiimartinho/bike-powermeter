@@ -9,7 +9,7 @@ O mesmo do ciclocomputador: NCS v3.3.0 em `C:\ncs`, scripts em `tools/fw/` (`fw.
 | Build incremental / do zero para o nRF54LM20 DK (o alvo de desenvolvimento) | `bash tools/fw/fw.sh build` / `bash tools/fw/fw.sh build pristine` |
 | Build com ANT+ (add-on `sdk-ant` em `C:\ncs\sdk-ant`, módulo `zephyr_app/modules/ant_ncs33_compat`) | `ANT=1 BUILD_DIR=zephyr_app/build_ant bash tools/fw/fw.sh build pristine` |
 | Build para a placa própria do pod (`zephyr_app/boards/pm/pmboard`) | `BOARD=pmboard/nrf54lm20a/cpuapp BUILD_DIR=zephyr_app/build_custom bash tools/fw/fw.sh build` |
-| Conferir o mapa de pinos da placa própria contra o silício e contra a tabela de [02](02-hardware.md#pinos-do-módulo) | `python tools/fw/board_check.py` |
+| Conferir o mapa de pinos contra o silício, contra a tabela de [02](02-hardware.md#pinos-do-módulo) e contra a lista de nós do esquemático | `python tools/fw/board_check.py` |
 | Gravar no DK (apaga tudo / mantém settings) | `bash tools/fw/fw.sh flash` / `bash tools/fw/fw.sh flash keep` |
 | Pilhas (`CONFIG_STACK_USAGE`, skill `fw-threads`) | `west build -d build_su ... -Dzephyr_app_CONFIG_STACK_USAGE=y` de dentro de `zephyr_app`, e somar os `.su` da cadeia mais funda |
 

@@ -23,6 +23,11 @@ O que ele confere:
    deixa o serviço sem o dispositivo, em silêncio.
 8. **A tabela de docs/02.** Todo pino ``Px.yy`` da coluna "Pino do SoC" da
    tabela "Pinos do módulo" tem de estar no devicetree, e vice-versa.
+9. **O esquemático contra a mesma tabela.** Todo pino da tabela está numa
+   rede do ``nets.py`` com o módulo, e vice-versa, e nenhum pino do módulo
+   aparece em duas redes (isso é curto). É o que garante que a placa é
+   fabricada com a pinagem que o firmware espera: sem esta conferência, o
+   devicetree e o esquemático podem divergir e só a bancada conta.
 
 Uso:
 
@@ -40,6 +45,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_BOARD = ROOT / "zephyr_app" / "boards" / "pm" / "pmboard"
 PIN_DOC = ROOT / "docs" / "02-hardware.md"
+SCH_NETS = ROOT / "hardware_powermeter" / "cad" / "nets.py"
+# A referência do módulo no esquemático (hardware_powermeter/03-netlist.md)
+MODULE_REF = "U201"
 
 # Tabela 79 da ficha do nRF54LM20A
 CLOCK_PINS = {
@@ -123,9 +131,35 @@ def doc_pins():
         cells = [c.strip() for c in line.strip("|").split("|")]
         if len(cells) < 2:
             continue
-        signal = cells[0].strip("`")
-        for m in re.finditer(r"P(\d)\.(\d\d)", cells[1]):
-            pins[pin_name(int(m.group(1)), int(m.group(2)))] = signal
+        # uma linha pode trazer vários sinais e vários pinos, na mesma ordem
+        # (`LED_R`, `LED_G`, `LED_B` | P1.06, P1.08, P1.09): cada pino leva o
+        # seu, não a célula inteira.
+        signals = [s.strip().strip("`") for s in cells[0].split(",")]
+        found = re.findall(r"P(\d)\.(\d\d)", cells[1])
+        for i, (port, num) in enumerate(found):
+            signal = signals[i] if i < len(signals) else signals[0]
+            pins[pin_name(int(port), int(num))] = signal
+    return pins
+
+
+def sch_pins():
+    """Os pinos do módulo no esquemático: {pino: [(rede, [outros membros])]}.
+
+    Lê hardware_powermeter/cad/nets.py, que é a lista de nós do esquemático
+    como dado. Uma lista por pino, e não um valor, porque pino em duas redes
+    é curto e precisa ser visto, não sobrescrito.
+    """
+    if not SCH_NETS.is_file():
+        return None
+    text = SCH_NETS.read_text(encoding="utf-8")
+    pins = defaultdict(list)
+    for block in re.finditer(r'net\("([^"]+)"((?:[^)]*\([^)]*\))*[^)]*)\)', text):
+        name, body = block.group(1), block.group(2)
+        members = re.findall(r'\("([^"]+)",\s*"([^"]+)"\)', body)
+        for ref, pin in members:
+            if ref == MODULE_REF and re.fullmatch(r"P\d\.\d\d", pin):
+                others = [f"{r}.{p}" for r, p in members if r != MODULE_REF]
+                pins[pin].append((name, others))
     return pins
 
 
@@ -189,6 +223,41 @@ def main():
     for pin in sorted(used):
         if table and pin not in table:
             problems.append(f"{pin} está no devicetree ({', '.join(sorted(used[pin]))}) e não na tabela de docs/02")
+
+    # 9. o esquemático contra a mesma tabela, nos dois sentidos
+    sch = sch_pins()
+    if sch is None:
+        problems.append(
+            f"{SCH_NETS.relative_to(ROOT)} não existe: o esquemático não pôde ser conferido"
+        )
+    elif not sch:
+        problems.append(
+            f"{SCH_NETS.relative_to(ROOT)} não tem nenhum pino de {MODULE_REF}:"
+            " o esquemático não pôde ser conferido"
+        )
+    else:
+        for pin, nets in sorted(sch.items()):
+            if len(nets) > 1:
+                problems.append(
+                    f"{pin} do {MODULE_REF} em {len(nets)} redes do esquemático"
+                    f" ({', '.join(n for n, _ in nets)}): isso é curto"
+                )
+        for pin, signal in sorted(table.items()):
+            if pin not in sch:
+                problems.append(
+                    f"{pin} ({signal}) está na tabela de docs/02 e não no esquemático"
+                )
+        for pin in sorted(sch):
+            if table and pin not in table:
+                problems.append(
+                    f"{pin} está no esquemático ({sch[pin][0][0]}) e não na tabela de docs/02"
+                )
+        if not problems:
+            print(f"esquemático: {len(sch)} pinos do {MODULE_REF}, os mesmos da tabela")
+            for pin in sorted(sch, key=lambda s: (s[1], s[3:])):
+                net, others = sch[pin][0]
+                print(f"  {pin}  {table.get(pin, '?'):14s} {net:12s} -> {', '.join(others)}")
+            print()
 
     free = []
     for port, count in sorted(PORT_PINS.items()):

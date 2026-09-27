@@ -107,6 +107,6 @@ Números de referência (build de 2026-09-27, NCS v3.3.0; `docs/03-ambiente-buil
 | gravação falha por proteção | `recover` apaga tudo e libera o APPROTECT; depois grave de novo |
 | `JLink.exe` abre a ferramenta do Java | o `JLink.exe` do PATH é do Eclipse Adoptium; use `C:\Program Files\SEGGER\JLink_V924a\JLink.exe` |
 | pino se comportando como outro periférico no DK | um nó do DK ocupa o pino; o overlay do DK usa `spi22` no P3 e `i2c23` em P1.29/P1.03 justamente porque estão livres. Confira o `zephyr.dts` gerado e o mapa de `docs/02-hardware.md` |
-| pino errado ou apelido faltando na placa do projeto | `python tools/fw/board_check.py` confere o devicetree da `pmboard` contra a tabela de pinos de `docs/02-hardware.md` e contra as regras do nRF54LM20A (SCL e SCK em pinos de clock, P1.01 e P1.02 são NFC); rode antes do build |
+| pino errado ou apelido faltando na placa do projeto | `python tools/fw/board_check.py` confere o devicetree da `pmboard` contra a tabela de pinos de `docs/02-hardware.md`, contra as regras do nRF54LM20A (SCL e SCK em pinos de clock, P1.01 e P1.02 são NFC) e contra a lista de nós do esquemático (`hardware_powermeter/cad/nets.py`), que é o que impede a placa de ser fabricada com uma pinagem e o firmware compilado com outra; rode antes do build |
 
 Depois de compilar: testes de host, cobertura e análise estática na skill `fw-testes`.

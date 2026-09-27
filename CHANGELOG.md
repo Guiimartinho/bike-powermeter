@@ -6,10 +6,13 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Corrigido
 
+- A linha do SWD na tabela de pinos de `docs/02` dizia que o reset vai ao conector magnético junto com `SWDIO` e `SWDCLK`; o conector tem seis contatos e não leva o reset, que existe só no Tag-Connect, como o esquemático sempre mostrou (2026-09-27).
 - Os `.bat` da raiz vinham do ciclocomputador com o nRF52840 DK como alvo padrão, que este projeto não tem, e sem o `tools/fw/ncs_env.bat` que eles chamam: passam ao nRF54LM20 DK, como o `fw.sh`, com o ambiente do `cmd` copiado; e as skills de build, testes, threads, documentação e commit descrevem este firmware, os seus três alvos e a regra dos 95 % de cobertura, em vez do port do stravaV10 (2026-09-27).
 - O orçamento de consumo de `docs/02` contava a ponte ligada 15 % do tempo; o ADS1220 integra a conversão inteira, e a ponte de 1 kΩ fica ligada enquanto se mede: 3,9 mA pedalando, abaixo das 50 h do requisito, com as três saídas para o dono decidir (2026-09-27).
 
 ### Adicionado
+
+- O `tools/fw/board_check.py` passa a conferir também o **esquemático**: todo pino do módulo na tabela de `docs/02` está numa rede de `hardware_powermeter/cad/nets.py`, e vice-versa, e nenhum pino do módulo aparece em duas redes. É o que impede a placa de ser fabricada com uma pinagem e o firmware compilado com outra, que só a bancada acusaria. Os 19 pinos batem nos três lados: silício, documento e esquemático (2026-09-27).
 
 - Firmware embarcado inteiro: base (`main`, zbus, watchdog, `pm_store`, `app_cmd`), drivers próprios do ADS1220 e do BMA400 em `modules/pm_drivers`, os seis serviços, o CPS e o serviço de configuração por BLE, a atualização por mcumgr, a porta serial USB, o ANT+ BPWR com `ANT=1` e o overlay do nRF54LM20 DK; compila com zero avisos, pilhas medidas com `CONFIG_STACK_USAGE`, nunca executado (2026-09-27).
 - A recuperação serial do MCUboot pelo USB CDC ACM do conector magnético, sem botão (espera de 1 s a cada partida), com o MCUboot em 96 KB e os slots em 904 KB; e o `$SLEEP` como evento da máquina do sistema, testado no PC (2026-09-27).

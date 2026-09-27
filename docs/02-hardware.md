@@ -121,7 +121,8 @@ Regras do nRF54LM20A que valem aqui como no ciclocomputador: SCL do TWIM e SCK d
 | `UART20 TX`, `RX` | P1.00, P1.31 | A7, B7 | console em dois pontos de teste | VCOM0 do DK |
 | `USB D−`, `USB D+` | pads 7 e 8 do módulo | 7, 8 | conector magnético, pelo TPD4E05U06; o nPM1100 lê D+ e D− para detectar a porta | USB-C do DK |
 | `VBUS` | pad 9 | 9 | 5 V do conector, depois do nPM1100 (o pad é o detector de USB do SoC) | |
-| `SWDIO`, `SWDCLK`, `RESET` | pads 5, 6 e 4 | 5, 6, 4 | conector magnético (100 Ω em série) e Tag-Connect TC2030 | |
+| `SWDIO`, `SWDCLK` | pads 5 e 6 | 5, 6 | conector magnético (100 Ω em série) e Tag-Connect TC2030 | |
+| `RESET` | pad 4 | 4 | só o Tag-Connect TC2030: o conector magnético tem seis contatos e não leva o reset | |
 
 Os aliases que o firmware usa são `bridge-adc`, `bridge-excitation`, `imu0`, `temp0`, `fuel-gauge0`, `charger-status`, `charger-error`, `ship-activate`, `led-r`, `led-g`, `led-b` e `watchdog0`, e um alias que não existe deixa aquele bloco fora. Ship mode: o nPM1100 entra com `SHPACT` alto por 200 ms sem cabo (PS v1.5, 3.5) e só sai com o cabo, porque `SHPHLD` fica só no pull-up e o pod não tem botão; é o estado de fábrica e de guarda longa (460 nA), pedido pelo comando `$SHIP`. O `$SLEEP` é outra coisa: o SoC em System OFF com o BMA400 acordando pelo `IMU_INT1`. Configuração por pino do nPM1100 (PS v1.5): `VOUTBSET0` e `VOUTBSET1` altos dão 3,0 V (tabela da seção 6.3.1); `VTERMSET` alto dá 4,2 V na opção padrão (tabela 12); `ISET` no `AVSS` deixa a detecção da porta decidir 100 ou 500 mA (tabela 10); `MODE` baixo é o modo automático do buck; sem termistor no pack, `NTC` leva 10 kΩ ao `AVSS` (6.2.5); `ICHG` de 6,8 kΩ dá cerca de 75 mA (equação da 6.2.4), 0,5 C de uma célula de 150 mAh.
 

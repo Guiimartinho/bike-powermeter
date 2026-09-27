@@ -59,7 +59,7 @@ Escrito em 2026-09-27, na forma de [04](04-arquitetura-firmware.md), e **compila
 | BLE: CPS (Measurement, Feature, Location, Control Point, Vector), serviço de configuração (comando, resposta, bloco, estado), DIS, BAS | `zephyr_app/src/rf/ble_cps.c`, `ble_cfg.c` | compila; os bytes vêm do modelo testado; a tabela GATT não foi vista por um cliente |
 | DFU por BLE (mcumgr SMP, MCUboot pelo sysbuild) e a recuperação serial do MCUboot pelo USB (CDC ACM, 1 s de espera a cada partida, MCUboot com 96 KB) | `zephyr_app/src/rf/dfu.c`, `zephyr_app/sysbuild/` | compilam; a recusa pedalando ou com bateria fraca é do hook do mcumgr |
 | ANT+ BPWR (páginas 1, 16, 18, 80, 81) pelo `ant_bpwr` do add-on | `zephyr_app/src/rf/ant_bpwr.c` | compila com `ANT=1`; a chave e o perfil são do add-on |
-| overlay do nRF54LM20 DK e a placa própria `pmboard` (`zephyr_app/boards/pm/pmboard`), os dois com os pinos de [02](02-hardware.md#pinos-do-módulo) | `zephyr_app/boards` | compilam; `tools/fw/board_check.py` confere o devicetree da placa contra o silício e contra a tabela de [02], nos dois sentidos |
+| overlay do nRF54LM20 DK e a placa própria `pmboard` (`zephyr_app/boards/pm/pmboard`), os dois com os pinos de [02](02-hardware.md#pinos-do-módulo) | `zephyr_app/boards` | compilam; `tools/fw/board_check.py` confere o devicetree contra o silício, contra a tabela de [02] e contra a lista de nós do esquemático, nos dois sentidos: os 19 pinos do módulo batem nos três lados (2026-09-27) |
 
 O que falta no firmware: rodar no DK com as placas de avaliação; medir as pilhas na placa (`CONFIG_THREAD_ANALYZER`); o consumo real contra o orçamento de [02](02-hardware.md#orçamento-de-consumo).
 
