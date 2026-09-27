@@ -13,7 +13,7 @@ description: Preparar, verificar e commitar mudanças no repositório do Bike Po
 - **Um item por commit**, pronto e verificado. Código, documentação e `CHANGELOG.md` do mesmo item vão juntos.
 - Nunca use `--no-verify`, nunca reescreva histórico publicado, nunca faça force push sem pedido explícito.
 - O histórico antigo do GitHub (stravaV11 de 2025-11, sem ligação com o atual) fica no ramo `archive/stravav11-2025-11`: não apague nem reescreva.
-- O `git push` já foi bloqueado pelo classificador do auto mode; em 2026-09-22 passou a funcionar. Quando o dono pedir, tente com o ramo explícito (`git push origin develop`); se for recusado, peça a ele que rode no prompt, no modo bash (`! git push origin develop`), um comando por vez. Se a recusa for `non-fast-forward`, veja a armadilha da `main` no [`CLAUDE.md`](../../../CLAUDE.md#6-armadilhas-conhecidas): nunca resolva com `--force`.
+- O `git push` já foi bloqueado pelo classificador do auto mode; em 2026-09-22 passou a funcionar. Quando o dono pedir, tente com o ramo explícito (`git push origin develop`); se for recusado, peça a ele que rode no prompt, no modo bash (`! git push origin develop`), um comando por vez. Se a recusa for `non-fast-forward`, veja a armadilha da `main` no [`CLAUDE.md`](../../../CLAUDE.md#5-armadilhas-conhecidas): nunca resolva com `--force`.
 - **Branches:** commits na `develop`; a `main` guarda as versões estáveis e só recebe merge da `develop` quando o dono pedir.
 
 ## Tipos e escopos
