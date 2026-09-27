@@ -32,6 +32,10 @@ Serviço GATT próprio, com o mesmo canal de comandos em texto que o ciclocomput
 
 O aparelho anuncia como `PM-XXXX`, com os dois últimos bytes do endereço BLE, e traz no anúncio o Cycling Power Service e o de bateria; o de configuração é achado depois da conexão, pela descoberta de serviços.
 
+**O que muda o medidor exige vínculo.** As características de comando e de configuração são as duas formas de mudar o aparelho de fora: zerar, reescrever a inclinação, mandar para o modo de guarda, pedir atualização. As duas exigem **ligação cifrada** (`BT_GATT_PERM_*_ENCRYPT`), ou seja, emparelhamento com vínculo antes do primeiro uso; sem isso, qualquer rádio ao alcance reescreve a calibração de um ciclista. O app recebe "insufficient encryption" enquanto não se vincula, que é o fluxo normal. As duas notificações ficam abertas: só informam, e a resposta só existe depois de um comando que já é protegido. O ponto de controle do Cycling Power segue o perfil, sem exigência própria, para não quebrar a compatibilidade com painéis de guidão.
+
+A exigência é **cifra, não autenticação**: o pod não tem tela nem teclado, então a capacidade de entrada e saída é "NoInputNoOutput", o emparelhamento é sempre Just Works e o nível de segurança para no 2. Uma característica pedindo nível 3 nunca seria escrita por um celular: ficaria morta, não segura.
+
 Comandos (`pm_cmd`, nome sem distinção de maiúsculas, linha de até 63 caracteres terminada por CR, LF ou os dois): `$ZERO` (zero com critério de estabilidade), `$SLOPE,m_g,L_mm[,DOWN]` (um ponto de inclinação com a massa em gramas e o braço em mm; `DOWN` marca o ponto na descida da carga, para a histerese; `$SLOPE,END` fecha o ajuste e devolve inclinação, resíduo e histerese), `$TEMP,BEGIN`, `$TEMP,POINT` e `$TEMP,END` (curva de temperatura), `$CFG,GET[,chave]`, `$CFG,SET,chave,valor` e `$CFG,SAVE`, `$DFU`, `$SLEEP` (System OFF; o pedivela acorda o módulo pelo INT1 do BMA400), `$SHIP` (ship mode do nPM1100; só o cabo acorda; recusado com o cabo posto), `$INFO`, `$LOG` (só na serial). As chaves de `$CFG` são `crank` (mm, em passos de 0,5), `radius` (mm), `side` (`L` ou `R`), `sign` (`1` ou `-1`), `zero`, `slope`, `t0`, `k1`, `k2`, `k3`, `tempcal`, `rate` (20, 45, 90, 175, 330, 600 ou 1000 SPS), `autozero`, `azstep`, `ant`, `caldate` (`AAAA-MM-DD` ou `0`) e `name`. Toda escrita de configuração é validada pelo modelo (`pm_settings`: um valor fora da faixa devolve `$NAK,1,EINVAL` e nada muda), gravada pelo subsistema settings do Zephyr com `$CFG,SAVE` e confirmada na resposta. O emparelhamento com o ciclocomputador escreve comprimento do pedivela e lado e dispara `$ZERO`.
 
 ## ANT+ Bicycle Power
@@ -41,6 +45,8 @@ Transmissor pelo perfil `ant_bpwr` do add-on `sdk-ant` (C:\ncs\sdk-ant), que imp
 ## Atualização
 
 mcumgr SMP sobre BLE (grupo de imagem e de sistema), o mesmo transporte do ciclocomputador; e a recuperação serial do MCUboot sobre USB CDC ACM pelo conector magnético, para o cabo. A atualização é recusada pedalando e com bateria abaixo de 30 %.
+
+O serviço SMP também exige ligação cifrada, pelo mesmo motivo do serviço de configuração: `CONFIG_MCUMGR_TRANSPORT_BT_PERM_RW_ENCRYPT` nos dois arquivos de placa. O padrão do Zephyr com o gerenciador de segurança ligado é exigir **autenticação**, e num aparelho sem tela nem teclado isso não é alcançável: a característica ficaria impossível de escrever e a atualização por BLE, impossível de fazer. Medido no `.config` gerado em 2026-09-27.
 
 ## Porta serial
 

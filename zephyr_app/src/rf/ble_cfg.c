@@ -105,15 +105,37 @@ static ssize_t write_cfg(struct bt_conn *conn, const struct bt_gatt_attr *attr, 
     return len;
 }
 
+/*
+ * What changes the meter needs a bonded, encrypted link; what only reports
+ * does not.
+ *
+ * The command characteristic and the configuration blob are the two ways to
+ * change this device from outside: zero it, rewrite the slope, put it in ship
+ * mode, ask for an update. Left on plain BT_GATT_PERM_WRITE, any radio within
+ * range rewrites a rider's calibration. They take *_ENCRYPT, which needs
+ * pairing (bonding) first; the app gets "insufficient encryption" until it
+ * bonds, which is the standard flow.
+ *
+ * ENCRYPT and not AUTHEN on purpose: the pod has no display and no keyboard,
+ * so its IO capability is NoInputNoOutput and pairing is always Just Works,
+ * which gives unauthenticated encryption (security level 2). A characteristic
+ * asking for AUTHEN (level 3) could never be reached from a phone: it would be
+ * dead, not safe. Same reasoning as CONFIG_MCUMGR_TRANSPORT_BT_PERM_RW_ENCRYPT
+ * in the board files.
+ *
+ * The two notifications stay open: they only report, the firmware produces
+ * them, and a response exists only after a command that is already protected.
+ */
 BT_GATT_SERVICE_DEFINE(cfg_svc,
     BT_GATT_PRIMARY_SERVICE(&uuid_svc),
     BT_GATT_CHARACTERISTIC(&uuid_cmd.uuid, BT_GATT_CHRC_WRITE | BT_GATT_CHRC_WRITE_WITHOUT_RESP,
-                           BT_GATT_PERM_WRITE, NULL, write_cmd, NULL),
+                           BT_GATT_PERM_WRITE_ENCRYPT, NULL, write_cmd, NULL),
     BT_GATT_CHARACTERISTIC(&uuid_rsp.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL, NULL,
                            NULL),
     BT_GATT_CCC(rsp_ccc, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
     BT_GATT_CHARACTERISTIC(&uuid_cfg.uuid, BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
-                           BT_GATT_PERM_READ | BT_GATT_PERM_WRITE, read_cfg, write_cfg, NULL),
+                           BT_GATT_PERM_READ_ENCRYPT | BT_GATT_PERM_WRITE_ENCRYPT,
+                           read_cfg, write_cfg, NULL),
     BT_GATT_CHARACTERISTIC(&uuid_sta.uuid, BT_GATT_CHRC_NOTIFY, BT_GATT_PERM_NONE, NULL, NULL,
                            NULL),
     BT_GATT_CCC(sta_ccc, BT_GATT_PERM_READ | BT_GATT_PERM_WRITE),
