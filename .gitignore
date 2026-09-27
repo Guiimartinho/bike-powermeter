@@ -1,0 +1,40 @@
+# Builds do west/CMake (zephyr_app/build, zephyr_app/build_*, build/, testes de host)
+build*/
+
+# Cache do clangd e de ferramentas
+.cache/
+compile_commands.json
+
+# Python (use um venv fora do repositório: no Windows, Scripts/ e scripts/
+# são a mesma pasta)
+__pycache__/
+*.pyc
+
+# Node (tools/zpm)
+node_modules/
+
+# Editores
+*.swp
+*~
+.vs/
+
+# Configuração local do Claude Code (permissões pessoais)
+.claude/settings.local.json
+
+# ANT+ profile material: the ANT+ Adopter Agreement forbids redistributing
+# device profiles, and this repository is public. The page decoding of the
+# Bike Radar lives on the owner's machine (zephyr_app/include/rf/radar_ant.h).
+zephyr_app/src/rf/ant/radar_pages.c
+zephyr_app/src/rf/ant/power_pages.c
+zephyr_app/src/rf/ant/sensor_pages.c
+
+# KiCad's local editor state: window layout, last used layer, the net colours
+# someone picked on their own machine. It is per person, not per project, and
+# pcbnew drops one beside the board whenever a script opens it.
+*.kicad_prl
+*-backups/
+
+# local datasheets (never committed)
+hardware_powermeter/datasheets/*
+!hardware_powermeter/datasheets/README.md
+!hardware_powermeter/datasheets/.gitignore

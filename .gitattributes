@@ -1,0 +1,25 @@
+# Texto com LF no repositório; os scripts do Windows ficam com CRLF.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Projeto da placa (Eagle, Gerbers, CAM) guardado byte a byte.
+hardware/** -text
+
+# Dados de teste do legacy (segmentos, percursos, traços GPX) com CRLF
+# original: os parsers do port precisam aceitar esse formato.
+tools/TDD/DB/** -text
+tools/TDD/*.csv -text
+
+# Binários.
+*.png binary
+*.jpg binary
+*.jar binary
+*.zip binary
+*.rar binary
+*.hex binary
+*.bin binary
+*.elf binary
+*.pyd binary
+*.exe binary

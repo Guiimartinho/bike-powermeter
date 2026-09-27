@@ -1,0 +1,4 @@
+# Os testes de host compilam com o GCC do PC e os shims de tests/host/shim,
+# não com o toolchain do Zephyr: o clangd usa a base de compilação deles.
+CompileFlags:
+  CompilationDatabase: build/host-tests
