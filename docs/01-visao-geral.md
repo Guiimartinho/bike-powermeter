@@ -39,8 +39,21 @@ A lista fechada de componentes, com o datasheet de cada peça, está em [`../har
 
 ## A classe de produto
 
-Os números que um módulo de braço comercial publica hoje, e que este projeto toma como piso: 20 g com bateria, cerca de 50 h de uso contínuo por carga, ±1,5 a ±2,5 % de precisão, 0 a 2000 W, 10 a 200 rpm, ANT+ e BLE, IPX7. Nenhum fabricante publica as dimensões do módulo; as deste projeto saem dos componentes e da medida do braço, em [`02-hardware.md`](02-hardware.md).
+O piso deste projeto é o que um módulo de braço comercial da mesma classe publica na própria página de produto. Conferido em 2026-09-27, na página do produto, na do irmão de eixo de pedal e nas duas lojas do fabricante:
+
+| O que a classe publica | Requisito deste projeto |
+|---|---|
+| 20 g com bateria | ≤ 20 g; o pod desenhado está em 17,0 g estimados |
+| máximo de 52 h de uso contínuo por carga | ≥ 50 h; com a ponte de 5 kΩ dá 66 h numa célula de 100 mAh |
+| ±2,5 % de precisão | ±2 % na fase 1, ±1,5 % como meta da fase 2 |
+| 0 a 2000 W, 10 a 200 rpm | os mesmos |
+| −5 a +50 °C | −10 a +50 °C |
+| IPX7 | o mesmo |
+| ANT+ e BLE | os mesmos |
+| bateria LiPo recarregável, carga por USB magnético | os mesmos |
+
+**As dimensões não são publicadas em lugar nenhum**, e isso foi verificado, não suposto: a página do produto, a do outro modelo, a loja e a lista de produtos montados não trazem nenhum número em milímetro. A única medida física publicada é a massa. Por isso o alvo de envelope de [`02-hardware.md`](02-hardware.md#requisitos) é **derivação nossa**, a partir da célula, da placa e da parede do pod, e o limite duro continua sendo a face interna do braço do dono, que precisa ser medida. Para ter um baseline dimensional de verdade só há dois caminhos: medir uma unidade, ou perguntar ao suporte do fabricante, que atende.
 
 ## Estado
 
-2026-09-27: estrutura do repositório criada, componentes fechados por datasheet, nenhum código escrito, nenhuma placa desenhada, nada montado. Licença a definir pelo dono (o ciclocomputador é CC BY-NC 4.0 por derivar do stravaV10; este projeto não deriva de nada).
+2026-09-27: componentes fechados por datasheet; firmware inteiro escrito, compilando nos três alvos com zero avisos e com o modelo testado no PC (134 casos, 99,9 % das linhas), **nunca executado em placa nem no DK**; esquemático, placa e pod gerados por script, **nada fabricado, impresso nem montado**. A matriz item a item está em [`07-status.md`](07-status.md). Licença CC BY-NC 4.0, a mesma do ciclocomputador, embora este projeto não derive de nada: é escolha do dono pela mesma restrição de uso não comercial.
