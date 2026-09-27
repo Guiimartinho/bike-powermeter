@@ -1,6 +1,6 @@
 # Arquitetura do firmware
 
-A mesma base do ciclocomputador, com menos peças: serviços com thread própria e caixa de entrada, eventos no zbus, máquinas de estado no SMF, um canal de watchdog por thread, lógica pura em `src/model/` testada no PC. Nada roda em placa ainda.
+A mesma base do ciclocomputador, com menos peças: serviços com thread própria e caixa de entrada, eventos no zbus, a máquina do sistema em C puro no modelo (`pm_fsm`, executada pelo serviço `power`, que traduz o estado em ações), um canal de watchdog por thread, lógica pura em `src/model/` testada no PC. Nada roda em placa ainda.
 
 **Nesta página:** [Serviços](#serviços) · [Eventos](#eventos) · [Máquina do sistema](#máquina-do-sistema) · [Modelo](#modelo) · [Drivers](#drivers) · [Atualização](#atualização) · [Pilhas e prioridades](#pilhas-e-prioridades) · [Testes e cobertura](#testes-e-cobertura)
 
@@ -66,7 +66,7 @@ stateDiagram-v2
     LowBattery --> Idle: carregando
 ```
 
-Em `Sleep` o conversor fica em power-down (0,4 µA), o BMA400 em low-power a 25 Hz com a interrupção de atividade, o rádio anuncia a cada 2 s e a thread `sample` não roda. Uma atualização nunca começa pedalando nem com bateria fraca, como no ciclocomputador.
+Em `Sleep` o conversor fica em power-down (0,4 µA), o BMA400 em low-power a 25 Hz com a interrupção de atividade, o rádio anuncia a cada 2 s e a thread `sample` não roda. Uma atualização nunca começa pedalando nem com bateria fraca, como no ciclocomputador. A máquina é `pm_fsm`: os eventos são `READY`, `MOTION`, `STILL`, `WAKE` (a interrupção do acelerômetro em `Sleep`), `CAL_REQUEST`, `CAL_DONE`, `DFU_REQUEST`, `BATTERY_CRITICAL` e `CHARGING`; os temporizadores (30 s, 10 min e os 60 s de uma calibração que não termina) correm no `pm_fsm_tick()` do serviço `power`. `Calibrating` só entra com o pedivela parado, de `Active` ou de `Idle`, e movimento durante a calibração a anula (volta a `Active`); `Dfu` aceita de `Idle`, de `Sleep` e de `Active` parado, sempre com 30 % de bateria; `LowBattery` sai de qualquer estado que mede e só volta a `Idle` quando carrega.
 
 ## Modelo
 
@@ -78,17 +78,19 @@ Lógica pura, sem tipos do Zephyr, em `src/model/`, um módulo por assunto, cada
 | `crank_angle` | θ e ω a partir de `(a_t, a_r)`, volta, repouso | trajetórias sintéticas com cadência constante e variável, com o termo centrípeto |
 | `rev_power` | integração da volta, TE, PS, acumuladores, unidades do rádio | voltas sintéticas com torque senoidal; conservação de energia |
 | `calib` | zero com estabilidade, inclinação por mínimos quadrados, resíduo e histerese, ajuste de temperatura | conjuntos com ruído e com ponte aberta |
-| `cps_encode` | codificação e decodificação das características do CPS e do Control Point | bytes esperados da especificação |
-| `pm_settings` | estrutura de configuração, limites, versão, serialização | valores fora de faixa, migração de versão |
+| `cps_encode` | os bytes do CPS: Measurement com máscara de conteúdo, Feature, Control Point (pedido e resposta), Vector | bytes esperados da especificação 1.1 |
+| `pm_settings` | estrutura de configuração, limites, bloco versionado com CRC, chaves de texto | valores fora de faixa, bloco corrompido ou de outra versão |
+| `pm_cmd` | as linhas `$CMD,...`, as respostas `$ACK` e `$NAK`, o montador de linhas | cada comando, cada recusa, estouro de linha |
 | `health` | flags de saúde a partir dos sinais | cada regra de [06](06-medicao-e-calibracao.md#saúde-do-sensor) |
 | `pm_fsm` | a máquina do sistema | cada transição e as recusadas |
+| `pm_wire` | leitura e escrita little-endian (só cabeçalho) | pelos dois módulos que o usam |
 
 ## Drivers
 
 | Peça | Driver | Onde |
 |---|---|---|
 | ADS1220 | próprio, API do módulo (`ads1220_start`, `ads1220_read`, DRDY por GPIO) | `zephyr_app/modules/pm_drivers/drivers/adc/ads1220` |
-| BMA400 | Zephyr `bosch,bma4xx` (reconhece o chip; o aviso "tested for BMA422/BMA400" é esperado) | árvore do Zephyr |
+| BMA400 | próprio, API de sensor com trigger no INT1: o `bosch,bma4xx` da árvore usa o mapa de registradores do BMA422 (dados em `0x12`, configuração em `0x40`), não o do BMA400 (dados em `0x04`, configuração em `0x19`); ele reconhece o chip ID `0x90` com um aviso e não o opera | `zephyr_app/modules/pm_drivers/drivers/sensor/bma400` |
 | TMP117 | Zephyr `ti,tmp11x` | árvore do Zephyr |
 | MAX17048 | Zephyr `maxim,max17048` (fuel gauge) | árvore do Zephyr |
 | nPM1100 | pinos: CHG e ERR como GPIO de entrada; sem barramento | devicetree |

@@ -45,9 +45,9 @@ O acelerômetro está fixo ao braço, no plano de rotação. Os dois eixos no pl
 a_t = g\,\sin\theta + \alpha r, \qquad a_r = g\,\cos\theta + \omega^{2} r
 ```
 
-com `θ` o ângulo do braço a partir da vertical, `r` a distância do sensor ao eixo, `ω` a velocidade angular e `α` a aceleração angular. O firmware estima `θ` por `atan2(a_t, a_r − ω²r)`, usando o `ω` da volta anterior para o termo centrípeto (iteração de ponto fixo, que converge em duas passagens porque `ω²r` é pequeno diante de `g` até 150 rpm), e obtém `ω` como a derivada de `θ` desembrulhada, filtrada por uma média móvel de um quarto de volta. Uma volta fecha quando `θ` cruza a referência (braço para baixo); a cadência é `60/T` com `T` o período entre dois cruzamentos, em 1/1024 s.
+com `θ` o ângulo do braço a partir da vertical, `r` a distância do sensor ao eixo, `ω` a velocidade angular e `α` a aceleração angular. O firmware (`crank_angle`) tira cada grandeza do eixo que é limpo para ela. A velocidade angular vem dos **cruzamentos de zero de `a_t`**, que acontecem no alto e no baixo da pedalada seja qual for o termo centrípeto: meia volta entre dois cruzamentos, com o instante de cada cruzamento interpolado entre as duas amostras em volta dele (a 100 Hz, sem interpolação, a quantização sozinha dava ±3 % a 90 rpm). O ângulo vem de `atan2(−a_t, a_r − ω²r)` com esse `ω`; quando `ω` muda num cruzamento, o ângulo da amostra anterior é recalculado com o `ω` novo, para que o `Δθ` que a potência integra não pule. Um cruzamento distingue alto de baixo pelo sinal do eixo radial corrigido e o sentido pelo lado por que `a_t` cruzou; a volta é o baixo passado para a frente; pedalar para trás dá `ω` negativo e nenhuma volta. Histerese de 0,5 m/s² arma um cruzamento; dois cruzamentos mais próximos que o pedivela mais rápido permite (`π/ω_max`) são ruído; 2 s sem cruzamento é `ω = 0`. A cadência é `60·ω/2π`; o tempo do evento vai em 1/1024 s ao rádio. Antes desse estimador, o `ω` era a derivada de `θ`: a derivada do `atan2` carregava o erro do termo centrípeto para dentro de `ω`, e a 100 Hz o teste sintético a 90 rpm devolvia 4 voltas em 10 s.
 
-Regras de validade: `|ω| < 25 rad/s` (240 rpm); parado quando o módulo da aceleração fica dentro de ±0,05 g por 2 s e `ω` abaixo de 0,3 rad/s; enquanto parado, nenhuma volta é publicada e o zero pode ser revisto ([Calibração](#calibração)). A posição do sensor `r` entra na configuração e é medida na placa, não estimada.
+Regras de validade: uma amostra que implicaria `|Δθ/Δt| > 25 rad/s` (240 rpm) é descartada inteira e o ângulo anterior fica; parado quando o módulo da aceleração fica dentro de ±10 % de `g` por 2 s e `ω` abaixo de 0,3 rad/s; enquanto parado, nenhuma volta é publicada e o zero pode ser revisto ([Calibração](#calibração)). A posição do sensor `r` entra na configuração e é medida na placa, não estimada.
 
 ## Potência por volta
 
@@ -113,11 +113,20 @@ O que decide os ±2 % da fase 1 é, portanto, a assimetria, que o produto de um 
 
 Verificações contínuas, publicadas nas características de estado e no log:
 
-- ponte aberta ou em curto: código fora de ±80 % do fundo de escala com excitação ligada, ou dentro de ±0,5 % com ela desligada;
-- excitação: tensão na referência lida pelo monitor interno do ADS1220 antes de cada rajada de amostras;
-- acelerômetro sem dados por 500 ms, ou módulo da aceleração fora de 0,5 a 6 g por mais de 1 s;
-- temperatura fora de −20 a 70 °C;
-- zero deslocado mais que o limite configurado desde a última calibração, com aviso de recalibrar.
+As regras são as do módulo `health`, cada uma com o seu flag; as quatro primeiras e a última **param a medição** (nenhuma potência é publicada), as outras são avisos:
+
+| Flag | Regra | Para? |
+|---|---|---|
+| `BRIDGE_OPEN` | código em ±80 % do fundo de escala ou além, com a excitação ligada (entrada no trilho: ponte aberta ou saturada) | sim |
+| `BRIDGE_STUCK` | o mesmo código por 2 s com a excitação ligada (ponte em curto ou entrada presa) | sim |
+| `EXCITATION` | a referência lida pelo monitor interno do ADS1220 fora de 3,0 V ± 10 % | sim |
+| `IMU_STALE` | acelerômetro sem amostra por 500 ms | sim |
+| `NOT_CALIBRATED` | inclinação desconhecida | sim |
+| `IMU_RANGE` | módulo da aceleração fora de 0,5 a 6 g por mais de 1 s | não |
+| `TEMP_RANGE` | temperatura da ponte fora de −20 a 70 °C | não |
+| `ZERO_DRIFT` | zero em uso mais longe do zero da calibração que o passo do auto-zero: aviso de recalibrar | não |
+
+Com a excitação desligada nada da ponte é julgado (o código de uma ponte sem excitação é zero, sã ou não): o que se lê nesse estado é o ruído do conversor, e é o monitor da referência que diz se a excitação existe.
 
 ## Referências
 

@@ -8,7 +8,7 @@ Projetar um medidor de potência de bicicleta aberto, em nível de produto: mód
 
 | Parte | Pasta | Papel |
 |---|---|---|
-| Firmware | `zephyr_app/` | Zephyr nativo, serviços com thread e caixa de entrada, zbus, SMF, watchdog por serviço |
+| Firmware | `zephyr_app/` | Zephyr nativo, serviços com thread e caixa de entrada, zbus, a máquina do sistema em C puro no modelo (`pm_fsm`), watchdog por serviço |
 | Hardware | `hardware_powermeter/` | lista fechada de componentes (01), CAD gerado por script (`cad/`), PDF (`esquematico/`, `placa/`), pod (`pod/`), datasheets locais (fora do git) |
 | Ferramentas | `tools/` | `fw/` (build, gravação, testes de host) e `docs/` (Mermaid e links), copiadas do ciclocomputador |
 
@@ -24,7 +24,7 @@ O dono é um desenvolvedor brasileiro de eletrônica embarcada que quer investig
 
 ### Firmware
 
-- **Zephyr nativo:** devicetree, Kconfig, drivers e subsistemas do Zephyr/NCS. Driver próprio só quando o Zephyr não tem (ADS1220); BMA400 (`bosch,bma4xx`), TMP117 (`ti,tmp11x`) e MAX17048 (`maxim,max17048`) usam os da árvore.
+- **Zephyr nativo:** devicetree, Kconfig, drivers e subsistemas do Zephyr/NCS. Driver próprio só quando o Zephyr não tem: ADS1220 e BMA400 (o `bosch,bma4xx` da árvore usa o mapa de registradores do BMA422, não o do BMA400: reconhece o chip ID com aviso e não o opera); TMP117 (`ti,tmp11x`) e MAX17048 (`maxim,max17048`) usam os da árvore.
 - **ISR não processa:** copia para um buffer e acorda uma thread. **Sem alocação dinâmica depois do boot.** **Pilha medida** com `CONFIG_STACK_USAGE`, 1 KB de folga.
 - **Lógica pura testada no PC** (`zephyr_app/tests/host`, Unity + CTest): cálculo de potência por volta, calibração, compensação de temperatura, codificação das características BLE. Teste que nunca falha não testa nada: mutação antes de dar por pronto.
 - **Verificação antes de dizer que terminou:** build sem aviso (com `ANT=1`, só o do símbolo obsoleto), testes de host, cppcheck nos arquivos tocados e, se mexeu em docs, `tools/docs/*.py`.
@@ -52,7 +52,7 @@ Os mesmos do ciclocomputador, em Git Bash na raiz: `bash tools/fw/fw.sh build [p
 
 ## 4. Estado e próximos passos
 
-- **2026-09-27:** estrutura criada; lista de componentes fechada por datasheet ([`hardware_powermeter/01-lista-de-componentes.md`](hardware_powermeter/01-lista-de-componentes.md)); nenhum código; nenhuma placa; nada montado.
+- **2026-09-27:** estrutura criada; lista de componentes fechada por datasheet ([`hardware_powermeter/01-lista-de-componentes.md`](hardware_powermeter/01-lista-de-componentes.md)); os nove módulos do modelo (`zephyr_app/src/model`) escritos e testados no PC com 133 casos e 100 % das linhas ([`docs/07-status.md`](docs/07-status.md)); nenhum firmware embarcado; nenhuma placa; nada montado.
 - **Decidido em 2026-09-27:** fase 1 no braço esquerdo, sensor ADS1220 (o ZSSC3224 é a alternativa com compensação no chip; o ADS124S06 a alternativa com driver na árvore), nPM1100 para carga e trilho de 3,0 V, excitação da ponte chaveada pela TPS22916 e ligada à referência do conversor (ratiométrico), conector magnético de 6 pinos, mesmo módulo de rádio do ciclocomputador, repositório novo apresentado como par do ciclocomputador.
 - **Em aberto:** o pedivela (modelo, seção do braço, folga até o quadro), o medidor de referência para validar, a licença, o fornecedor do conector magnético, o AD4130-8 (datasheet inacessível desta máquina).
 - **Roteiro:** bancada com massas → firmware e testes de host → prova de estrada até ±2 % → placa e pod pela cadeia de CAD e dry run → fase 2, eixo de pedal.
