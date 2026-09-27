@@ -92,4 +92,6 @@ flowchart TB
 
 ## Créditos e licença
 
-Projeto de Luiz Guilherme Ito. As referências técnicas (notas de aplicação dos fabricantes de componentes, normas e artigos) estão em [`docs/06-medicao-e-calibracao.md`](docs/06-medicao-e-calibracao.md). Licença a definir pelo dono; o material do ANT+ (perfis, código sob a ANT+ Shared Source License) nunca entra no repositório.
+Projeto de Luiz Guilherme Ito. As referências técnicas (notas de aplicação dos fabricantes de componentes, normas e artigos) estão em [`docs/06-medicao-e-calibracao.md`](docs/06-medicao-e-calibracao.md).
+
+Licença **CC BY-NC 4.0** ([`LICENSE`](LICENSE)), a mesma do GNSS Bike Computer: copiar, estudar, modificar e redistribuir com atribuição, sem uso comercial. Não é licença aprovada pela Open Source Initiative, que não admite restrição de uso, e foi escolhida por isso. O firmware é obra original deste projeto, não um port. O material do ANT+ (perfis, código sob a ANT+ Shared Source License, chave de rede) nunca entra no repositório, e as fichas dos fabricantes ficam fora do git.

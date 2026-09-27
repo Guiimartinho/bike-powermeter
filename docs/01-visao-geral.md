@@ -10,7 +10,7 @@ Potência é torque vezes velocidade angular. O torque vem de uma ponte de exten
 
 | Grandeza | Como |
 |---|---|
-| Torque | Ponte completa de extensômetros de 1 kΩ, excitação chaveada de 3,0 V, conversor ADS1220 com ganho 128 e referência ratiométrica |
+| Torque | Ponte completa de extensômetros de 5 kΩ, excitação chaveada de 3,0 V, conversor ADS1220 com ganho 128 e referência ratiométrica |
 | Cadência e ângulo | BMA400 |
 | Temperatura da ponte | TMP117, curva de compensação levantada uma vez |
 | Potência | Média do torque na volta × velocidade angular; um lado × 2 na fase 1 |

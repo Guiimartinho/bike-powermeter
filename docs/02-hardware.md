@@ -9,7 +9,7 @@ O que o módulo tem de cumprir, o que cada bloco faz e o tamanho que o pod pode 
 | Requisito | Valor | De onde vem |
 |---|---|---|
 | Massa do módulo com bateria | ≤ 20 g | o piso da classe de produto ([01](01-visao-geral.md#a-classe-de-produto)) |
-| Envelope do pod | 60 × 20 × 8,5 mm, alvo; o limite duro é a largura da face interna do braço esquerdo e a folga até o quadro, **medidas no pedivela do dono antes de fechar a placa** | nenhum fabricante publica dimensões; o envelope sai da célula, da placa e da parede do pod |
+| Envelope do pod | 60 × 20 × 8,5 mm, **nas três medidas**: o dono pediu em 2026-09-27 que o aparelho montado fique perto disso em comprimento, largura e altura, não só numa delas. O limite duro continua sendo a largura da face interna do braço esquerdo e a folga até o quadro, **medidas no pedivela do dono antes de fechar a placa** | nenhum fabricante da classe publica dimensões: o alvo é derivação nossa, e o envelope sai da célula, da placa e da parede do pod |
 | Precisão | ±2 % contra referência na fase 1; ±1,5 % como meta da fase 2 | classe de produto; [06](06-medicao-e-calibracao.md#orçamento-de-erro) |
 | Faixas | 0 a 2000 W; 10 a 200 rpm; −10 a +50 °C | classe de produto; temperatura pelo mais restrito dos componentes (LiPo) |
 | Autonomia | ≥ 50 h pedalando por carga; ≥ 6 meses parado | classe de produto; [orçamento](#orçamento-de-consumo) |
@@ -26,7 +26,7 @@ O que o módulo tem de cumprir, o que cada bloco faz e o tamanho que o pod pode 
 ```mermaid
 flowchart LR
     subgraph SENSOR["Sensor"]
-        B["Ponte completa 1 kΩ<br/>4 grades ativas"]
+        B["Ponte completa 5 kΩ<br/>4 grades ativas"]
         SW["TPS22916<br/>excitação chaveada"]
         A["ADS1220<br/>REFP0/REFN0 = excitação"]
         SW --> B --> A
@@ -41,7 +41,7 @@ flowchart LR
     end
     subgraph EN["Energia"]
         P["nPM1100<br/>carga + buck 3,0 V"]
-        BAT["LiPo 100 a 150 mAh<br/>com proteção"]
+        BAT["LiPo 100 mAh<br/>com proteção"]
         F["MAX17048<br/>I2C"]
         P --- BAT
         BAT --- F
@@ -76,24 +76,27 @@ Estimativas de projeto a partir dos datasheets; nenhuma medida ainda.
 
 | Estado | Bloco | Corrente | Base |
 |---|---|---|---|
-| Pedalando | ponte de 1 kΩ a 3,0 V, ligada durante toda a conversão | 3,0 mA | 3,0 V / 1 kΩ; o filtro digital do ADS1220 integra a conversão inteira (SBAS501D, 8.3.6), então não existe janela de excitação menor que a própria conversão |
+| Pedalando | ponte de **5 kΩ** a 3,0 V, ligada durante toda a conversão | 0,6 mA | 3,0 V / 5 kΩ; o filtro digital do ADS1220 integra a conversão inteira (SBAS501D, 8.3.6), então não existe janela de excitação menor que a própria conversão |
 | Pedalando | ADS1220 modo normal, ganho 128 | 0,59 mA | 510 + 75 µA (SBAS501D) |
 | Pedalando | BMA400 modo normal, OSR 0 | 0,004 mA | 3,5 µA |
 | Pedalando | TMP117 a 1 Hz | 0,004 mA | 3,5 µA |
 | Pedalando | nRF54LM20A com BLE a 1 Hz e ANT+ a 4 Hz | 0,3 mA | estimativa de projeto; medir no DK |
 | Pedalando | MAX17048 | 0,003 mA | 3 µA em hibernate |
-| **Pedalando, total** | | **≈ 3,9 mA** | 100 mAh dão cerca de 25 h; 150 mAh, 38 h: **abaixo das 50 h do requisito** |
+| **Pedalando, total** | | **≈ 1,5 mA** | 100 mAh dão cerca de 66 h e 150 mAh cerca de 100 h: **acima das 50 h do requisito**. Com a ponte de 1 kΩ eram 3,9 mA e 38 h, abaixo |
 | Parado | BMA400 a 100 Hz, ADS1220 em power-down entre rajadas de 8 amostras a cada 10 s, MCU em System ON dormindo, nPM1100 | ≈ 20 µA | 3,5 + 0,4 + a média das rajadas + ~10 + 0,8 µA |
 | Dormindo (10 min parado) | BMA400 em low-power a 25 Hz com a interrupção de despertar, ADS1220 em power-down, rádio anunciando a cada 2 s | ≈ 15 µA | 0,85 + 0,4 + ~10 + 0,8 µA |
 | Guardado | ship mode do nPM1100 | 0,46 µA | PS v1.5 |
 
-O maior consumidor pedalando é a ponte, e a primeira versão desta tabela a contava ligada 15 % do tempo. Isso está errado: a 175 amostras/s em conversão contínua o conversor integra a conversão inteira (SBAS501D, 8.3.6 e 8.4.2.2), e a chave interna dele (PSW, 8.3.9) fecha no START e só abre no POWERDOWN; a ponte fica ligada enquanto se mede. Com a ponte de 1 kΩ o requisito de 50 h não fecha, e a decisão é do dono, entre:
+O maior consumidor pedalando é a ponte, e a primeira versão desta tabela a contava ligada 15 % do tempo. Isso está errado: a 175 amostras/s em conversão contínua o conversor integra a conversão inteira (SBAS501D, 8.3.6 e 8.4.2.2), e a chave interna dele (PSW, 8.3.9) fecha no START e só abre no POWERDOWN; a ponte fica ligada enquanto se mede. Com a ponte de 1 kΩ isso dava 3,9 mA e 38 h, abaixo do requisito.
 
-| Saída | Efeito | O que confirmar |
-|---|---|---|
-| Extensômetros de classe transdutor de **5 kΩ** no lugar de 1 kΩ | ponte a 0,6 mA; total pedalando ≈ 1,5 mA; 150 mAh dão cerca de 100 h | o padrão de cisalhamento a 45° na resistência de 5 kΩ no catálogo da Micro-Measurements (a classe transdutor vai de 350 Ω a 20 kΩ, [01](../hardware_powermeter/01-lista-de-componentes.md#extensômetros)); o ruído térmico de 5 kΩ em 10 Hz é 0,03 µV, abaixo dos 0,26 µV do conversor |
-| Modo duty-cycle do ADS1220 (MODE 01) a 250 amostras/s efetivas, com a excitação chaveada pelo firmware em volta de cada conversão | ponte ligada cerca de 30 % do tempo; total ≈ 1,8 mA | a temporização entre o DRDY e a conversão seguinte, na bancada; o filtro perde resolução (ruído do modo normal a 1 kSPS) |
-| Célula de 200 mAh | 51 h com a ponte de 1 kΩ | o volume no pod ([Pod](#pod)) e a massa de 20 g |
+**Decidido pelo dono em 2026-09-27: extensômetros de classe transdutor de 5 kΩ.** A ponte cai de 3,0 para 0,6 mA, o total pedalando de 3,9 para 1,5 mA, e o requisito de 50 h passa a fechar com folga até numa célula de 100 mAh. O ruído não paga por isso: o ruído térmico de 5 kΩ numa banda de 10 Hz é 0,03 µV, contra os 0,26 µV RMS do próprio conversor com ganho 128 a 175 amostras/s. A decisão também é o que mantém o pod pequeno, porque as outras duas saídas ou não bastavam ou cresciam o aparelho:
+
+| Saída recusada | Por quê |
+|---|---|
+| Modo duty-cycle do ADS1220 (MODE 01) com a excitação chaveada em volta de cada conversão | daria 1,8 mA, pior que os 1,5, e custa resolução: o filtro passa a ter o ruído do modo normal a 1 kSPS. Fica como reserva se o padrão de 5 kΩ não existir |
+| Célula de 200 mAh | daria 51 h com a ponte de 1 kΩ, no limite, e **cresce o pod**, que já está acima do alvo em comprimento e altura ([Pod](#pod)) |
+
+**O que falta confirmar, e é o risco desta decisão:** que exista padrão de cisalhamento ou torque a 45° em 5 kΩ no catálogo da Micro-Measurements. A classe transdutor vai de 350 Ω a 20 kΩ, mas os padrões de cisalhamento listados até agora são de 120, 350 e 1000 Ω ([01](../hardware_powermeter/01-lista-de-componentes.md#extensômetros)). Se 5 kΩ não existir nesse padrão, a saída é o modo duty-cycle da tabela acima, não voltar a 1 kΩ.
 
 O firmware já faz o que dá sem mudar peça: fora de `Active` e `Calibrating` o conversor fica em power-down e a excitação desligada, com uma rajada de 8 amostras a cada 10 s em `Idle` para o auto-zero e a saúde ([04](04-arquitetura-firmware.md#serviços)).
 
@@ -155,7 +158,19 @@ Os dois lados não podem se mover sozinhos: a regra `IM1` do dry run da placa me
 
 ## Pod
 
-O pod é desenhado em volta da placa e da célula pela mesma ideia do case do ciclocomputador: um gerador e um dry run próprio. Pilha de altura, de baixo para cima: cola de fixação ao braço (0,5 mm), fundo do pod (1,0), célula (4,0), placa (0,8) com o módulo (2,4), tampa (1,0): 9,7 mm. O alvo de 8,5 mm exige a célula ao lado da placa, não sob ela: 60 × 20 mm de área comportam célula de 30 × 20 e placa de 48 × 16 lado a lado só com a placa de 28 mm. A decisão entre os dois arranjos é do dry run, com a medida do braço.
+O pod é desenhado em volta da placa e da célula pela mesma ideia do case do ciclocomputador: um gerador e um dry run próprio, em [`hardware_powermeter/07-pod.md`](../hardware_powermeter/07-pod.md). A célula fica **sob** a placa: ao lado dela o comprimento cresce muito mais do que a altura economiza.
+
+O primeiro desenho fechou em 65,4 × 19,4 × 10,5 mm, acima do alvo em comprimento e altura, e o caminho de volta às três medidas sai das decisões de 2026-09-27:
+
+| Onde | De | Para | Como |
+|---|---|---|---|
+| Espessura da célula | 4,0 mm | 2,5 mm | com a ponte de 5 kΩ, 50 h pedem cerca de 75 mAh: uma célula de 100 mAh basta e é mais fina que a de 150 |
+| Teto sobre a placa | 3,2 mm | 2,7 mm | quem obrigava os 3,2 era o conector da célula; a célula passa a ser soldada por fio, que num pod envasado é mais robusto que conector |
+| **Altura total** | **10,5 mm** | **8,5 mm** | é o alvo, exatamente |
+| Comprimento da placa | 60 mm | cerca de 55 mm | passivos baixos na face de trás **fora da sombra da célula**: ela cobre 23 a 25 mm dos 60, e os outros 35 ficam sobre o fundo do pod. Um passivo 0402 pede 0,6 mm de vão, contra os 2,5 da célula, então não custa altura |
+| **Comprimento total** | **65,4 mm** | **cerca de 60 mm** | a placa menor, mais as paredes e a folga; o canal dos fios da célula na ponta deixa de existir, porque os fios saem pelo rebaixo do fundo |
+
+A largura já está dentro: 19,4 contra 20. O custo assumido é montagem nas duas faces, mais cara de fabricar, e a face de trás deixa de ser plana: ela passa a ser plana **sob a sombra da célula**, e é assim que as regras do dry run medem.
 
 ## Conector magnético
 

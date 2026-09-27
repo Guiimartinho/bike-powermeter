@@ -4,6 +4,12 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ## [Não lançado]
 
+### Decidido
+
+- **Extensômetros de 5 kΩ** no lugar de 1 kΩ (dono, 2026-09-27): a ponte cai de 3,0 para 0,6 mA e o total pedalando de 3,9 para 1,5 mA, o que faz as 50 h fecharem com uma célula de 100 mAh em vez de não fecharem com 150. O ruído térmico de 5 kΩ em 10 Hz é 0,03 µV, contra 0,26 µV do conversor, então não se paga em resolução. Falta confirmar que existe padrão de cisalhamento a 45° nessa resistência; se não existir, a saída é o modo duty-cycle do conversor, não voltar a 1 kΩ.
+- **O pod tem de ficar perto de 60 × 20 × 8,5 mm nas três medidas** (dono, 2026-09-27). O primeiro desenho deu 65,4 × 19,4 × 10,5. A altura fecha exatamente com a célula mais fina que os 5 kΩ permitem (4,0 para 2,5 mm) e o teto de volta a 2,7 mm, com a célula soldada por fio em vez de conector. O comprimento pede a placa em cerca de 55 mm, com passivos baixos na face de trás **fora da sombra da célula**, que cobre 23 a 25 mm dos 60: os outros 35 ficam sobre o fundo do pod e um passivo 0402 pede 0,6 mm de vão contra os 2,5 da célula, então não custa altura.
+- **Licença CC BY-NC 4.0** (`LICENSE`), a mesma do GNSS Bike Computer. Não é licença aprovada pela Open Source Initiative, que não admite restrição de uso, e foi escolhida por isso. O firmware deste projeto é obra original, não um port, e a licença diz isso.
+
 ### Corrigido
 
 - A lista de componentes dizia que o `bosch,bma4xx` da árvore opera o BMA400; ele reconhece o chip ID `0x90` com um aviso e usa o mapa de registradores do BMA422, que é outro. A coluna passa a dizer "Não: driver próprio", como já diziam `docs/04` e o `CLAUDE.md` (2026-09-27).
