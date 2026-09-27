@@ -17,7 +17,7 @@ O que o módulo tem de cumprir, o que cada bloco faz e o tamanho que o pod pode 
 | Rádio | BLE Cycling Power Service 1.1 e ANT+ Bicycle Power, ao mesmo tempo | [05](05-protocolos.md) |
 | Configuração | comprimento do pedivela, zero, inclinação, curva de temperatura, lado e identificação, gravados por BLE | [05](05-protocolos.md#serviço-de-configuração) |
 | Atualização | por BLE (mcumgr sobre MCUboot) e por USB (recuperação serial do MCUboot) | [04](04-arquitetura-firmware.md#atualização) |
-| Carga e dados | conector magnético de 6 pinos: 5 V, GND, D+, D−, SWDIO, SWCLK | [conector](#conector-magnético) |
+| Carga e dados | conector magnético de 6 pinos: 5 V, GND, D+, D−, SWDIO, SWCLK. **Decisão do dono em 2026-09-27**, mantida mesmo com a placa encolhendo: o produto da classe usa só dois contatos e faz dados apenas por rádio, e aqui as seis vias ficam, porque o USB e o SWD pelo cabo são o que torna o aparelho gravável e depurável sem abrir o pod | [conector](#conector-magnético) |
 | Proteção | IPX7: pod envasado, junta na face do conector | classe de produto |
 | Placa | 4 camadas, 0,8 mm, área livre da antena do módulo pelas regras do fabricante | [placa](#placa) |
 
@@ -175,5 +175,7 @@ A largura já está dentro: 19,4 contra 20. O custo assumido é montagem nas dua
 ## Conector magnético
 
 Seis pinos pogo, ímã com polaridade, passo de 2,0 a 2,5 mm, 1 A por pino, banho de ouro, face plana vedada por junta e envasada por trás. O cabo termina em USB-A (5 V, GND, D+, D−) e numa saída SWD de 10 vias (Cortex Debug) para o J-Link. Proteção: TPD4E05U06 nos quatro sinais, 100 Ω em série no SWD, e o VBUS entra no nPM1100, que é entrada; nada sai do pod pelos pinos sem cabo. O fornecedor é escolhido com o desenho do footprint, que entra na cadeia de CAD como as outras peças, com o corpo 3D medido.
+
+**Arranjo dos contatos: duas fileiras de três, não fila única.** Seis contatos a 2,5 mm em fila ocupam 12,5 mm num comprimento de placa que agora é de 33; em 2 × 3 a mesma peça cabe em cerca de 5 × 7,5 mm. Como nenhum fornecedor foi escolhido ainda, o arranjo é escolha do projeto e vira requisito de compra.
 
 **Altura mínima do corpo: 3,2 mm**, requisito que saiu do desenho do pod e não do circuito. O conector atravessa a tampa e a face dele fica num poço, abaixo do topo, para não bater na perna do ciclista; se o corpo for mais baixo que a soma do teto com a espessura da tampa, a face fica abaixo da superfície de baixo dela e a cabeça magnética do cabo não alcança. A regra `PD3` do dry run do pod mede as três condições juntas ([`hardware_powermeter/07`](../hardware_powermeter/07-pod.md#o-conector-magnético-na-tampa)). Leve esse número junto do passo e da corrente na hora de escolher a peça.
