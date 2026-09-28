@@ -69,12 +69,31 @@ VERIFICACOES = [
      [PY, "tools/docs/links_check.py"], lambda c, s: "broken: 0" in s, ""),
 ]
 
+# O `bash` do PATH, num subprocesso do Windows, é o `C:\Windows\System32\
+# bash.exe`: o lançador do **WSL**, que este projeto proíbe. Ele existe nesta
+# máquina, e chamá-lo por engano não dá erro — roda noutro sistema de
+# arquivos. Então o caminho do Git Bash é procurado e afirmado, e o script
+# para se não achar, em vez de rodar o errado.
+def _git_bash() -> str:
+    for c in (r"C:\Program Files\Git\bin\bash.exe",
+              r"C:\Program Files (x86)\Git\bin\bash.exe",
+              r"C:\Program Files\Git\usr\bin\bash.exe"):
+        if Path(c).is_file():
+            return c
+    raise SystemExit(
+        "nao achei o bash do Git. Chamar 'bash' sem caminho nesta maquina "
+        "abre o lancador do WSL (C:\\Windows\\System32\\bash.exe), que o "
+        "projeto proibe.")
+
+
+BASH = _git_bash()
+
 LENTAS = [
-    ("testes de host", ["bash", "tools/fw/host_tests.sh"],
+    ("testes de host", [BASH, "tools/fw/host_tests.sh"],
      lambda c, s: "0 tests failed" in s, ""),
-    ("build do nRF54LM20 DK", ["bash", "tools/fw/fw.sh", "build"],
+    ("build do nRF54LM20 DK", [BASH, "tools/fw/fw.sh", "build"],
      lambda c, s: c == 0, ""),
-    ("build da placa do pod", ["bash", "tools/fw/fw.sh", "build"],
+    ("build da placa do pod", [BASH, "tools/fw/fw.sh", "build"],
      lambda c, s: c == 0, ""),
 ]
 
