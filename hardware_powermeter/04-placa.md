@@ -5,7 +5,8 @@ o que as [folhas do esquemático](02-esquematico.md) deixam em aberto por
 natureza: um esquemático diz o que se liga a quê, e é o layout que decide
 se a antena enxerga o ar, se o ruído do buck cai dentro da ponte e se a
 placa cabe no pod. Tudo aqui sai de [`cad/`](cad/README.md); o que foi
-medido está em [08](08-dry-run-2026-09-27.md).
+medido está em [10](10-dry-run-2026-09-28.md), e a primeira medida completa
+em [08](08-dry-run-2026-09-27.md).
 
 **Nesta página:** [O contorno](#o-contorno) · [Camadas](#camadas) · [Posicionamento](#posicionamento) · [Zonas proibidas](#zonas-proibidas) · [O land pattern do módulo](#o-land-pattern-do-módulo) · [A orientação do acelerômetro](#a-orientação-do-acelerômetro) · [Roteamento](#roteamento) · [O que falta](#o-que-falta) · [Verificação](#verificação)
 
@@ -13,12 +14,13 @@ medido está em [08](08-dry-run-2026-09-27.md).
 > **Não existe placa física e nada foi fabricado nem medido.** Não há
 > gerber, não há pilha de camadas de fabricante e ninguém encostou uma
 > ponta de prova em nada. O que existe é o projeto em KiCad, em
-> [`cad/`](cad/README.md): as 57 peças posicionadas, os três planos de
-> cobre e **parte** das trilhas.
+> [`cad/`](cad/README.md): as 58 peças posicionadas, os três planos de
+> cobre e as trilhas.
 >
-> **A placa não está roteada.** 77 das 110 ligações têm cobre; 34 itens
-> continuam desconectados no DRC completo ([roteamento](#roteamento)).
-> Ela não pode ser fabricada assim.
+> **A placa está roteada com 0 erros de DRC**, e mesmo assim **não pode ser
+> fabricada**: 3 ligações de sinal continuam sem cobre e 7 dos 17
+> capacitores de desacoplamento estão além do limite da ficha
+> ([o que falta](#o-que-falta)).
 
 ## O contorno
 
@@ -229,14 +231,22 @@ eixo central**, para dentro.
 
 | Medida | Valor |
 |---|---|
-| Segmentos | 546 |
-| Vias | 179 |
-| Ligações fechadas | **77 de 110** |
-| Itens desconectados no DRC completo | **34**, em 24 redes |
-| Violações de DRC | **0 erros** (14 avisos, todos de registro de biblioteca) |
+| Segmentos | **440** |
+| Vias | **153** |
+| Ligações fechadas | **75** |
+| Itens desconectados no DRC completo | **14**, em 7 ligações |
+| **Erros de DRC** | **0** |
+| Avisos de DRC | 25, todos de registro de biblioteca |
 
-As redes com mais itens em aberto são `3V0` (7), `LED_G` (6), `USB_DM`
-(6), `SWDIO_J` (5), `SPI_MISO`, `SPI_SCK`, `VBAT` e `VSYS` (4 cada).
+Das 7 ligações em aberto, **4 são vias de costura do plano de terra** — que
+o plano resolve, e o `reparar.py` diz isso com todas as letras — e **3 são
+de sinal**: `I2C_SCL`, `SPI_MOSI` e `SPI_SCK`, as três do mesmo trecho
+entre o conversor e o módulo.
+
+O estágio de congestão negociada rodou as 160 rodadas e **foi recusado**:
+ele chega a zero célula disputada só com 62 a 64 ligações, contra as 75 do
+sequencial, e o critério exige as duas coisas ao mesmo tempo. Fica o
+resultado sequencial, e a saída diz isso.
 
 O roteador é o do ciclocomputador e levou três correções medidas nesta
 placa, que [`cad/README.md`](cad/README.md#o-que-mudou-em-relação-ao-ciclocomputador)
@@ -250,21 +260,25 @@ curto na placa fabricada, e uma ligação sem trilha é uma falta visível.
 
 ## O que falta
 
-Em ordem de gravidade, tudo medido em [08](08-dry-run-2026-09-27.md):
+Em ordem de gravidade, tudo medido em [10](10-dry-run-2026-09-28.md):
 
-1. **34 ligações sem cobre.** A placa não é fabricável.
-2. **10 de 19 capacitores de desacoplamento fora do limite da ficha**, o
-   pior a 18,7 mm do pino que serve. A causa é conhecida: quando o anel em
-   volta do CI não tem lugar livre, `encostar()` cai no seu plano B e a
-   peça vai parar longe, em vez de a colocação falhar dizendo que não
-   coube. É o primeiro conserto da próxima rodada.
-3. **O filtro da ponte longe dos pinos do conversor** (`R301` a 9,4 mm),
-   pela mesma causa.
-4. **A chave da excitação a 4,4 mm do módulo**, contra os 5 mm que este
-   projeto pede.
-5. **Um vão de 5,3 mm na costura de terra da borda**, contra 5.
-6. **A placa passa do envelope alvo do pod** em 1,2 mm de cada ponta, o
-   que é a decisão de tamanho registrada em [07](07-pod.md#o-envelope).
+1. **7 de 17 capacitores de desacoplamento além do limite da ficha**, o
+   pior a 7,7 mm de um pino que pede 2. O colocador foi instrumentado por
+   dentro e **decide certo**: o melhor lugar **livre** está mesmo a 2,90 mm
+   do pino do `C302` e a 6,25 do `C402`. Quem come esse raio é o
+   empilhamento de courtyards — o do próprio circuito integrado, o do 0402
+   e a folga entre peças —, e num VQFN de 3,5 mm com um 0402 na mesma face
+   os 2 mm da ficha podem simplesmente não caber. A saída clássica é o
+   desacoplamento na **face de trás direto sob o chip**, onde o laço é
+   pad → via → pad; é decisão do dono. O `AN1` e o `AN2` têm a mesma raiz.
+2. **3 ligações de sinal sem cobre** — `I2C_SCL`, `SPI_MOSI` e `SPI_SCK` —,
+   todas no mesmo trecho entre o conversor e o módulo. A placa não é
+   fabricável assim.
+3. **9 trechos da serial dentro do retângulo sem plano do nó de
+   chaveamento** (`US1`). O conflito é estrutural: a serial tem de chegar
+   ao nPM1100, que lê `D+`/`D−` para escolher a corrente de carga, e esses
+   pinos ficam ao lado do próprio nó. A 115200 baud o risco é pequeno, mas
+   a regra relata em vez de esconder.
 
 ## Verificação
 

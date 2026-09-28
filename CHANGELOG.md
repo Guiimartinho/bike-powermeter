@@ -4,6 +4,12 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ## [Não lançado]
 
+### Fechado em 2026-09-28
+
+- **A placa está roteada com 0 erros de DRC.** 440 segmentos, 153 vias, 75 ligações; 25 avisos, todos de registro de biblioteca, porque os footprints deste projeto são gerados. Ficam **3 ligações de sinal** sem cobre (`I2C_SCL`, `SPI_MOSI`, `SPI_SCK`, as três no mesmo trecho) e 4 vias de costura do plano de terra, que o plano resolve. O estágio de congestão negociada rodou as 160 rodadas e foi **recusado**: ele chega a zero célula disputada só com 62 a 64 ligações, contra as 75 do sequencial.
+- **Dry run da placa: 14 regras cumpridas, 5 violadas, 5 não mensuráveis.** Dry run do pod: **17 cumpridas, 1 violada** — a `PD17`, que é um requisito sobre a **bicicleta** e só sai com um paquímetro. As 15 vistas, os PDF da placa, da montagem e do pod e os dois STL foram regerados.
+- **A verificação inteira do projeto rodou três vezes com resultados idênticos** (`python tools/verificar_tudo.py`): esquemático, contorno, placa, os dois dry runs, o mapa de pinos, os 26 diagramas, os 388 links, os 134 casos de teste de host e os dois builds de firmware.
+
 ### Medido
 
 - **Duas regras do projeto discordavam sobre o mesmo milímetro** (2026-09-28). A `ME2` da placa reprovava **toda** peça com corpo na face de trás, na premissa de que qualquer coisa ali se apoia na célula — e a `PD4` do pod media o ar sob **cada** uma delas e passava. A premissa da `ME2` deixou de valer quando a célula encolheu para 23 dos 47 mm da placa: passada ela o fundo do pod desce e há 1,0 mm, que é para isso que a zona `SOMBRA_VERSO_MAX_1-0MM` existe e por isso que [04](hardware_powermeter/04-placa.md) põe onze peças no verso de propósito. A `ME2` passa a conhecer os **dois** tetos da face de trás (0,0 mm sob a célula, 1,0 fora dela) e volta a cumprir. Duas regras do mesmo projeto discordando é pior que uma errada sozinha, porque as duas parecem medidas.
