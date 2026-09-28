@@ -72,11 +72,11 @@ que o alvo de 48 × 16 de `docs/02` virou o comprimento registrado em
 | `nets.py` | os 45 nós, pino a pino, e os 12 pinos deixados abertos de propósito |
 | `sheets.py`, `blocos.py`, `simbolos.py` | as 4 folhas, os blocos funcionais de cada uma e os símbolos da biblioteca do KiCad que têm a pinagem certa |
 | `sch_lib.py`, `ksym.py`, `make_sch.py`, `check_sch.py`, `make_pro.py` | o gerador do esquemático, o leitor de símbolos do KiCad, o projeto `.kicad_pro` com as classes de rede |
-| `make_dxf.py`, `check_dxf.py` | o contorno (`contorno.dxf`) e as zonas (`zonas.dxf`): a área da antena, o recorte, o bloco de energia a 20 mm do módulo, o conector magnético, o canto analógico, os furos da ponte, os sensores, o Tag-Connect, e a sombra da tampa |
+| `make_dxf.py`, `check_dxf.py` | o contorno (`contorno.dxf`), o furo de fixação M1,6 e as zonas (`zonas.dxf`): a área livre da antena cerâmica, o bloco de energia a 20 mm do módulo, o conector magnético, o canto analógico, os furos da ponte, os sensores, o Tag-Connect, a sombra da célula e a da tampa |
 | `footprints.py`, `fp_load.py` | qual footprint cada peça usa (biblioteca do KiCad ou gerado aqui com a cota da ficha), os corpos 3D em VRML, as alturas |
 | `make_pcb.py` | o colocador: posições fixas (módulo, conector magnético, furos da ponte, conector da célula), âncoras por zona, desacoplamento encostado no pino, o resto por conectividade; os planos de terra e a área sem plano sob o nó de chaveamento |
 | `route.py` | o roteador: vias de terra por pad, labirinto A* em `F.Cu`, `In2.Cu` e `B.Cu`, o par USB junto, costura de terra na borda, poda de vias soltas |
-| `route_neg.py` | o segundo estágio, de congestão negociada (PathFinder, McMurchie e Ebeling 1995), chamado quando o labirinto empaca; recebe como obstáculo o cobre que não vai rotear |
+| `route_neg.py` | o segundo estágio, de congestão negociada (PathFinder, McMurchie e Ebeling 1995), chamado quando o labirinto empaca; recebe como obstáculo o cobre que não vai rotear. Cada rodada refaz **só as redes que estão no caminho umas das outras**, e a cada `RIPAGEM_TOTAL` rodadas refaz a placa inteira do zero |
 | `reparar.py` | fecha as ligações que o **DRC** ainda chama de abertas, na grade da placa pronta: parte sempre de um pad, mira o cobre inteiro da rede e recusa desenhar o que não encosta |
 | `fill_zones.py` | preenche as malhas com o Python do KiCad (só ele sabe) |
 | `check_pcb.py` | a placa como o KiCad a vê: DRC, peças presentes uma vez, redes dos pads, sobreposições, contorno, furos, cabe no envelope do pod, planos, serigrafia |
@@ -116,7 +116,7 @@ que violou e o que não pôde medir. Uma regra que não acha o que medir
 
 | Regra | O que mede | Fonte |
 |---|---|---|
-| RF1, RF3, RF4 | nada sobre a área da antena; 5 mm em volta dela sem peça alheia; a placa vazada sob ela | ME54BS13 V1.0.0, 7.3 e 7.4 |
+| RF1, RF3, RF4 | nada sobre a área da antena; 5 mm em volta dela sem peça alheia; a antena cerâmica dentro da zona livre **e encostando numa borda da placa** | guia de montagem do HOLYIOT-26001-A ([09](../09-modulo-de-radio.md#a-antena-manda-no-layout)) |
 | RF9 | 20 mm do módulo a fonte chaveada ou indutor | 7.2, Interference Isolation Rule |
 | US1 | o par USB roteado com a largura de 90 Ω desta pilha | USB 2.0, 7.1.6; `route.py` |
 | AL1 | desacoplamento a 0,5 mm do pino do módulo, 2 mm nos outros CIs, 5 mm nos de reserva | 7.2; fichas do nPM1100, ADS1220, BMA400, TMP117, MAX17048 |
@@ -179,3 +179,22 @@ sai girado 180°; o VRML da biblioteca do KiCad põe vírgula entre todos os
 - **O conector magnético é genérico**: `confirmed=False` em `parts.py`,
   e a janela da tampa segue o contorno dele; trocar a peça é trocar o
   footprint, a altura e rodar os dois dry runs.
+- **Rip-up parcial sozinho DIVERGE nesta placa** (medido em 2026-09-28). O
+  PathFinder refaz só as redes que estão no caminho umas das outras, e numa
+  placa grande isso é quase todo mundo; aqui o teste de partilha é
+  geométrico e acha poucas redes, então o conjunto fica pequeno e a pressão
+  bate numa parede: as culpadas não têm para onde ir porque as inocentes
+  estão congeladas, e o custo histórico não empurra quem nunca é refeito.
+  As células disputadas subiram rodada após rodada — 420, 488, 528, 611,
+  972, 1292, **1588 na rodada 10**, com duas ligações perdendo o caminho. A
+  saída é a que a literatura usa quando o rip-up é parcial: uma **ripagem
+  total a cada `RIPAGEM_TOTAL` rodadas** (hoje 6). As rodadas baratas
+  refinam, a rodada cheia redistribui — e de quebra lava qualquer marca
+  velha que um rip-up incremental tenha deixado em `uso`, que é o modo de
+  falhar de um `_desmarcar` que não seja o inverso exato do `_marcar`. Com
+  ela, as rodadas cheias caíram para 234, 199, 155 e 120.
+- **As redes culpadas têm de ser anotadas onde o conflito é achado.** A
+  célula que entra em `disputadas` é a do **caminho**, e o conflito está numa
+  célula do disco de folga dele: procurar depois quem está nela em `uso`
+  devolve a própria rede e quase nunca a outra, então a outra nunca era
+  refeita e a rodada seguinte achava o mesmo conflito para sempre.

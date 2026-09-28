@@ -64,6 +64,8 @@ HISTORICO = 1.0
 # The ceiling is now well clear of what the board needs; a round costs a few
 # seconds and the loop still leaves the moment nothing is contested.
 MAX_RODADAS = 160
+# how often the whole board is ripped up instead of only the nets in the way
+RIPAGEM_TOTAL = 6
 
 
 def _custo_passo(v, atual, ant, CUSTO_VIA, CUSTO_CURVA, CUSTO_CURVA_45):
@@ -314,8 +316,23 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
         # may not be now
         if duro and rodada == MAX_RODADAS - max(3, MAX_RODADAS // 4):
             pendentes = list(ordem_redes)
+        # ... and every RIPAGEM_TOTAL rounds EVERYTHING is asked again, from
+        # an empty board. Refining only the guilty nets makes the contested
+        # cells rise on this board (420 -> 1588 in ten rounds, measured):
+        # the innocent nets are frozen, so the guilty ones have nowhere to
+        # go and the history cost has nothing to push. The full round
+        # redistributes them, and rebuilding `uso` from nothing also clears
+        # anything an incremental rip-up may have left behind.
+        total = (rodada % RIPAGEM_TOTAL) == 0
+        if total:
+            pendentes = list(ordem_redes)
+            uso = {}
+            vias_postas = set()
+            caminhos_por_rede = {}
+            marcas = {}
+            falhas = []
         sufocados: list = []
-        # rip up ONLY what is pending, and take its copper out of `uso`
+        # rip up what is pending, and take its copper out of `uso`
         for rede in pendentes:
             for caminho_v, _l, _lp, _cc in caminhos_por_rede.pop(rede, []):
                 om, ovm = marcas.get(rede, (((0, 0),), ((0, 0),)))
@@ -473,7 +490,8 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
         linha = (f"    rodada {rodada + 1}{' (sem partilha)' if duro else ''}: "
                  f"{n_ok} ligacoes, {len(falhas)} sem caminho, "
                  f"{len(disputadas)} celulas disputadas, "
-                 f"{len(pendentes)} redes a refazer")
+                 f"{len(pendentes)} redes a refazer"
+                 f"{' (tudo)' if total else ''}")
         print(linha, flush=True)
         try:
             with open(R.HERE / "_progresso.txt", "a", encoding="utf-8") as fp:
