@@ -62,9 +62,25 @@ Não são circuitos integrados, mas definem a precisão. Referência: Micro-Meas
 | Cola | M-Bond AE-10 ou AE-15 para o módulo (resistentes à umidade); M-Bond 200 para a bancada | Guia de seleção, p. 8 |
 | Proteção | 3145 RTV + M-Coat B para longo prazo | Guia de seleção, p. 9 |
 
-**Tentativa de 2026-09-28, para ninguém repetir:** a lista de padrões não foi obtida. As páginas de catálogo da Micro-Measurements (`/pca/transducer-class-gages/full_bridge_patterns` e `/pca?search=s5030`, que são os próprios links do site) são carregadas por script e devolvem só a casca; o sitemap tem 114 endereços e nenhum de lista de padrões; a biblioteca de documentos serve PDF por identificador numérico, e os oito vizinhos do guia de seleção são fichas de segurança; HBK e Omega respondem 403; Kyowa lista as vinte famílias sem especificação; a TML lista resistências (60, 120, 350 e **1000 Ω**) e nenhuma das de uso geral é ponte completa. O que se confirmou no site do fabricante é que "padrões de ponte completa" e "padrões de alta resistência, 350 Ω a 20 kΩ" são **categorias separadas**. Falta o navegador com script ou uma pergunta ao fornecedor.
+### A peça, achada no databook do fabricante (2026-09-28)
 
-**O que falta confirmar no catálogo, e é o que fecha a compra:** existe padrão de **ponte completa de flexão em 5 kΩ**? O guia nomeia 5 kΩ como resistência de catálogo, mas a disponibilidade é por padrão, e ponte completa num filme só costuma aparecer em 350 e 1000 Ω. Se só houver 1000 Ω, a ponte volta a drenar 3 mA e as 50 h só fecham com o modo duty-cycle do conversor ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)). Padrão e resistência são uma decisão só.
+O databook de classe transdutor (2622-EN, rev. 12-ago-2019, 116 páginas, em `datasheets/`) responde a pergunta: **existe ponte completa numa peça só em 5 kΩ.** O próprio documento diz, na página 7, que os padrões de alta resistência são oferecidos "em configurações linear, de cisalhamento, tee e **de ponte completa**, com até 10 kΩ". Estes são os candidatos, todos com as quatro grades num filme e a ponte já balanceada de fábrica:
+
+| Padrão | Designação | Ω | Matriz | Descrição do databook |
+|---|---|---|---|---|
+| **S5229** | `N2K-13-S5229A-50C/DG/E3` | 5000 ±5 % | **4,0 × 3,7 mm** | ponte completa miniatura de alta resistência, balanceada a ±0,5 mV/V |
+| S5020 | `N2K-13-S5020Q-50C/DG/E3` | 5000 ±5 % | 4,3 × 4,7 mm | idem, balanceada a ±0,4 mV/V |
+| S5046 | `N2K-13-S5046M-50C/DG/E5` | 5000 | 4,5 × 4,8 mm | ponte completa aberta, para cisalhamento ou torque |
+| S5067 | `N2K-13-S5067P-10C/DG/E5` | 1000 ±3 % | 4,3 × 4,3 mm | ponte completa pequena **para vigas em flexão** |
+| S5062 | `N2K-13-S5062N-10C/DG/E5` | 1000 ±3 % | 4,2 × 4,8 mm | idem |
+
+**Recomendação: S5229.** É a menor das cinco, cabe folgado no braço, é de 5 kΩ, o que mantém o consumo em 1,5 mA e o pod em 8,5 mm, e vem com a ponte balanceada a ±0,5 mV/V, o que reduz o zero a calibrar. O desenho do padrão mostra quatro grades, **duas longitudinais e duas transversais**: é ponte de Poisson, que num campo de flexão entrega cerca de dois terços da saída de uma ponte de flexão pura, e ainda assim cerca de seis vezes o que o cisalhamento daria.
+
+**Como se lê a designação:** `N2K` é a série, padrões de liga Karma modificada sobre filme de poliimida, com ilhas de solda douradas (`DG`) e encapsulamento epóxi; `13` é o número de autocompensação térmica, que o databook diz ser o de estoque para **ligas de alumínio** (`06` é o de aços), e é ele que casa o extensômetro com o material do braço.
+
+**O que ainda falta:** confirmar o material do braço do dono, que decide entre `13` e `06`, e confirmar preço e prazo com o distribuidor. Se o S5229 não vier em `13`, a saída é o S5067 em 1000 Ω com o modo duty-cycle do conversor, que dá 1,40 mA e mantém o pod ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)).
+
+**Onde estão os catálogos:** biblioteca do fabricante, PDF direto, sem cadastro. Classe transdutor `docs.micro-measurements.com/?id=12970`; extensômetros de precisão `?id=4079`; acessórios `?id=12967`; instrumentação `?id=4078`.
 
 ## Fora da placa
 
