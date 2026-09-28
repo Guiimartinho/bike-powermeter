@@ -38,6 +38,8 @@ int main(void)
     radio_svc_start();
 #if defined(CONFIG_USB_DEVICE_STACK_NEXT)
     usb_svc_start();
+#else
+    serial_svc_start();
 #endif
 
     power_svc_ready();

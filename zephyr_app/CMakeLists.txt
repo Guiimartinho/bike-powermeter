@@ -86,7 +86,11 @@ if(CONFIG_MCUBOOT_BOOTUTIL_LIB)
     zephyr_link_libraries(MCUBOOT_BOOTUTIL)
 endif()
 
-# USB service: the serial of the commands, where the USB device stack is on
+# The serial port of the commands. The USB one where the SoC has USB (the DK
+# and the nRF54LM20A), a plain UART where it does not (the pod, on the
+# nRF54L15): hardware_powermeter/09-modulo-de-radio.md. Exactly one is built.
 if(CONFIG_USB_DEVICE_STACK_NEXT)
     target_sources(app PRIVATE src/svc/usb/usb_svc.c)
+else()
+    target_sources(app PRIVATE src/svc/serial/serial_svc.c)
 endif()

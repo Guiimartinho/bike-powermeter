@@ -2,36 +2,60 @@
  * MCUboot image of the zephyr_app (sysbuild applies this file to the
  * bootloader only, by its name).
  *
- * The serial recovery over the USB CDC ACM of the nRF54LM20A does not fit
- * the 64 KB the vendor layout gives MCUboot (it overflowed by 23.668 B on
- * 2026-09-27): the bootloader takes 96 KB and each image slot gives up
- * 16 KB, down to 904 KB. The application overlays carry the same three
- * nodes, and the two must agree: zephyr,code-partition of the app is
- * slot0_partition. The RRAM erases in 4 KB blocks, which every offset and
- * size below respects.
+ * It got much shorter on 2026-09-28, and the reason is the SoC. The
+ * nRF54LM20A board carried serial recovery over a USB CDC ACM port, which
+ * does not fit the 64 KB the vendor layout gives MCUboot - it overflowed by
+ * 23.668 B on 2026-09-27 - so the bootloader took 96 KB and each image slot
+ * gave up 16. The nRF54L15 has no USB at all
+ * (hardware_powermeter/09-modulo-de-radio.md), recovery goes over the same
+ * uart20 that carries the console and the commands, and a UART bootloader
+ * measures 46.996 B. It does not fit the vendor's 64 KB either, and for a
+ * different reason: FPROTECT covers at most 62 KB on the nRF54L. So the
+ * bootloader takes 60 KB, which is the largest 4 KB-aligned size under that
+ * limit, and the slots keep 664 KB each.
  *
- * The CDC ACM port below is the one MCUboot listens on, reached through
- * the magnetic connector; the application has its own port in its own
- * devicetree.
+ * The port MCUboot listens on is the one the board's own devicetree chose
+ * (zephyr,uart-mcumgr = &uart20), reached through the magnetic connector.
  */
 
+/*
+ * Partitions. The SoC default gives MCUboot 64 KB, and on the nRF54L that
+ * is 2 KB too much: FPROTECT covers at most 62 KB on this series, and
+ * MCUboot asserts it (boot/zephyr/main.c, "Can not FPROTECT region that
+ * big"). Turning FPROTECT off would let the default stand and would also
+ * leave the bootloader writable by the application it boots, which is the
+ * one thing it exists to prevent. So the bootloader takes 60 KB - the
+ * largest 4 KB-aligned size under the limit - and the 4 KB it gives back
+ * go to the storage partition. The two image slots keep 664 KB each.
+ *
+ * sysbuild/mcuboot.overlay carries the same three nodes for the bootloader
+ * image, and the two must agree.
+ */
+/delete-node/ &boot_partition;
 /delete-node/ &slot0_partition;
 /delete-node/ &slot1_partition;
-
-&boot_partition {
-	reg = <0x0 DT_SIZE_K(96)>;
-};
+/delete-node/ &storage_partition;
 
 &cpuapp_rram {
 	partitions {
-		slot0_partition: partition@18000 {
-			label = "image-0";
-			reg = <0x18000 DT_SIZE_K(904)>;
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x0 DT_SIZE_K(60)>;
 		};
 
-		slot1_partition: partition@fa000 {
+		slot0_partition: partition@f000 {
+			label = "image-0";
+			reg = <0xf000 DT_SIZE_K(664)>;
+		};
+
+		slot1_partition: partition@b5000 {
 			label = "image-1";
-			reg = <0xfa000 DT_SIZE_K(904)>;
+			reg = <0xb5000 DT_SIZE_K(664)>;
+		};
+
+		storage_partition: partition@15b000 {
+			label = "storage";
+			reg = <0x15b000 DT_SIZE_K(40)>;
 		};
 	};
 };
@@ -44,14 +68,5 @@
 		 * linked into slot 0 (seen on 2026-09-27: FLASH_LOAD_OFFSET 0x18000).
 		 */
 		zephyr,code-partition = &boot_partition;
-		zephyr,uart-mcumgr = &boot_cdc_acm;
-	};
-};
-
-&usbhs {
-	status = "okay";
-
-	boot_cdc_acm: cdc_acm_boot {
-		compatible = "zephyr,cdc-acm-uart";
 	};
 };

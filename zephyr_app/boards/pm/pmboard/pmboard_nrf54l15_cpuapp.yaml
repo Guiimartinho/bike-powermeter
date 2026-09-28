@@ -1,0 +1,15 @@
+identifier: pmboard/nrf54l15/cpuapp
+name: Bike power meter crank pod nRF54L15 Application MCU
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+sysbuild: true
+ram: 188
+flash: 1428
+supported:
+  - gpio
+  - i2c
+  - spi
+  - watchdog
+vendor: pm

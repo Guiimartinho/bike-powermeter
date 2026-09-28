@@ -1,32 +1,54 @@
 /*
- * Bike power meter: the crank pod board, with the nRF54LM20A on the
- * MinewSemi ME54BS13 module.
+ * Bike power meter: the crank pod board, with the nRF54L15 on the
+ * HOLYIOT-26001-A module.
  *
  * Every device the pod carries, on the pins it carries them on
- * (docs/02-hardware.md, Pinos do módulo); the pin map and the two rules of
- * the part that shape it are in pmboard-pinctrl.dtsi. The same aliases as
- * the DK overlay, so the services do not change between the two targets.
+ * (docs/02-hardware.md, Pinos do módulo); the pin map and the rules that
+ * shape it are in pmboard-pinctrl.dtsi. The same aliases as the DK overlay,
+ * so the services do not change between the two targets.
  *
- * Nothing here has been built: the board is being drawn from the same pin
- * table (hardware_powermeter/cad), and no unit exists.
+ * This board replaced the nRF54LM20A one on 2026-09-28, and three things
+ * follow from the SoC and not from taste
+ * (hardware_powermeter/09-modulo-de-radio.md):
+ *
+ *   - there is NO USB on this part. `usbhs` does not exist in
+ *     nrf54l_05_10_15.dtsi. The serial port of the commands and MCUboot's
+ *     recovery go over uart20, out through the magnetic connector's two
+ *     former D+/D- contacts, and a divider on VBUS into a GPIO replaces what
+ *     the USB stack used to report - the nPM1100 has no pin that says the
+ *     cable is in;
+ *   - there is no gpio3 and no vregusb either, for the same reason;
+ *   - the bootloader takes 60 KB, not the 96 the LM20A board needed for USB
+ *     serial recovery and not the SoC default of 64 either. Over UART
+ *     MCUboot measures 46.996 B, and 60 KB is the largest 4 KB-aligned size
+ *     that FPROTECT can cover on this series (the partitions below say why).
+ *
+ * Nothing here has been built or run: no unit exists.
  */
 
 /dts-v1/;
 
-#include <nordic/nrf54lm20a_cpuapp.dtsi>
-#include <vendor/nordic/nrf54lm20a_cpuapp_partition.dtsi>
+#include <nordic/nrf54l15_cpuapp.dtsi>
+#include <vendor/nordic/nrf54l15_cpuapp_partition.dtsi>
 #include "pmboard-pinctrl.dtsi"
 
 / {
-	compatible = "pm,pmboard-nrf54lm20a-cpuapp";
-	model = "Bike power meter crank pod (nRF54LM20A)";
+	compatible = "pm,pmboard-nrf54l15-cpuapp";
+	model = "Bike power meter crank pod (nRF54L15)";
 
 	chosen {
 		zephyr,code-partition = &slot0_partition;
 		zephyr,sram = &cpuapp_sram;
 		zephyr,flash-controller = &rram_controller;
 		zephyr,flash = &cpuapp_rram;
-		/* the console lives on two test pads under the potting */
+		/*
+		 * The console, the shell and mcumgr all live on uart20, which
+		 * leaves the pod through the magnetic connector. On the old
+		 * board this was two test pads and USB carried the commands;
+		 * here there is no USB, so this one line is the whole wired
+		 * path in and out of a potted pod - plus SWD, which is on the
+		 * connector as well.
+		 */
 		zephyr,console = &uart20;
 		zephyr,shell-uart = &uart20;
 		zephyr,uart-mcumgr = &uart20;
@@ -41,6 +63,7 @@
 		charger-status = &chg_n;
 		charger-error = &err_n;
 		ship-activate = &ship_act;
+		vbus-sense = &vbus_sense;
 		led-r = &led_r;
 		led-g = &led_g;
 		led-b = &led_b;
@@ -52,27 +75,27 @@
 		compatible = "gpio-leds";
 
 		exc_en: exc_en {
-			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
 			label = "Bridge excitation";
 		};
 
 		ship_act: ship_act {
-			gpios = <&gpio1 25 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio1 15 GPIO_ACTIVE_HIGH>;
 			label = "nPM1100 SHPACT";
 		};
 
 		led_r: led_r {
-			gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
 			label = "LED red";
 		};
 
 		led_g: led_g {
-			gpios = <&gpio1 8 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
 			label = "LED green";
 		};
 
 		led_b: led_b {
-			gpios = <&gpio1 9 GPIO_ACTIVE_LOW>;
+			gpios = <&gpio1 14 GPIO_ACTIVE_LOW>;
 			label = "LED blue";
 		};
 	};
@@ -82,44 +105,71 @@
 		compatible = "gpio-keys";
 
 		chg_n: chg_n {
-			gpios = <&gpio1 11 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			gpios = <&gpio1 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "nPM1100 CHG";
 		};
 
 		err_n: err_n {
-			gpios = <&gpio1 12 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			gpios = <&gpio1 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "nPM1100 ERR";
 		};
 
 		gauge_alrt: gauge_alrt {
-			gpios = <&gpio1 22 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			gpios = <&gpio1 7 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "MAX17048 ALRT";
+		};
+
+		/*
+		 * The cable. A 1 M / 470 k divider takes the connector's 5,0 V
+		 * to 1,60, a solid high on a 3,0 V input, and leaks 3,4 uA only
+		 * while the cable is in. No pull is set here: the divider's
+		 * lower leg holds the pin down when the cable is out.
+		 */
+		vbus_sense: vbus_sense {
+			gpios = <&gpio1 6 GPIO_ACTIVE_HIGH>;
+			label = "VBUS present";
 		};
 	};
 };
 
 /*
- * Partitions: MCUboot with the USB serial recovery takes 96 KB, and each
- * image slot gives up 16 KB (sysbuild/mcuboot.overlay carries the same
- * three nodes for the bootloader image; the two must agree).
+ * Partitions. The SoC default gives MCUboot 64 KB, and on the nRF54L that
+ * is 2 KB too much: FPROTECT covers at most 62 KB on this series, and
+ * MCUboot asserts it (boot/zephyr/main.c, "Can not FPROTECT region that
+ * big"). Turning FPROTECT off would let the default stand and would also
+ * leave the bootloader writable by the application it boots, which is the
+ * one thing it exists to prevent. So the bootloader takes 60 KB - the
+ * largest 4 KB-aligned size under the limit - and the 4 KB it gives back
+ * go to the storage partition. The two image slots keep 664 KB each.
+ *
+ * sysbuild/mcuboot.overlay carries the same three nodes for the bootloader
+ * image, and the two must agree.
  */
+/delete-node/ &boot_partition;
 /delete-node/ &slot0_partition;
 /delete-node/ &slot1_partition;
-
-&boot_partition {
-	reg = <0x0 DT_SIZE_K(96)>;
-};
+/delete-node/ &storage_partition;
 
 &cpuapp_rram {
 	partitions {
-		slot0_partition: partition@18000 {
-			label = "image-0";
-			reg = <0x18000 DT_SIZE_K(904)>;
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x0 DT_SIZE_K(60)>;
 		};
 
-		slot1_partition: partition@fa000 {
+		slot0_partition: partition@f000 {
+			label = "image-0";
+			reg = <0xf000 DT_SIZE_K(664)>;
+		};
+
+		slot1_partition: partition@b5000 {
 			label = "image-1";
-			reg = <0xfa000 DT_SIZE_K(904)>;
+			reg = <0xb5000 DT_SIZE_K(664)>;
+		};
+
+		storage_partition: partition@15b000 {
+			label = "storage";
+			reg = <0x15b000 DT_SIZE_K(40)>;
 		};
 	};
 };
@@ -148,10 +198,6 @@
 	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
 };
 
-&vregusb {
-	status = "okay";
-};
-
 &grtc {
 	owned-channels = <0 1 2 3 4 5 6 7 8 9 10 11>;
 	child-owned-channels = <3 4 7 8 9 10 11>;
@@ -178,10 +224,6 @@
 	status = "okay";
 };
 
-&gpio3 {
-	status = "okay";
-};
-
 &gpiote20 {
 	status = "okay";
 };
@@ -195,7 +237,7 @@
 	status = "okay";
 };
 
-/* ---- Console on the test pads ---- */
+/* ---- Console and commands, out through the magnetic connector ---- */
 &uart20 {
 	status = "okay";
 	current-speed = <115200>;
@@ -247,11 +289,11 @@
 };
 
 /* ---- Temperature of the bridge and the fuel gauge ---- */
-&i2c23 {
+&i2c22 {
 	status = "okay";
 	clock-frequency = <I2C_BITRATE_FAST>;
-	pinctrl-0 = <&i2c23_default>;
-	pinctrl-1 = <&i2c23_sleep>;
+	pinctrl-0 = <&i2c22_default>;
+	pinctrl-1 = <&i2c22_sleep>;
 	pinctrl-names = "default", "sleep";
 
 	/* TI TMP117, ADD0 to ground: 0x48; one conversion a second, 8 averaged */
@@ -266,19 +308,5 @@
 	max17048: max17048@36 {
 		compatible = "maxim,max17048";
 		reg = <0x36>;
-	};
-};
-
-/*
- * ---- USB: the serial of the commands, through the magnetic connector ----
- *
- * The label zephyr_udc0 is what the DK's board files give the controller;
- * the USB service finds the port by the node label cdc_acm_uart0.
- */
-zephyr_udc0: &usbhs {
-	status = "okay";
-
-	cdc_acm_uart0: cdc_acm_uart0 {
-		compatible = "zephyr,cdc-acm-uart";
 	};
 };

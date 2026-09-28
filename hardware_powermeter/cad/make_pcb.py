@@ -64,7 +64,7 @@ ANCORAS: dict[str, str] = {
     "U301": "ZONA_CONVERSOR_ADS1220",
     "U401": "ZONA_SENSORES",
     "D201": "ZONA_TAG_CONNECT",
-    "U201": "ZONA_MODULO_ME54BS13",
+    "U201": "ZONA_MODULO_HOLYIOT",
 }
 # Parts that follow an anchor instead of a zone of their own.
 JUNTO: dict[str, str] = {
@@ -72,7 +72,8 @@ JUNTO: dict[str, str] = {
     "U302": "U301", "U402": "J301", "D101": "J101",
     "R101": "U101", "R102": "U101", "R106": "U101",
     "R103": "U101", "R104": "U101", "R105": "U102",
-    "R204": "U201", "R205": "U201",
+    "R204": "U201", "R205": "U201", "C203": "FB201",
+    "R109": "J101", "R110": "R109",
     "R107": "J101", "R108": "J101",
     "R201": "D201", "R202": "D201", "R203": "D201",
     "TP201": "U201", "TP202": "U201",
@@ -239,7 +240,13 @@ BORDA_FIXA: dict[str, tuple[float, float, int]] = {
 DECOPLA: dict[str, str] = {
     "C101": "U101", "C102": "U101", "C103": "U101", "C104": "U101", "C106": "U101",
     "C105": "U102",
-    "C201": "U201", "C202": "U201", "C203": "U201", "FB201": "U201",
+    "C201": "U201", "C202": "U201", "FB201": "U201",
+    # C203 answers to the FERRITE and not to the module: the pi filter of
+    # the module's datasheet is C202 - FB201 - C201, and C203 is the
+    # capacitor on the RAIL side of the ferrite. Pointing it at the module
+    # asked the placer to put a bulk capacitor inside a ring it does not
+    # belong in, and on the smaller module that ring ran out (measured
+    # 2026-09-28: C203 ended 9,5 mm away against a limit of 4,0).
     "C301": "U301", "C302": "U301", "C303": "U301", "C304": "U301",
     "C305": "U301", "C306": "U301", "R301": "U301", "R302": "U301",
     "C307": "U302", "C308": "U302",

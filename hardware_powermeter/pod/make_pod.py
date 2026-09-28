@@ -94,7 +94,14 @@ PLACA_W, PLACA_H, PLACA_ESP = MD.W, MD.H, MD.THICKNESS
 # volume, 862 to 748 mm3 - and the slot passes beside it. The owner
 # chose this over moving J301 away from the converter, which is what
 # keeps the 2 mV analogue path short.
-CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 13.0, 2.5, 0.5
+# 11,0 of width and not 13,0 since the board went to 14 mm with the
+# smaller radio module (2026-09-28). PD15 is what caught it: between
+# the ledges there are 14 + 1,0 - 2 x 0,6 = 13,8 mm, and a cradle rib
+# of 0,8 with 0,25 of play on the side away from the wall needs 1,05 of
+# them, so a 13 mm cell left 0,75 and the rib had nowhere to stand. The
+# cell gives the width and keeps its length: 23 x 11 x 2,5 is 633 mm3,
+# against 748 on the 16 mm board and 862 before the wire slot moved.
+CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 11.0, 2.5, 0.5
 # From the board's left end, and the number is set by the SLOT: the
 # bridge's five holes are at the middle of the board and the floor is cut
 # under them (pod x 30,45 to 40,95, measured on 2026-09-27), so the cell

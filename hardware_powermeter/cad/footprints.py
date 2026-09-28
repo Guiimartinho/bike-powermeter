@@ -45,7 +45,8 @@ C0402 = "Capacitor_SMD:C_0402_1005Metric"
 C0603 = "Capacitor_SMD:C_0603_1608Metric"
 
 _fp(["R101", "R102", "R103", "R104", "R105", "R106", "R107", "R108",
-     "R201", "R202", "R203", "R204", "R205", "R301", "R302"], R0402,
+     "R201", "R202", "R203", "R204", "R205", "R301", "R302",
+     "R109", "R110"], R0402,
     "ENCAPSULAMENTO", "0402")
 _fp(["C103", "C105", "C106", "C201", "C301", "C302", "C303", "C304", "C305",
      "C306", "C307", "C308", "C401", "C402", "C403"], C0402, "ENCAPSULAMENTO",
@@ -1178,8 +1179,8 @@ _fp("J101", "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm", "GERADO",
     "GENERICO: nenhuma peca escolhida; a trocar pelo desenho do fornecedor")
 _fp("J301", "pmeter:Furos_Ponte_5x1.5mm_P2mm", "GERADO",
     "cinco pads de solda a mao, sem pasta")
-_fp("U201", "pmeter:MinewSemi_ME54BS13_16.5x12mm", "GERADO",
-    "modulo de radio; a Minew nao publica land pattern")
+_fp("U201", "pmeter:HOLYIOT_26001A_10x12.5mm", "GERADO",
+    "modulo de radio; a Holyiot nao publica land pattern")
 GERADOS["pmeter:MinewSemi_ME54BS13_16.5x12mm"] = me54bs13()
 GERADOS["pmeter:HOLYIOT_26001A_10x12.5mm"] = holyiot_26001a()
 

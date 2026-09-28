@@ -37,9 +37,16 @@ def net(name: str, *pins: tuple[str, str]) -> None:
 
 # ------------------------------------------------------------ alimentacao
 # 5 V of the cable, through the magnetic connector, into the PMIC's SYSREG
-# and the module's USB detector (pad 9 is the VBUS pin of the SoC's PHY).
-net("VBUS", ("J101", "VBUS"), ("U101", "VBUS"), ("C101", "1"), ("U201", "VBUS"),
+# and into the sense divider. It does NOT reach the module any more: the
+# nRF54L15 has no USB, so there is no VBUS pin, and pad 9 of this module is
+# P2.00 - a plain GPIO that 5 V would destroy (09-modulo-de-radio.md).
+net("VBUS", ("J101", "VBUS"), ("U101", "VBUS"), ("C101", "1"), ("R109", "1"),
     ("TP101", "1"))
+# How the board learns the cable is in, now that the USB stack cannot say
+# it: a divider of 1 M / 470 k takes 5,0 V to 1,60 V, which is a solid high
+# on a 3,0 V input and 3,4 uA of leak while the cable is in - nothing while
+# it is out. The nPM1100 has no pin that reports it (svc/usb/usb_svc.c).
+net("VBUS_SENSE", ("R109", "2"), ("R110", "1"), ("U201", "P1.06"))
 # The cell, with the gauge reading it at VDD and the PMIC charging it; the
 # weak pull-up of SHPHLD hangs on it (PS v1.5, 3.5).
 net("VBAT", ("J102", "1"), ("U101", "VBAT"), ("C104", "1"), ("U102", "VDD"),
@@ -73,8 +80,7 @@ net("GND",
     ("R101", "2"), ("R102", "2"),
     ("U102", "GND"), ("U102", "EP"), ("U102", "CTG"), ("U102", "QSTRT"),
     ("J102", "2"), ("TP104", "1"),
-    ("U201", "GND"), ("U201", "GND3"), ("U201", "GND10"), ("U201", "GND11"),
-    ("U201", "GND20"), ("U201", "GND_D0"), ("U201", "GND_E0"), ("U201", "GND_F0"),
+    ("U201", "GND1"), ("U201", "GND2"),
     ("C201", "2"), ("C202", "2"), ("C203", "2"),
     ("U301", "AVSS"), ("U301", "DGND"), ("U301", "PAD"), ("U301", "CLK"), ("U301", "REFN0"),
     ("C302", "2"), ("C303", "2"), ("C304", "2"), ("C305", "2"), ("C306", "2"),
@@ -83,13 +89,17 @@ net("GND",
     ("U402", "GND"), ("U402", "EP"), ("U402", "ADD0"), ("C403", "2"))
 
 # ------------------------------------------------------ conector e USB
-# The USB pair: connector, ESD array (in one pin, out by the pin in front),
-# the module's PHY and the PMIC's port detector, which the PS v1.5 (7.3)
-# connects to the same lines as the SoC on purpose.
-net("USB_DP", ("J101", "D+"), ("D101", "D1P"), ("D101", "NC4"), ("U201", "USB_DP"),
-    ("U101", "D+"))
-net("USB_DM", ("J101", "D-"), ("D101", "D1N"), ("D101", "NC3"), ("U201", "USB_DM"),
-    ("U101", "D-"))
+# What used to be the USB pair is the console UART. The SoC has no USB, so
+# the two contacts that carried D+ and D- now carry TX and RX: the serial
+# port of the commands (the calibration bench of docs/06 needs no radio) and
+# MCUboot's serial recovery. They still pass through the ESD array, and they
+# still reach the nPM1100's port detector, which is what tells it whether it
+# may draw 500 mA or 100 - that detector reads the lines by itself and does
+# not care that the other end is a UART.
+net("UART_TX", ("J101", "D+"), ("D101", "D1P"), ("D101", "NC4"), ("U201", "P1.04"),
+    ("U101", "D+"), ("TP201", "1"))
+net("UART_RX", ("J101", "D-"), ("D101", "D1N"), ("D101", "NC3"), ("U201", "P1.05"),
+    ("U101", "D-"), ("TP202", "1"))
 # SWD from the cable: through the ESD array and 100 R in series into the
 # module's SWD pads, which the Tag-Connect reaches directly.
 net("SWDIO_J", ("J101", "SWDIO"), ("D101", "D2P"), ("D101", "NC2"), ("R107", "1"))
@@ -105,25 +115,23 @@ net("SWDCLK", ("R108", "2"), ("U201", "SWDCLK"))
 net("ICHG", ("U101", "ICHG"), ("R101", "1"))
 net("NTC", ("U101", "NTC"), ("R102", "1"))
 net("SHPHLD", ("U101", "SHPHLD"), ("R106", "2"))
-net("SHPACT", ("U101", "SHPACT"), ("U201", "P1.25"))
-net("CHG_N", ("U101", "CHG"), ("R103", "2"), ("U201", "P1.11"))
-net("ERR_N", ("U101", "ERR"), ("R104", "2"), ("U201", "P1.12"))
-net("GAUGE_ALRT", ("U102", "ALRT"), ("R105", "2"), ("U201", "P1.22"))
+net("SHPACT", ("U101", "SHPACT"), ("U201", "P1.15"))
+net("CHG_N", ("U101", "CHG"), ("R103", "2"), ("U201", "P1.09"))
+net("ERR_N", ("U101", "ERR"), ("R104", "2"), ("U201", "P1.08"))
+net("GAUGE_ALRT", ("U102", "ALRT"), ("R105", "2"), ("U201", "P1.07"))
 
 # ------------------------------------------------------------ MCU e LED
-net("I2C_SDA", ("U201", "P1.29"), ("R204", "2"), ("U102", "SDA"), ("U402", "SDA"))
-net("I2C_SCL", ("U201", "P1.03"), ("R205", "2"), ("U102", "SCL"), ("U402", "SCL"))
-net("LED_R", ("U201", "P1.06"), ("R201", "2"))
-net("LED_G", ("U201", "P1.08"), ("R202", "2"))
-net("LED_B", ("U201", "P1.09"), ("R203", "2"))
+net("I2C_SDA", ("U201", "P1.12"), ("R204", "2"), ("U102", "SDA"), ("U402", "SDA"))
+net("I2C_SCL", ("U201", "P1.11"), ("R205", "2"), ("U102", "SCL"), ("U402", "SCL"))
+net("LED_R", ("U201", "P1.10"), ("R201", "2"))
+net("LED_G", ("U201", "P1.13"), ("R202", "2"))
+net("LED_B", ("U201", "P1.14"), ("R203", "2"))
 net("LED_KR", ("R201", "1"), ("D201", "K_R"))
 net("LED_KG", ("R202", "1"), ("D201", "K_G"))
 net("LED_KB", ("R203", "1"), ("D201", "K_B"))
-net("UART_TX", ("U201", "P1.00"), ("TP201", "1"))
-net("UART_RX", ("U201", "P1.31"), ("TP202", "1"))
 
 # ------------------------------------------------- ponte e conversor
-net("EXC_EN", ("U201", "P1.10"), ("U302", "ON"))
+net("EXC_EN", ("U201", "P2.06"), ("U302", "ON"))
 net("BR_SP", ("J301", "S+"), ("R301", "1"))
 net("BR_SN", ("J301", "S-"), ("R302", "1"))
 net("AIN_P", ("R301", "2"), ("U301", "AIN0"), ("C301", "1"), ("C302", "1"))

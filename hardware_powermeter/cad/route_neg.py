@@ -51,7 +51,17 @@ import math
 PRESENTE_0 = 0.5
 PRESENTE_FATOR = 1.6
 HISTORICO = 1.0
-MAX_RODADAS = 60
+# 60 was a guess, not a measurement, and on 2026-09-28 it turned into a
+# cliff. On the 48 mm board this stage settled in round 56 of 60 - one round
+# of margin - and route.py took its answer: 92 connections. On the 51 mm
+# board it needs more rounds than that, so it hit the ceiling with contested
+# cells still on the table, route.py's test (`n_disputa == 0`) threw the
+# WHOLE result away, and the board fell back to the sequential answer: 39
+# connections and 26 unconnected items, against 13 on the smaller board.
+# The bigger board did not route worse - it never got the negotiated router.
+# The ceiling is now well clear of what the board needs; a round costs a few
+# seconds and the loop still leaves the moment nothing is contested.
+MAX_RODADAS = 160
 
 
 def _custo_passo(v, atual, ant, CUSTO_VIA, CUSTO_CURVA, CUSTO_CURVA_45):

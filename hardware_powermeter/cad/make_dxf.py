@@ -48,15 +48,18 @@ HERE = pathlib.Path(__file__).resolve().parent
 # so the size can be searched again without editing the file, and the placer
 # says what does not fit.
 #
-# Why 51 and not 48 (2026-09-28): placement is not what decides any more -
-# every length from 48 to 54 seats all 56 parts. What decides is the room
-# the ROUTER has, and the number that matters is not free area but how many
-# places a via fits, because an escape from a fine-pitch pad needs one and
-# `cabe_via` was false all round the pads that stayed open. From 48 to 51 mm
-# the free cells grow 8,8 % and the via sites 36 % (1491 to 2026 on a one-in-
-# four sample). The owner allowed about 3 mm.
-W = float(os.environ.get("PMETER_W", 51.0))
-H = float(os.environ.get("PMETER_H", 16.0))
+# Why 47 x 14 (2026-09-28, with the HOLYIOT-26001-A): the WIDTH is not a
+# choice at all - it is the module plus what the pod's walls need, and the
+# module went from 12,0 to 10,0 mm across, so the floor dropped by 2. The
+# LENGTH is the room the router needs: placement stopped deciding once the
+# back face took the module's decoupling (every length from 48 to 54 seated
+# all the parts on the old module), and what decides is how many places a
+# via fits, because an escape from a fine-pitch pad needs one. The smaller
+# module gives back about 4 mm of it, which is what the pod's new O-ring
+# seal costs, so the pod lands at 59,4 x 19,0 inside the 60 x 20 target
+# (04-placa.md and 07-pod.md have both tables).
+W = float(os.environ.get("PMETER_W", 47.0))
+H = float(os.environ.get("PMETER_H", 14.0))
 THICKNESS = 0.8
 
 # Corner radius: 1,5 mm, the smallest a pod wall of 1,0 mm can follow with
@@ -69,11 +72,21 @@ FUROS_DOC: list[tuple[float, float]] = []
 M2_DRILL_UNVERIFIED = 2.2
 SCREWS_CASE_DRAWING: list[tuple[float, float]] = []
 
-# The module lying along x at the right end: 16,5 along x with the antenna
-# band at the +x edge, 12,0 across y, centred in the width.
-_ANT_FAIXA = 4.7           # board edge kept clear beside the antenna
-_MOD_COMP = 17.0           # the module's courtyard along x (16,5 + 0,5)
-_MOD_ALT = 12.5            # across y (12,0 + 0,5)
+# The module lying along x at the right end: 12,5 along x with the antenna
+# band at the +x edge, 10,0 across y, centred in the width.
+#
+# HOLYIOT-26001-A since 2026-09-28, in place of the ME54BS13. What changes
+# for the outline is not only that it is smaller: the antenna is CERAMIC,
+# and the maker's own mounting guide asks for the antenna end to stand off
+# the host board's ground, classing "antenna out past the edge" as best, the
+# corner as good, and the middle of the board as bad. So the band beside it
+# stays clear of copper, and there is no CUT-OUT any more: the ME54BS13
+# needed the board hollowed under a PCB trace antenna, and a ceramic one
+# does not (09-modulo-de-radio.md).
+_ANT_FAIXA = 4.3           # board edge kept clear beside the antenna: the
+                           # module's own 3,8 band plus 0,5 of margin
+_MOD_COMP = 13.0           # the module's courtyard along x (12,5 + 0,5)
+_MOD_ALT = 10.5            # across y (10,0 + 0,5)
 MOD_Y0 = H / 2.0 - _MOD_ALT / 2.0
 MOD_Y1 = H / 2.0 + _MOD_ALT / 2.0
 
@@ -117,17 +130,13 @@ XE = XM - 20.0
 ZONES = [
     # name, rect, colour, source
     ("KEEPOUT_ANTENA_MODULO", _f(W - _ANT_FAIXA, 0.0, W, H), 1,
-     "ficha ME54BS13 V1.0.0, 7.3 e 7.4: sobre a area da antena nao pode cobre, "
-     "componente nem caixa metalica fechada, e 3 a 5 mm em volta dela nao "
-     "pode trilha de sinal, metal nem fonte de interferencia"),
-    ("RECORTE_ANTENA_MODULO",
-     _f(W - _ANT_FAIXA + 0.4, H / 2.0 - 5.1, W, H / 2.0 + 5.1), 2,
-     "ficha ME54BS13 V1.0.0, 7.4: a placa sob a area da antena e VAZADA, para "
-     "deixar a regiao suspensa. Comeca 0,4 mm dentro da faixa: a ultima coluna "
-     "de pads LGA do modulo tem de manter 0,3 mm de cobre a borda do corte"),
-    ("ZONA_MODULO_ME54BS13", _f(XM, MOD_Y0, W, MOD_Y1), 3,
-     "MinewSemi ME54BS13, 16,5 x 12,0 mm, deitado no extremo direito com a "
-     "antena sobre o recorte"),
+     "HOLYIOT-26001-A: sobre a faixa da antena ceramica nao pode cobre, "
+     "componente nem metal. O anuncio do fabricante manda a antena ficar "
+     "para FORA do plano de terra da placa hospedeira, e classifica o meio "
+     "da placa como a pior posicao"),
+    ("ZONA_MODULO_HOLYIOT", _f(XM, MOD_Y0, W, MOD_Y1), 3,
+     "HOLYIOT-26001-A, 12,5 x 10,0 mm, deitado no extremo direito com a "
+     "antena ceramica virada para a borda"),
     ("ZONA_ENERGIA", _f(0.8, 0.8, XE, H - 0.8), 3,
      "nPM1100, indutor, MAX17048 e o conector da celula. O limite direito nao "
      "e estetico: 7.2 pede 20 mm entre o modulo e uma fonte chaveada ou um "

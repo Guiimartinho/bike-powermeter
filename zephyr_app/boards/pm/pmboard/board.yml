@@ -3,4 +3,4 @@ board:
   full_name: Bike power meter crank pod (custom board)
   vendor: pm
   socs:
-  - name: nrf54lm20a
+  - name: nrf54l15

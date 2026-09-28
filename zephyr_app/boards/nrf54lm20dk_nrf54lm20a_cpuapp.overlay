@@ -81,27 +81,44 @@
 };
 
 /*
- * Partitions: MCUboot with the USB serial recovery takes 96 KB, and each
- * image slot gives up 16 KB (sysbuild/mcuboot.overlay carries the same
- * three nodes for the bootloader image; the two must agree).
+ * Partitions. The SAME table the pod's board uses, and it has to be the
+ * same: sysbuild/mcuboot.overlay applies to every target, so a layout that
+ * differs here gives a bootloader that writes an image where the
+ * application does not expect it - and nothing in the build says so. That
+ * is exactly what happened on 2026-09-28: MCUboot was built with 664 KB
+ * slots while this overlay still said 904, and both images linked without a
+ * word.
+ *
+ * 60 KB for the bootloader is not a choice either: FPROTECT covers at most
+ * 62 KB on the nRF54L series and MCUboot asserts it, so 60 is the largest
+ * 4 KB-aligned size that fits. Over UART the bootloader measures 53.324 B
+ * on this target, 86,8 % of it.
  */
+/delete-node/ &boot_partition;
 /delete-node/ &slot0_partition;
 /delete-node/ &slot1_partition;
-
-&boot_partition {
-    reg = <0x0 DT_SIZE_K(96)>;
-};
+/delete-node/ &storage_partition;
 
 &cpuapp_rram {
     partitions {
-        slot0_partition: partition@18000 {
-            label = "image-0";
-            reg = <0x18000 DT_SIZE_K(904)>;
+        boot_partition: partition@0 {
+            label = "mcuboot";
+            reg = <0x0 DT_SIZE_K(60)>;
         };
 
-        slot1_partition: partition@fa000 {
+        slot0_partition: partition@f000 {
+            label = "image-0";
+            reg = <0xf000 DT_SIZE_K(664)>;
+        };
+
+        slot1_partition: partition@b5000 {
             label = "image-1";
-            reg = <0xfa000 DT_SIZE_K(904)>;
+            reg = <0xb5000 DT_SIZE_K(664)>;
+        };
+
+        storage_partition: partition@15b000 {
+            label = "storage";
+            reg = <0x15b000 DT_SIZE_K(40)>;
         };
     };
 };

@@ -157,6 +157,12 @@ passive("R103", "100 k", "pull-up do CHG_N ao 3V0 (dreno aberto)")
 passive("R104", "100 k", "pull-up do ERR_N ao 3V0 (dreno aberto)")
 passive("R105", "100 k", "pull-up do GAUGE_ALRT ao 3V0 (dreno aberto)")
 passive("R106", "1 M", "SHPHLD ao VBAT: o pull-up fraco que segura o ship mode (3.5)")
+# The divider that replaces what the USB stack used to report. 1 M / 470 k
+# takes the cable's 5,0 V to 1,60, a solid high on a 3,0 V input, and
+# leaks 3,4 uA while the cable is in and nothing while it is out - which
+# matters, because this hangs on VBUS and not on the cell.
+passive("R109", "1 M", "divisor do VBUS, ramo de cima: 5,0 V viram 1,60")
+passive("R110", "470 k", "divisor do VBUS, ramo de baixo, ao terra")
 passive("R107", "100 R", "serie do SWDIO entre o conector magnetico e o modulo")
 passive("R108", "100 R", "serie do SWCLK entre o conector magnetico e o modulo")
 
@@ -173,64 +179,64 @@ for _n, _rede, _o in TESTE:
     add(_n, "pad", [(1, "1", "passive", R)], confirmed=True, note="ponto de teste")
 
 # ================================================================ folha 2
-# MinewSemi ME54BS13 pad map, from "ME54BS13-nRF54LM20A Datasheet K EN"
-# V1.0.0 of 2026-06-23, pages 6 to 9, the table the bike computer's parts.py
-# transcribed and cross-checked (hardware_powermeter/cad/parts.py). The module
-# is a hybrid: 20 castellated pads numbered 1 to 20 down the two long sides,
-# and a 60 pad LGA matrix A0..F9 in the middle. 80 pads, 64 GPIO.
-PADS_ME54BS13 = {
-    # LGA matrix, columns A..F left to right, rows 0..9 top to bottom
-    "P0.04": "A0", "P0.02": "B0", "P0.05": "C0",
-    "P0.01": "A1", "P0.03": "B1", "P0.06": "C1", "P0.07": "D1",
-    "P0.08": "E1", "P0.09": "F1",
-    "P0.00": "A2", "P3.03": "B2", "P3.07": "C2", "P3.11": "D2",
-    "P3.12": "E2", "P1.14": "F2",
-    "P3.04": "A3", "P3.02": "B3", "P3.08": "C3", "P3.10": "D3",
-    "P1.10": "E3", "P1.13": "F3",
-    "P1.01": "A4", "P3.01": "B4", "P3.06": "C4", "P1.24": "D4",
-    "P1.22": "E4", "P1.12": "F4",
-    "P1.02": "A5", "P3.00": "B5", "P3.05": "C5", "P3.09": "D5",
-    "P1.25": "E5", "P1.11": "F5",
-    "P1.06": "A6", "P1.07": "B6", "P1.08": "C6", "P1.09": "D6",
-    "P1.28": "E6", "P1.27": "F6",
-    "P1.00": "A7", "P1.31": "B7", "P1.05": "C7", "P2.10": "D7",
-    "P2.09": "E7", "P2.06": "F7",
-    "P1.04": "A8", "P1.03": "B8", "P2.04": "C8", "P2.05": "D8",
-    "P2.07": "E8", "P2.08": "F8",
-    "P1.30": "A9", "P1.29": "B9", "P2.03": "C9", "P2.02": "D9",
-    "P2.01": "E9", "P2.00": "F9",
-    # castellated row
-    "P1.26": "12", "P1.23": "13", "P1.19": "14", "P1.18": "15",
-    "P1.17": "16", "P1.16": "17", "P1.15": "18",
+# HOLYIOT-26001-A pad map, from the maker's mechanical drawing read on
+# 2026-09-28 and written up in 09-modulo-de-radio.md. 36 pads: a castellated
+# column and an LGA column on each side, seven each, and eight castellations
+# along the bottom. 30 of them are GPIO, and the three ports match the SoC's
+# own `ngpios` in the NCS exactly (P0 has 7 and the module brings 5, P1 has
+# 16 and it brings 14, P2 has 11 and it brings all 11).
+#
+# The numbering is NOT a formula and is written out for that reason: it runs
+# down the left castellations, left to right along the bottom, UP the right
+# castellations, then down the left LGA column and UP the right one.
+PADS_HOLYIOT = {
+    # 1..7, left castellations, top to bottom
+    "NRESET": "1", "P0.02": "2", "P0.01": "3", "SWDIO": "4", "SWDCLK": "5",
+    "P2.10": "6", "P2.09": "7",
+    # 8..15, bottom row, left to right
+    "P2.05": "8", "P2.00": "9", "P2.01": "10", "P2.08": "11", "P1.08": "12",
+    "P1.07": "13", "P1.06": "14", "VDD": "15",
+    # 16..22, right castellations, bottom to top
+    "P2.04": "16", "P1.05": "17", "P1.04": "18", "P1.15": "19", "P1.14": "20",
+    "P1.13": "21", "P1.09": "22",
+    # 23..29, left LGA column, top to bottom
+    "GND1": "23", "P0.03": "24", "P0.00": "25", "P0.04": "26", "P2.06": "27",
+    "P2.07": "28", "P2.03": "29",
+    # 30..36, right LGA column, bottom to top
+    "P2.02": "30", "P1.03": "31", "P1.02": "32", "P1.12": "33", "P1.11": "34",
+    "P1.10": "35", "GND2": "36",
 }
-# The port pins this board wires, docs/02-hardware.md "Pinos do modulo":
-# the SPI of the converter and the accelerometer on the fast spi00 of port
-# P2 (SCK on P2.01, a clock pin), the I2C of the sensors on P1.29/P1.03
-# (SCL a clock pin), and the GPIOs of the energy, the LED and the console.
+# The port pins this board wires, docs/02-hardware.md "Pinos do modulo".
+# Every bus pin below is the one NORDIC uses in the NCS for that peripheral
+# on this SoC, not a choice made here: a TWIM's SCL and a SPIM's SCK need a
+# clock-capable pin, and the DK's pinctrl and the pca63565 shield are the
+# evidence (09-modulo-de-radio.md, O mapa de pinos do projeto).
 _GPIO = [
     # left side: the energy block, the LED and the console
-    ("P1.10", L), ("P1.11", L), ("P1.12", L), ("P1.25", L), ("P1.22", L),
-    ("P1.06", L), ("P1.08", L), ("P1.09", L), ("P1.00", L), ("P1.31", L),
+    ("P1.10", L), ("P1.13", L), ("P1.14", L), ("P1.15", L), ("P1.09", L),
+    ("P1.08", L), ("P1.07", L), ("P1.06", L), ("P1.04", L), ("P1.05", L),
     # right side: the buses of the bridge and the sensors
     ("P2.01", R), ("P2.02", R), ("P2.04", R), ("P2.05", R), ("P2.03", R),
-    ("P2.07", R), ("P2.08", R), ("P1.29", R), ("P1.03", R),
+    ("P2.06", R), ("P2.07", R), ("P2.08", R), ("P1.11", R), ("P1.12", R),
 ]
-_mod = [("7", "USB_DM", "bidirectional", L), ("8", "USB_DP", "bidirectional", L),
-        ("9", "VBUS", "power_in", T), ("5", "SWDIO", "bidirectional", L),
-        ("6", "SWDCLK", "input", L), ("4", "RESET", "no_connect", L),
-        ("2", "RF", "no_connect", R), ("19", "VDD", "power_in", T),
-        ("1", "GND", "power_in", B), ("3", "GND3", "power_in", B),
-        ("10", "GND10", "power_in", B), ("11", "GND11", "power_in", B),
-        ("20", "GND20", "power_in", B), ("D0", "GND_D0", "power_in", B),
-        ("E0", "GND_E0", "power_in", B), ("F0", "GND_F0", "power_in", B)]
+# No VBUS pin: the ME54BS13 had one because it had USB, and this SoC has
+# none. Pin 9 of this module is P2.00, a plain GPIO, and wiring VBUS to it
+# would put 5 V on a 3,0 V input. The board learns that the cable is in from
+# a divider on VBUS into VBUS_SENSE instead.
+_mod = [("15", "VDD", "power_in", T),
+        ("4", "SWDIO", "bidirectional", L), ("5", "SWDCLK", "input", L),
+        ("1", "NRESET", "input", L),
+        ("23", "GND1", "power_in", B), ("36", "GND2", "power_in", B)]
 for _pp, _lado in _GPIO:
-    _mod.append((PADS_ME54BS13[_pp], _pp, "bidirectional", _lado))
-add("U201", "MinewSemi ME54BS13", _mod, confirmed=True,
-    note="nRF54LM20A, 16,5 x 12,0 x 2,4 mm, 80 pads (20 castelados + 60 LGA), "
-         "antena de PCB (o pad 2 RF fica sem ligacao: a ficha manda deixar "
-         "aberto com a antena de bordo). A ficha V1.0.0 e a V0.5.0 discordam "
-         "do espelhamento: CONFERIR num modulo real que os GND D0, E0 e F0 "
-         "ficam do lado do VCC (pino 19) antes de fabricar")
+    _mod.append((PADS_HOLYIOT[_pp], _pp, "bidirectional", _lado))
+add("U201", "HOLYIOT-26001-A", _mod, confirmed=False,
+    note="nRF54L15, 10,0 x 12,5 mm, 36 pads (22 castelados + 14 LGA), antena "
+         "CERAMICA integrada. Sem USB: o usbhs nao existe neste SoC, entao a "
+         "serial dos comandos e a recuperacao do MCUboot vao por UART nos "
+         "contatos D+/D- do conector, e um divisor no VBUS num GPIO diz que o "
+         "cabo entrou. A ALTURA do corpo nao consta no anuncio e esta com 2,40 "
+         "de reserva: ela decide o teto da tampa do pod. Cotas do desenho do "
+         "anuncio, nao de peca medida (09-modulo-de-radio.md)")
 
 # The module's own decoupling and the pi filter footprint its datasheet
 # asks for on a switched supply (7.2, Power Supply Design): a ferrite in
