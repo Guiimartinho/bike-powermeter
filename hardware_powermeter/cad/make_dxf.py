@@ -66,9 +66,30 @@ THICKNESS = 0.8
 # a printed inner corner. No document gives another number.
 RADIUS_DRAWING = 1.5
 
-# No mounting holes: the board sits on posts in the pod and is potted
-# (docs/02, Pod). An empty list is what the placer and the checks expect.
-FUROS_DOC: list[tuple[float, float]] = []
+# One mounting hole, and it is not for mounting: it is for the pod's
+# right-hand closing screw, whose post rises from the floor, passes THROUGH
+# the board here and takes the screw from the lid. Putting it through the
+# board instead of beside it is what gave the pod back 3,7 mm of length on
+# 2026-09-28 (pod/make_pod.py, PARAF_NA_PLACA).
+#
+# The position is not free. A post that pierces the board needs floor under
+# it with no cell, and the cell runs from x 2,5 to 25,5; past that there are
+# 8,5 mm before the module. The hole sits in that window, on the centre line.
+# The left screw has no such window - the cell is there - and keeps a boss
+# outside the board.
+# 30,5 and not 29,2: at 29,2 the hole's own clearance still reached into the
+# magnetic connector's courtyard, which ends at x 28,25, and the connector is
+# at a FIXED position - it had nowhere to go. The window is x 29,2 to 31,8
+# (past the cell's end at 27,5 plus the boss, before the module's courtyard
+# at 33,5), and 30,5 is the middle of it.
+FUROS_DOC: list[tuple[float, float]] = [(30.5, 7.0)]
+FURO_PARAFUSO_D = 2.2
+# What the placer has to keep clear round it, and it is NOT the 2,45 mm of
+# KiCad's M2 mounting hole: that radius is for a screw HEAD or a washer
+# sitting on the board, and here the head is on the LID. Through the board
+# passes only the post's 2,00 mm neck, so the reservation is the hole plus
+# the clearance a part needs to its edge.
+FURO_RESERVA_R = FURO_PARAFUSO_D / 2.0 + 0.30
 M2_DRILL_UNVERIFIED = 2.2
 SCREWS_CASE_DRAWING: list[tuple[float, float]] = []
 
@@ -85,8 +106,14 @@ SCREWS_CASE_DRAWING: list[tuple[float, float]] = []
 # does not (09-modulo-de-radio.md).
 _ANT_FAIXA = 4.3           # board edge kept clear beside the antenna: the
                            # module's own 3,8 band plus 0,5 of margin
-_MOD_COMP = 13.0           # the module's courtyard along x (12,5 + 0,5)
-_MOD_ALT = 10.5            # across y (10,0 + 0,5)
+# The module's courtyard is NOT its body. The castellated lands run 0,50 mm
+# past the body on three sides so the solder fillet is visible, so the pads
+# reach x +-5,50 and y +6,75 against a body of 10,00 x 12,50: the union is
+# 11,00 x 13,00. Declaring 10,50 x 13,00 here - the body plus a flat 0,5 -
+# is what made the placer refuse to seat U201 at all on 2026-09-28, and the
+# message it gave ("nao coube perto de") did not say why.
+_MOD_COMP = 13.5           # the module's courtyard along x (13,0 + 0,5)
+_MOD_ALT = 11.5            # across y (11,0 + 0,5)
 MOD_Y0 = H / 2.0 - _MOD_ALT / 2.0
 MOD_Y1 = H / 2.0 + _MOD_ALT / 2.0
 
@@ -163,7 +190,11 @@ ZONES = [
     # a low passive. 25 x 15 mm is the 100 mAh cell of docs/02 at 2,5 mm
     # of thickness (07-pod.md has the arithmetic and what has to be
     # confirmed against a real cell).
-    ("SOMBRA_CELULA_MAX_0-0MM", _f(1.0, 0.5, 26.0, 15.5), 5,
+    # The cell's shadow, DERIVED from the cell instead of written out: it
+    # was a fixed rectangle of 1,0 to 26,0 and the cell grew to 25 mm and
+    # moved against the wall on 2026-09-28, so three back-face capacitors
+    # ended up over it with 0,5 mm of air (PD4 caught them).
+    ("SOMBRA_CELULA_MAX_0-0MM", _f(1.5, 0.0, 2.5 + 23.0 + 0.5, 0.5 + 11.0 + 0.5), 5,
      "docs/02, Pod: a celula deitada sob a placa; nada com corpo na face de "
      "tras dentro desta area"),
     # and the ceiling the back face has OUTSIDE that shadow: the pod's
@@ -265,6 +296,11 @@ def write_zones(path: pathlib.Path) -> None:
     outline(d, d.layer("BOARD_OUTLINE_REFERENCIA", 8), RADIUS_DRAWING)
     for name, (x0, y0, x1, y1), colour, _src in ZONES + CONFLITOS:
         d.rect(d.layer(name, colour), x0, y(y1), x1, y(y0))
+    # the holes, as circles: check_dxf counts them and compares each centre
+    # with FUROS_DOC, and it was right to fail while this loop did not exist
+    lay = d.layer("FUROS", 1)
+    for fx, fy in FUROS_DOC:
+        d.circle(lay, fx, y(fy), FURO_PARAFUSO_D / 2.0)
     path.write_text(d.text(), encoding="ascii", newline="")
 
 

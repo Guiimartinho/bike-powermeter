@@ -154,6 +154,14 @@
         data-rate = <175>;
         mux = <0>;
         vref = "refp0";
+		/*
+		 * Duty-cycle mode, decided by the owner on 2026-09-28: the
+		 * converter runs at a quarter of data-rate and powers down in
+		 * between, and the PSW that feeds the bridge opens with it. The
+		 * meter goes from 1,50 mA to 0,68 and from 52 h to 114 - more
+		 * than twice the class reference - without changing one part.
+		 */
+		duty-cycle;
     };
 
     /* BMA400: 100 Hz, ±4 g (the centripetal term at 200 rpm is 2,2 g), INT1 */

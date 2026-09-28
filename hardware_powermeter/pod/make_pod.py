@@ -103,7 +103,45 @@ PLACA_W, PLACA_H, PLACA_ESP = MD.W, MD.H, MD.THICKNESS
 # them, so a 13 mm cell left 0,75 and the rib had nowhere to stand. The
 # cell gives the width and keeps its length: 23 x 11 x 2,5 is 633 mm3,
 # against 748 on the 16 mm board and 862 before the wire slot moved.
-CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 11.0, 2.5, 0.5
+# 4,0 mm of thickness and not 2,5, decided by the owner on 2026-09-28 after
+# the capacity was recomputed and the old premise turned out to be wrong.
+# docs/02 carried "a 100 mAh cell is 2,5 mm thick", and no cell of 23 x 11 mm
+# is 100 mAh at any thickness: calibrating the volumetric capacity of small
+# LiPo pouches on four standard sizes (401230, 301020, 501225, 401020) gives
+# 0,077 mAh/mm3, so this footprint holds
+#
+#     2,5 mm -> 632 mm3 -> ~49 mAh -> 32 h at 1,5 mA   (pod 8,5)
+#     4,0 mm -> 1012 mm3 -> ~78 mAh -> 52 h            (pod 10,0)
+#
+# and the requirement is 50 h. The 8,5 mm pod only ever closed because the
+# capacity was wrong. The class reference runs to 13 mm of height, so 10,0 is
+# still inside it.
+# 23 x 11 x 4,0, and each of the three is a measured limit rather than a
+# choice:
+#
+#   4,0 of thickness   is what the 50 h need. docs/02 carried "a 100 mAh cell
+#                      is 2,5 mm thick", and no cell of this footprint is
+#                      100 mAh at any thickness: calibrating small LiPo
+#                      pouches on four standard sizes (401230, 301020,
+#                      501225, 401020) gives 0,077 mAh/mm3, so 2,5 mm held
+#                      ~49 mAh and 32 h. The owner chose 4,0 and a 10,0 mm
+#                      pod over a thinner pod that misses the requirement.
+#   11 of width        is the board: 14 mm, less the ledges, less the room a
+#                      cradle rib needs on the side away from the wall.
+#   23 of LENGTH       is the back FACE, not the slot. At 24 and 25 mm the
+#                      cell's shadow reaches past x 28 and the ferrite and
+#                      the rail-side reservoir lose their place on the back -
+#                      measured on 2026-09-28, one length after another.
+#
+# 1012 mm3 -> ~78 mAh -> 52 h at 1,5 mA, which TIES the class reference and
+# does not beat it. Beating it means the 10 kOhm bridge (the bridge is 40 %
+# of the current), and the owner chose to keep the 5 kOhm part.
+CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 11.0, 4.0, 0.5
+# The cell's own leads: a pouch of this size ships with a two-wire tail, and
+# it is what rises through the channel at the left end into J102. Drawn
+# because a battery without its wires is not the part anyone buys.
+CELULA_FIO_D = 0.9            # the lead, insulation included
+CELULA_FIO_PASSO = 2.5        # between the two leads, as J102's holes are
 # From the board's left end, and the number is set by the SLOT: the
 # bridge's five holes are at the middle of the board and the floor is cut
 # under them (pod x 30,45 to 40,95, measured on 2026-09-27), so the cell
@@ -175,7 +213,12 @@ RAIO_CONC = 2.5
 # part that gets bought has to be measured against it, and PD2 is what
 # measures it (09-modulo-de-radio.md).
 MODULO_ALT_MAX = 2.40
-ALVO = (60.0, 20.0, 8.5)      # docs/02, Requisitos: the envelope target
+# 10,0 of height and not 8,5. The 8,5 came from a capacity that was wrong
+# (see CELULA_ESP): no cell of 23 x 11 mm holds 100 mAh at 2,5 mm thick,
+# and the one that does fit 2,5 gives 32 h against a requirement of 50.
+# The owner chose the runtime on 2026-09-28. The class reference runs to
+# 13 mm of height, so 10,0 is still inside it.
+ALVO = (60.0, 20.0, 10.0)     # docs/02, Requisitos: the envelope target
 MASSA_ALVO = 20.0             # docs/02: module with cell, in grams
 # densities, g/cm3, for the mass ESTIMATE (page 3 says they are estimates):
 # printed resin or nylon, silicone potting, FR-4, a LiPo pouch (3,5 g for a
@@ -251,24 +294,43 @@ DRENO_L, DRENO_P = 1.20, 0.50  # the channel out of the well: width and depth
 # does not show. The thin PAREDE stays as the number the old drawings used.
 PAREDE_EFET = PAREDE   # kept as a name; the wall IS the sealing wall
 
-# What the closing screws cost, computed and not guessed. A boss is
-# PARAF_BOSS_D across and needs 0,4 mm of clearance to the board; the board
-# takes the middle, so each end has to hold its own boss in the room it
-# already has - the cell's wire channel on the left, the board's play on the
-# right - and the pod grows by whatever is missing.
+# What the closing screws cost, and how most of it was given back.
+#
+# The first arrangement put a boss outside the board at EACH end, which cost
+# 5,4 mm of pod length - and the owner was right that the pod had not got
+# smaller. The right-hand screw now goes THROUGH the board: a boss of
+# PARAF_BOSS_D rises from the floor to the underside, a narrower neck of
+# PARAF_PESCOCO_D passes through a hole in the board, and the screw comes
+# down from the lid into it. That costs nothing in length.
+#
+# It can only be done on ONE side. A post that pierces the board needs floor
+# under it with no cell, and the cell runs from the board's x 2,5 to 25,5;
+# past it there are 8,5 mm before the module starts. The left end has no
+# such window - the cell is there - so that screw keeps its boss, in the
+# cell's own wire channel, and only the difference is paid.
 PARAF_VAO = 0.4
+PARAF_PESCOCO_D = 2.00        # the neck that passes through the board
+PARAF_FURO_PLACA = 2.20       # the hole the board has to carry for it
 _boss = PARAF_BOSS_D + 2.0 * PARAF_VAO
 PARAF_EXTRA_ESQ = max(0.0, _boss - CANAL_FIO)
-PARAF_EXTRA_DIR = max(0.0, _boss - FOLGA_PLACA)
+PARAF_EXTRA_DIR = 0.0
 
 W_P = (PAREDE_EFET + CANAL_FIO + PARAF_EXTRA_ESQ + PLACA_W
        + FOLGA_PLACA + PARAF_EXTRA_DIR + PAREDE_EFET)
 H_P = PLACA_H + 2.0 * (FOLGA_PLACA + PAREDE_EFET)
 PLACA_X0 = PAREDE_EFET + CANAL_FIO + PARAF_EXTRA_ESQ
 PLACA_Y0 = PAREDE_EFET + FOLGA_PLACA
-# the two screws, on the centre line, one in each end's own room
-PARAF_XY = ((PAREDE_EFET + (CANAL_FIO + PARAF_EXTRA_ESQ) / 2.0, H_P / 2.0),
-            (W_P - PAREDE_EFET - (FOLGA_PLACA + PARAF_EXTRA_DIR) / 2.0, H_P / 2.0))
+# The two screws, on the centre line. The left one sits in the wire
+# channel; the right one is THROUGH the board, in the window between the
+# cell's end and the module - and its x is derived from the cell, not
+# written down, so it follows if either of them moves.
+PARAF_X_ESQ = PAREDE_EFET + (CANAL_FIO + PARAF_EXTRA_ESQ) / 2.0
+# taken from the BOARD's hole and not computed again here: the two have to
+# be the same point, and deriving it twice is how they drift apart
+PARAF_X_DIR = PLACA_X0 + MD.FUROS_DOC[0][0]
+PARAF_XY = ((PARAF_X_ESQ, H_P / 2.0), (PARAF_X_DIR, PLACA_Y0 + MD.FUROS_DOC[0][1]))
+# which of them pierces the board
+PARAF_NA_PLACA = (False, True)
 CELULA_Z0 = FUNDO
 CELULA_Z1 = FUNDO + CELULA_ESP
 PLACA_Z0 = CELULA_Z1 + CELULA_VAO

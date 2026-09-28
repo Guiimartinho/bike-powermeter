@@ -39,6 +39,19 @@ LOG_MODULE_REGISTER(ads1220, CONFIG_PM_ADC_ADS1220_LOG_LEVEL);
 /* CONFIG1 (table 8-11) */
 #define CFG1_DR_SHIFT       5
 #define CFG1_MODE_NORMAL    (0x0U << 3)
+/*
+ * Duty-cycle mode (MODE 01, table 8-11). The device converts at 1/4 of the
+ * chosen data rate and powers its analogue front end down in between, which
+ * takes the converter from 585 to 190 uA AND - because the PSW switch that
+ * feeds the bridge opens with it (8.3.9) - takes the bridge's own current
+ * down with it. On this board that is 1,50 mA to 0,68 and 52 h to 114.
+ *
+ * It costs noise: the filter keeps the noise of normal mode at 1 kSPS,
+ * about twice. docs/02 records that this was prohibitive with the 45 degree
+ * shear pattern, which gives 0,31 mV, and is comfortable with the bending
+ * pattern the owner chose, which gives 2,76.
+ */
+#define CFG1_MODE_DUTY      (0x1U << 3)
 #define CFG1_CM_CONTINUOUS  0x04U
 /* CONFIG2 (table 8-13) */
 #define CFG2_VREF_SHIFT     6
@@ -63,6 +76,8 @@ struct ads1220_config {
     uint8_t vref_code;
     bool pga_bypass;
     bool psw;
+    /* MODE 01: convert at a quarter of the rate and power down between */
+    bool duty_cycle;
 };
 
 struct ads1220_data {
@@ -121,7 +136,8 @@ static void build_config(const struct device *dev, uint8_t mux, bool continuous)
 
     data->cfg[0] = (uint8_t)((mux << CFG0_MUX_SHIFT) | (cfg->gain_code << CFG0_GAIN_SHIFT) |
                              (cfg->pga_bypass ? CFG0_PGA_BYPASS : 0U));
-    data->cfg[1] = (uint8_t)((cfg->dr_code << CFG1_DR_SHIFT) | CFG1_MODE_NORMAL |
+    data->cfg[1] = (uint8_t)((cfg->dr_code << CFG1_DR_SHIFT) |
+                             (cfg->duty_cycle ? CFG1_MODE_DUTY : CFG1_MODE_NORMAL) |
                              (continuous ? CFG1_CM_CONTINUOUS : 0U));
     data->cfg[2] = (uint8_t)((cfg->vref_code << CFG2_VREF_SHIFT) | (cfg->psw ? CFG2_PSW : 0U));
     data->cfg[3] = CFG3_DEFAULT;
@@ -348,6 +364,7 @@ static int ads1220_init(const struct device *dev)
         .vref_code = VREF_CODE(DT_DRV_INST(inst)),                                           \
         .pga_bypass = DT_INST_PROP(inst, pga_bypass),                                        \
         .psw = DT_INST_PROP(inst, low_side_switch),                                          \
+        .duty_cycle = DT_INST_PROP(inst, duty_cycle),                                        \
     };                                                                                       \
     DEVICE_DT_INST_DEFINE(inst, ads1220_init, NULL, &ads1220_data_##inst,                    \
                           &ads1220_config_##inst, POST_KERNEL,                               \

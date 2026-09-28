@@ -240,7 +240,7 @@ def main() -> int:
         base, m_fios4,
         PD.deslocar(PD.juntar(concha, celula), 22.0),
         PD.deslocar(placa, 40.0),
-        PD.deslocar(pod.anel_oring(), 52.0),
+        pod.anel_oring(52.0),
         PD.deslocar(PD.juntar(tampa, pod.junta_3d()), 60.0))
     PD.renderizar(t, c, "conjunto-3d-produto.png", 1900, 1500, 205.0, 22.0)
 

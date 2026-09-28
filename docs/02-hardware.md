@@ -41,7 +41,7 @@ flowchart LR
     end
     subgraph EN["Energia"]
         P["nPM1100<br/>carga + buck 3,0 V"]
-        BAT["LiPo 100 mAh<br/>com proteção"]
+        BAT["LiPo 78 mAh<br/>23 × 11 × 4,0, com proteção"]
         F["MAX17048<br/>I2C"]
         P --- BAT
         BAT --- F
@@ -82,7 +82,7 @@ Estimativas de projeto a partir dos datasheets; nenhuma medida ainda.
 | Pedalando | TMP117 a 1 Hz | 0,004 mA | 3,5 µA |
 | Pedalando | nRF54L15 com BLE a 1 Hz e ANT+ a 4 Hz | 0,3 mA | estimativa de projeto; medir no DK |
 | Pedalando | MAX17048 | 0,003 mA | 3 µA em hibernate |
-| **Pedalando, total** | | **≈ 1,5 mA** | 100 mAh dão cerca de 66 h e 150 mAh cerca de 100 h: **acima das 50 h do requisito**. Com a ponte de 1 kΩ eram 3,9 mA e 38 h, abaixo |
+| **Pedalando, total** | | **≈ 1,5 mA** | a célula que cabe no pod é 23 × 11 × 4,0 e vale **~78 mAh**, que dão **52 h**: acima das 50 h do requisito, e empatando com a referência da classe. Com a ponte de 1 kΩ eram 3,9 mA e 20 h |
 | Parado | BMA400 a 100 Hz, ADS1220 em power-down entre rajadas de 8 amostras a cada 10 s, MCU em System ON dormindo, nPM1100 | ≈ 20 µA | 3,5 + 0,4 + a média das rajadas + ~10 + 0,8 µA |
 | Dormindo (10 min parado) | BMA400 em low-power a 25 Hz com a interrupção de despertar, ADS1220 em power-down, rádio anunciando a cada 2 s | ≈ 15 µA | 0,85 + 0,4 + ~10 + 0,8 µA |
 | Guardado | ship mode do nPM1100 | 0,46 µA | PS v1.5 |
@@ -98,16 +98,20 @@ O maior consumidor pedalando é a ponte, e a primeira versão desta tabela a con
 
 **O que falta confirmar, e é o risco desta decisão:** que exista **ponte completa de flexão numa peça só** em 5 kΩ. O catálogo da Micro-Measurements trata "padrões de ponte completa" e "padrões de alta resistência, de 350 Ω a 20 kΩ" como **duas famílias separadas**, o que já é sinal de que a interseção pode não existir; as páginas de padrão são carregadas por script e não abriram desta máquina em 2026-09-28, então isso se confirma com o fornecedor.
 
-**Se não existir em 5 kΩ, recalculado:**
+**A combinação que esta tabela não tinha, e que decide o produto:**
 
-| Ponte | Modo | Total pedalando | 100 mAh | 150 mAh |
-|---|---|---|---|---|
-| 5 kΩ | contínuo | 1,50 mA | 67 h | 100 h |
-| 1 kΩ | contínuo | 3,90 mA | 26 h | 39 h |
-| **1 kΩ** | **duty-cycle 30 %** | **1,40 mA** | **71 h** | 107 h |
-| 350 Ω | duty-cycle 30 % | 3,07 mA | 33 h | 49 h |
+| Ponte | Modo | Ponte | ADS1220 | Rádio | **Total** | Com 78 mAh |
+|---|---|---|---|---|---|---|
+| 5 kΩ | contínuo | 0,600 | 0,585 | 0,300 | **1,50 mA** | **52 h** |
+| **5 kΩ** | **duty-cycle 30 %** | **0,180** | **0,190** | 0,300 | **0,68 mA** | **114 h** |
+| 1 kΩ | duty-cycle 30 % | 0,900 | 0,190 | 0,300 | 1,40 mA | 56 h |
+| 1 kΩ | contínuo | 3,000 | 0,585 | 0,300 | 3,90 mA | 20 h |
 
-A linha que resolve é a terceira: com o **modo duty-cycle do ADS1220** a ponte de 1 kΩ fica melhor que os 5 kΩ contínuos, 1,40 mA contra 1,50, porque o conversor também cai de 0,585 para 0,190 mA nesse modo. E a célula continua sendo a de 100 mAh, ou seja, **o pod continua em 8,5 mm**. O preço é ruído: o filtro passa a ter o ruído do modo normal a 1 kSPS, cerca do dobro. Isso era proibitivo com o padrão de cisalhamento, que dá 0,31 mV, e é folgado com o de flexão, que dá 2,76 mV ([06](06-medicao-e-calibracao.md#cisalhamento-ou-flexão-o-padrão-especificado-está-errado)).
+**Decidido pelo dono em 2026-09-28: modo duty-cycle com a ponte de 5 kΩ.** A versão anterior desta página tinha os dois números do modo duty-cycle soltos — o conversor cai de 0,585 para 0,190 mA, e a ponte fica ligada 30 % do tempo porque o `PSW` que a alimenta abre junto (SBAS501D 8.3.9) — mas **nunca multiplicou os dois com a ponte de 5 kΩ**: a tabela só testava duty-cycle com 1 kΩ, de quando a ponte ainda era 1 kΩ. Juntos, eles cortam **55 % do consumo**, sem trocar uma peça e sem um milímetro a mais.
+
+O preço é ruído: o filtro passa a ter o ruído do modo normal a 1 kSPS, cerca do dobro. Isso era proibitivo com o padrão de cisalhamento, que dá 0,31 mV, e é **folgado com o de flexão**, que dá 2,76 mV ([06](06-medicao-e-calibracao.md#cisalhamento-ou-flexão-o-padrão-especificado-está-errado)) — a relação sinal-ruído continua ordens de grandeza acima do necessário.
+
+O modo está ligado no devicetree das duas placas (`duty-cycle;` no nó `ads1220`) e é o driver próprio que escreve `MODE = 01` no `CONFIG1`. **Não foi medido em bancada**: os 0,68 mA vêm da ficha do conversor, não de um amperímetro.
 
 Só 350 Ω é que aperta: nem com duty-cycle fecha as 50 h numa célula de 100 mAh, e subir para 200 mAh leva o pod de 8,5 para cerca de 11 mm. Nesse caso é melhor voltar aos quatro extensômetros separados de 5 kΩ e pagar o alinhamento.
 

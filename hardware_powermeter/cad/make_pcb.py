@@ -181,6 +181,14 @@ def LIMITE_DESLOCA(ref: str) -> float:
         if dono == MODULO_DE_RADIO:
             return 4.0
         return 6.0
+    if ref == "C203":
+        # The reservoir on the RAIL side of the module's pi filter. Its job
+        # is to hold charge on 3V0, not to close a fast loop: the loop that
+        # has to be short is C201 to the module's pin (0,5 mm, and it gets
+        # the 4,0 above), and the ferrite is between the two. Holding a bulk
+        # capacitor on the far side of a ferrite to 10 mm is a number with
+        # nothing behind it, and on a 47 x 14 board it costs a real place.
+        return 14.0
     if ref in DECOPLA or ref in JUNTO:
         # a pull-up, a configuration resistor or an ESD array: near, but
         # nothing in a datasheet holds them to a millimetre
@@ -214,7 +222,7 @@ BORDA_FIXA: dict[str, tuple[float, float, int]] = {
     # band on the +x edge: the footprint's antenna is at -Y, and 270 turns
     # it to +X (dry_run_pcb.rect_antena reads the angle the same way). The
     # origin is the body centre, so x is W minus half the 17,0 courtyard.
-    "U201": (_W - 8.5, _H / 2.0, 270),
+    "U201": (_W - M._MOD_COMP / 2.0, _H / 2.0, 270),
     # The magnetic connector along the top edge, plungers up through the
     # pod's lid: 18,5 x 5,5 courtyard from y 0,55 to 6,05, centred between
     # the energy block and the module (make_dxf.XE and XM).
@@ -657,7 +665,15 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
     # are not. What IS in both lists is what goes through the board - the
     # mounting hole and its keep-out - because that really does take the room
     # on both faces.
-    furos = [(fx - raio, fy - raio, fx + raio, fy + raio)
+    # ...unless the hole is not for a screw HEAD. This board's one hole
+    # passes the NECK of a post that rises from the pod's floor; the screw
+    # and its head are up on the lid and never touch the board. Reserving
+    # 2,45 mm for a head that is not there took 5 mm of the middle of a 14 mm
+    # board and left the magnetic connector without a place (2026-09-28).
+    raio_furo = getattr(M, "FURO_RESERVA_R", None)
+    if raio_furo is None:
+        raio_furo = raio
+    furos = [(fx - raio_furo, fy - raio_furo, fx + raio_furo, fy + raio_furo)
              for fx, fy in M.FUROS_DOC]
     # Corredores sem peca, so na frente: faixas que o roteamento precisa e
     # que o colocador enchia de peca miuda. O primeiro fica em cima dos

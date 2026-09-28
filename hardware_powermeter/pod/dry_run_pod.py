@@ -360,11 +360,20 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     if not C.PARAF_XY:
         problemas.append("nao ha parafuso nenhum: a tampa depende so da cola")
     cavidade = (C.PAREDE, C.PAREDE, C.W_P - C.PAREDE, C.H_P - C.PAREDE)
-    for cx, cy in C.PARAF_XY:
+    for i, (cx, cy) in enumerate(C.PARAF_XY):
         b = (cx - C.PARAF_BOSS_D / 2, cy - C.PARAF_BOSS_D / 2,
              cx + C.PARAF_BOSS_D / 2, cy + C.PARAF_BOSS_D / 2)
-        if _cruza(b, placa):
+        atravessa = C.PARAF_NA_PLACA[i]
+        if _cruza(b, placa) and not atravessa:
             problemas.append(f"o ressalto em ({f2(cx)}; {f2(cy)}) invade a placa")
+        if atravessa:
+            # it pierces the board on purpose, and then the BOARD has to
+            # carry the hole for it - if it does not, the post has nowhere
+            # to pass and nothing else would say so
+            furos = [(C.PLACA_X0 + fx, C.PLACA_Y0 + fy) for fx, fy in C.MD.FUROS_DOC]
+            if not any(abs(fx - cx) < 0.05 and abs(fy - cy) < 0.05 for fx, fy in furos):
+                problemas.append(f"o parafuso em ({f2(cx)}; {f2(cy)}) atravessa a placa "
+                                 "e a placa nao tem furo nesse ponto")
         if _cruza(b, celula):
             problemas.append(f"o ressalto em ({f2(cx)}; {f2(cy)}) invade a celula")
         if not _dentro(b, cavidade, 0.0):
@@ -452,8 +461,11 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     if C.RELEVO < 0.5:
         problemas.append(f"o relevo fora da base tem {f2(C.RELEVO)} e nao livra a concordancia")
     if pilha > C.QUADRO:
-        problemas.append(f"a pilha cola + pod e {f2(pilha)} e o quadro da classe deixa "
-                         f"{f2(C.QUADRO)}: bate na corrente ou no quadro")
+        problemas.append(f"a pilha cola + pod e {f2(pilha)} e a folga de quadro reservada e "
+                         f"{f2(C.QUADRO)}. Isto e um REQUISITO SOBRE A BICICLETA, nao um defeito "
+                         "do pod: o quadro tem de dar pelo menos "
+                         f"{f2(pilha)} mm entre a face interna do braco e o que estiver mais "
+                         "perto. Meca com um paquimetro antes de colar")
     if problemas:
         r.falha("PD17", "; ".join(problemas))
     else:
