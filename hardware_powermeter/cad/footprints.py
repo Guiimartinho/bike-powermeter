@@ -109,6 +109,12 @@ CORPO_TODOS: dict[str, tuple[float, float, float]] = {}
 CORPO: dict[str, tuple[float, float, float]] = {
     # nome do footprint -> largura, altura em planta, altura do corpo (mm)
     "pmeter:MinewSemi_ME54BS13_16.5x12mm": (12.00, 16.50, 2.40),
+    # HOLYIOT-26001-A: 10,0 x 12,5 do desenho mecanico. A ALTURA nao consta
+    # no anuncio e 2,40 e a do ME54BS13, posta aqui como reserva ate alguem
+    # medir uma peca - ela decide o teto da tampa do pod (PD2), entao um
+    # numero errado aqui vira uma tampa que nao fecha
+    # (09-modulo-de-radio.md, O que falta confirmar).
+    "pmeter:HOLYIOT_26001A_10x12.5mm": (10.00, 12.50, 2.40),
     "pmeter:TPD4E05U06_USON-10_1x2.5mm_P0.5mm": (1.00, 2.50, 0.55),
     # TUOZHAN S4-3528RGBTA-A: 3,5 x 2,8 x 1,9
     "pmeter:LED_RGB_3528_3.5x2.8mm": (3.50, 2.80, 1.90),
@@ -1047,6 +1053,121 @@ def me54bs13() -> str:
     return corpo[:-2] + faixa + ")\n"
 
 
+# ---------------------------------------------------------- HOLYIOT-26001-A
+# Every number below is off the maker's mechanical drawing, read on
+# 2026-09-28 and written up in 09-modulo-de-radio.md. The drawing closes on
+# itself by three independent routes, which is the only reason to trust it
+# without a part on the bench: 7 column pads over 7,2 mm give 6 x 1,2; 8
+# bottom pads over 8,4 give 7 x 1,2, the same pitch; and from the last
+# column pad (3,8 + 7,2 = 11,0 from the top edge) to the bottom row (12,25)
+# there are 1,25 mm, the same pitch once more.
+HOLY_W, HOLY_H = 10.00, 12.50
+HOLY_PASSO = 1.20
+HOLY_Y0 = 3.80                  # top edge to the first column pad's centre
+HOLY_X_CAST = 0.50              # castellated column centre, from each edge
+HOLY_X_LGA = 2.50               # LGA column centre, from each edge
+HOLY_ANT = 3.80                 # the antenna band: top edge to the first pad
+# The pads the MODULE has. The land pattern is this project's, like the
+# ME54BS13's: Holyiot publishes no land pattern either.
+HOLY_PAD_CAST = (1.00, 0.60)    # side castellation: into the board x along it
+HOLY_PAD_LGA = (1.00, 0.80)
+HOLY_PAD_BAIXO = (0.60, 0.50)
+# A castellated land has to run PAST the body, or the solder fillet forms
+# inside the module's shadow where nobody can see it and no optical
+# inspection can judge it. IPC-7351's practice for castellations is the
+# module's own pad plus a toe, and 0,50 mm is what the ME54BS13's footprint
+# uses here (half in, half out). The LGA pads stay as they are: they are
+# under the body by definition and there is no fillet to look at.
+HOLY_TOE = 0.50
+
+# The pin names, in the drawing's own order. Written out instead of
+# generated, because the order is NOT a formula: it runs down the left
+# castellations, left to right along the bottom, UP the right castellations,
+# then down the left LGA column and UP the right one.
+HOLY_PINOS = [
+    # 1..7, left castellations, top to bottom
+    "NRESET", "P0.02", "P0.01", "SWDIO", "SWDCLK", "P2.10", "P2.09",
+    # 8..15, bottom row, left to right
+    "P2.05", "P2.00", "P2.01", "P2.08", "P1.08", "P1.07", "P1.06", "VDD",
+    # 16..22, right castellations, bottom to top
+    "P2.04", "P1.05", "P1.04", "P1.15", "P1.14", "P1.13", "P1.09",
+    # 23..29, left LGA column, top to bottom
+    "GND", "P0.03", "P0.00", "P0.04", "P2.06", "P2.07", "P2.03",
+    # 30..36, right LGA column, bottom to top
+    "P2.02", "P1.03", "P1.02", "P1.12", "P1.11", "P1.10", "GND",
+]
+
+
+def holyiot_26001a() -> str:
+    """HOLYIOT-26001-A, nRF54L15 with a ceramic antenna, 10,0 x 12,5 mm.
+
+    36 pads: a castellated column and an LGA column on each side, seven each,
+    and eight castellations along the bottom edge. The pad NAMES carry the
+    port pin (`P1.11`), not the pin number, because that is what the
+    netlist and `board_check.py` compare against the silicon - the two `GND`
+    pads are told apart by a suffix.
+
+    The origin is the body centre and the antenna is at -Y, which is up on
+    the screen, the same convention the ME54BS13's footprint uses.
+    """
+    W, H = HOLY_W, HOLY_H
+    ys = [HOLY_Y0 + i * HOLY_PASSO for i in range(7)]      # from the TOP edge
+    xs_baixo = [(W - 8.40) / 2.0 + i * HOLY_PASSO for i in range(8)]
+    y_baixo = H - HOLY_PAD_BAIXO[1] / 2.0
+
+    def fx(x):
+        return x - W / 2.0
+
+    def fy(y):
+        return y - H / 2.0          # drawing Y down, footprint Y down too
+
+    nomes = list(HOLY_PINOS)
+    vistos: dict[str, int] = {}
+    for i, n in enumerate(nomes):
+        if nomes.count(n) > 1:
+            vistos[n] = vistos.get(n, 0) + 1
+            nomes[i] = f"{n}{vistos[n]}"
+
+    pads = []
+    cw, ch = HOLY_PAD_CAST
+    lw, lh = HOLY_PAD_LGA
+    bw, bh = HOLY_PAD_BAIXO
+    # the castellated lands run HOLY_TOE past the body: the module's pad is
+    # cw deep from the edge, the land is cw + toe, so its centre moves out
+    cw_l = cw + HOLY_TOE
+    x_cast_l = HOLY_X_CAST - HOLY_TOE / 2.0
+    bh_l = bh + HOLY_TOE
+    y_baixo_l = y_baixo + HOLY_TOE / 2.0
+    for i in range(7):                                     # 1..7
+        pads.append(_pad(nomes[i], fx(x_cast_l), fy(ys[i]), cw_l, ch, forma="rect"))
+    for i in range(8):                                     # 8..15
+        pads.append(_pad(nomes[7 + i], fx(xs_baixo[i]), fy(y_baixo_l), bw, bh_l,
+                         forma="rect"))
+    for i in range(7):                                     # 16..22, bottom up
+        pads.append(_pad(nomes[15 + i], fx(W - x_cast_l), fy(ys[6 - i]), cw_l, ch,
+                         forma="rect"))
+    for i in range(7):                                     # 23..29, top down
+        pads.append(_pad(nomes[22 + i], fx(HOLY_X_LGA), fy(ys[i]), lw, lh, forma="rect"))
+    for i in range(7):                                     # 30..36, bottom up
+        pads.append(_pad(nomes[29 + i], fx(W - HOLY_X_LGA), fy(ys[6 - i]), lw, lh,
+                         forma="rect"))
+
+    corpo = _corpo("pmeter:HOLYIOT_26001A_10x12.5mm", W, H, pads,
+                   "HOLYIOT-26001-A, nRF54L15 com antena ceramica; 22 pads "
+                   "castelados e 14 LGA. Land pattern NAO oficial: cotas lidas "
+                   "do desenho mecanico do anuncio (09-modulo-de-radio.md)")
+    faixa = (f'\t(fp_rect\n\t\t(start {-W / 2.0:.3f} {-H / 2.0:.3f})\n'
+             f'\t\t(end {W / 2.0:.3f} {-H / 2.0 + HOLY_ANT:.3f})\n'
+             '\t\t(stroke (width 0.12) (type dash))\n\t\t(fill none)\n'
+             '\t\t(layer "Dwgs.User")\n'
+             f'\t\t(uuid "{_uid("holy", "ant")}")\n\t)\n'
+             f'\t(fp_text user "antena ceramica: para FORA da borda, sem terra embaixo"\n'
+             f'\t\t(at 0 {-H / 2.0 - 1.0:.3f} 0)\n\t\t(layer "Dwgs.User")\n'
+             f'\t\t(uuid "{_uid("holy", "txt")}")\n'
+             '\t\t(effects (font (size 0.6 0.6) (thickness 0.1)))\n\t)\n')
+    return corpo[:-2] + faixa + ")\n"
+
+
 # the generated ones, assigned
 _fp("D101", "pmeter:TPD4E05U06_USON-10_1x2.5mm_P0.5mm", "GERADO", "")
 _fp("D201", "pmeter:LED_RGB_3528_3.5x2.8mm", "GERADO",
@@ -1060,6 +1181,7 @@ _fp("J301", "pmeter:Furos_Ponte_5x1.5mm_P2mm", "GERADO",
 _fp("U201", "pmeter:MinewSemi_ME54BS13_16.5x12mm", "GERADO",
     "modulo de radio; a Minew nao publica land pattern")
 GERADOS["pmeter:MinewSemi_ME54BS13_16.5x12mm"] = me54bs13()
+GERADOS["pmeter:HOLYIOT_26001A_10x12.5mm"] = holyiot_26001a()
 
 # every generated footprint gets its body last, once they all exist
 _com_modelo()
