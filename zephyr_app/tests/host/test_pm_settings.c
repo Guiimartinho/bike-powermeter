@@ -377,6 +377,14 @@ static void test_bad_text_values_change_nothing(void)
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "crank", "-172.5"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "radius", "60x"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "radius", "70000"));
+    /* An empty value on an INTEGER key. `$CFG,radius,` with nothing after
+     * the comma arrives here as "", and strtoll on "" sets no errno and
+     * leaves end == text, so without the explicit guard at the top of
+     * parse_long it would read as a perfectly good zero. The guard was
+     * there and untested: this is the line gcov reported uncovered on
+     * 2026-09-28. The float keys already had their empty case ("k2"
+     * below); the integer ones did not. */
+    TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "radius", ""));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "side", "X"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "sign", "2"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "zero", "9999999999"));
