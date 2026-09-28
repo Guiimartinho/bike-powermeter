@@ -1387,12 +1387,23 @@ def main() -> int:
 
     # -- ME2: cabe sob a tampa, e a face de tras e plana? ------------------
     # docs/02 (Pod) gives the stack: the cell under the board, the parts of
-    # the front under the lid. So the front has one ceiling, make_dxf's
-    # TETO_TAMPA, and the back has NONE: a part with a body on the back
-    # would stand on the cell. A part taller than the shadow it stands in
+    # the front under the lid. A part taller than the shadow it stands in
     # does not fit, and no DRC will ever say so - which is the whole reason
     # the heights had to come from the datasheets.
-    TETOS = ((M.SOMBRA_TAMPA, M.TETO_TAMPA, False),)
+    #
+    # The back face has TWO ceilings, and until 2026-09-28 this rule knew
+    # only the harsher one: it refused every back-side body outright, on
+    # the premise that anything back there stands on the cell. That premise
+    # stopped being true when the cell shrank to 23 of the board's 47 mm.
+    # Past it the pod's floor is recessed and there is 1,0 mm, which is why
+    # `SOMBRA_VERSO_MAX_1-0MM` exists and why 04-placa.md puts eleven parts
+    # on the back on purpose. The pod's own PD4 measures the air under each
+    # of them and passes; this rule was failing the same parts. Two rules
+    # of the same project disagreeing about the same millimetre is worse
+    # than either being wrong alone, because both look measured.
+    TETOS = ((M.SOMBRA_TAMPA, M.TETO_TAMPA, False),
+             (M.SOMBRA_CELULA, 0.0, True),
+             (M.SOMBRA_VERSO, 1.0, True))
     altos = []
     sem_altura = []
     sem_zona: set = set()
@@ -1425,8 +1436,6 @@ def main() -> int:
                 continue                      # not under this shadow
             if h > teto + 1e-9:
                 altos.append((ref, h, teto, znome))
-        if pe["atras"] and h > 1e-9:
-            altos.append((ref, h, 0.0, "a face de tras (plana, sob a celula)"))
     if sem_zona:
         falhou("ME2", "nao mede nada: as zonas " + ", ".join(sorted(sem_zona))
                       + " nao existem no make_dxf - o teto da tampa sobre a "
@@ -1439,8 +1448,10 @@ def main() -> int:
     else:
         n_tras = sum(1 for pe in pecas.values() if pe["atras"])
         ok.append(f"ME2: nenhuma peca da frente passa do teto da tampa "
-                  f"({TETOS[0][1]:.1f} mm) e as {n_tras} da face de tras sao pads "
-                  f"sem corpo; {len(sem_altura)} pecas sem altura conhecida")
+                  f"({TETOS[0][1]:.1f} mm) e nenhuma das {n_tras} da face de "
+                  f"tras passa do teto da sombra em que esta (0,0 mm sob a "
+                  f"celula, 1,0 fora dela); {len(sem_altura)} pecas sem "
+                  f"altura conhecida")
 
     # -- IM1: os eixos do acelerometro --------------------------------------
     # Trocar radial por tangencial mete o termo centripeto dentro da
