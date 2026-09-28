@@ -22,6 +22,28 @@ Com `Vref = Vexc`, o código não depende de `Vexc`, e o firmware trabalha com u
 
 onde `c` é o código do ADS1220 (24 bits, complemento de dois, PGA 128), `c0` o zero e `s` a inclinação, os dois corrigidos pela temperatura `T` da ponte ([Temperatura](#temperatura)).
 
+### Cisalhamento ou flexão: o padrão especificado está errado
+
+A lista de componentes especifica **padrão de cisalhamento a 45°**, que é o padrão de torquímetro de eixo. O braço do pedivela não é um eixo: é uma viga em balanço carregada na ponta pela força tangencial do pedal. Numa seção a `d` do pedal existem duas coisas, e elas moram em lugares diferentes da mesma face:
+
+- a **flexão**, no plano de rotação, cuja deformação é máxima junto das duas **bordas** da face e **zero no meio**;
+- o **cisalhamento**, cuja deformação é máxima **no meio** da face, que é a linha neutra da flexão, e zero nas bordas.
+
+Com números representativos, braço de alumínio, seção de 20 × 14 mm, 500 N de força tangencial e a grade a 60 mm do pedal:
+
+| Onde | Deformação | Saída da ponte cheia a 3 V |
+|---|---|---|
+| Grade a 45° no meio da face (cisalhamento) | 52 µε | 0,31 mV |
+| Grade axial junto da borda (flexão) | 459 µε | 2,76 mV |
+
+**A flexão dá 8,9 vezes mais sinal**, e é ela que corresponde aos "1 a 3 mV" e às "algumas centenas de µε" que esta própria página já dizia: os números do documento descrevem flexão, e o padrão especificado é de cisalhamento. Os dois não podem estar certos ao mesmo tempo.
+
+Pior que o sinal menor é a fragilidade: o cisalhamento só é máximo **exatamente** na linha neutra, e a poucos milímetros dela entra flexão, que é nove vezes maior. Uma colagem 2 mm fora do lugar contamina a leitura com o sinal que se queria evitar. Célula de carga de cisalhamento funciona porque a peça é usinada com alma fina, onde o cisalhamento domina; um braço de pedivela não tem alma.
+
+**Recomendação: ponte cheia de flexão**, quatro grades alinhadas com o eixo do braço, duas junto de cada borda da face interna, em braços opostos da ponte. Assim a flexão no plano de rotação soma, e a flexão lateral (a força do ciclista para dentro), a força axial e a temperatura cancelam, porque afetam as quatro grades com o mesmo sinal. O argumento clássico contra a flexão, que a saída depende de onde a carga é aplicada, não vale aqui: a carga está sempre no eixo do pedal, e a distância só entra na inclinação, que a calibração de cada unidade absorve.
+
+**O que isso puxa junto, e é decisão de compra:** a resistência. Padrões de ponte cheia de flexão num único filme, que é o que elimina o erro de alinhamento entre quatro colagens separadas, existem principalmente em 350 Ω e 1000 Ω. Em 1000 Ω a ponte volta a drenar 3 mA e as 50 h não fecham sem o modo duty-cycle do conversor ([02](02-hardware.md#orçamento-de-consumo)). Escolher o padrão e escolher a resistência é a mesma decisão, e ela ainda não foi tomada.
+
 **Escala.** A 200 W e 90 rpm o torque médio é 21 N·m; o pico numa pedalada forte passa de 100 N·m. Com extensômetros de fator 2 num braço de alumínio, a deformação de trabalho fica na casa de algumas centenas de µε, ou seja, 1 a 3 mV de saída da ponte a 3,0 V. Com ganho 128 o fundo de escala do conversor é ±23 mV, então sobra margem para o pico e para o zero deslocado pela colagem. A resolução sem ruído do sistema se calcula como em [1, 5.2.2]: com 2 mV de faixa útil e 1,6 µV pico a pico de ruído a 175 SPS (SBAS501D), são 2 mV / 1,6 µV ≈ 1250 contagens sem ruído por amostra, 0,08 % do fundo de escala, antes da média da volta, que divide isso por mais de dez.
 
 ## Amostragem

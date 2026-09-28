@@ -6,6 +6,9 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Medido
 
+- **O padrão de extensômetro especificado está errado para um braço de pedivela** (2026-09-28). A lista pede padrão de cisalhamento a 45°, que é padrão de torquímetro de eixo; o braço é viga em balanço. Numa seção de 20 × 14 mm de alumínio, com 500 N tangenciais e a grade a 60 mm do pedal, a grade a 45° no meio da face lê 52 µε e a grade axial junto da borda lê 459 µε: **8,9 vezes mais**. E são os 459 µε que correspondem aos "1 a 3 mV" que `docs/06` já declarava, ou seja, os números do documento sempre descreveram flexão. O cisalhamento ainda é frágil: só é máximo na linha neutra, e a 2 mm dela entra a flexão, nove vezes maior. Recomendação registrada em `docs/06`: ponte cheia de flexão, quatro grades axiais, duas por borda, que também cancela flexão lateral, força axial e temperatura. A escolha puxa a resistência junto, porque padrão de ponte cheia num filme só existe sobretudo em 350 e 1000 Ω, e 1000 Ω traz o consumo de volta a 3 mA.
+
+
 - **O envelope da classe, por fotogrametria, porque ninguém o publica** (2026-09-27). A foto de imprensa do fabricante traz o módulo colado num braço Shimano FC-M8100 marcado 170, e o centro do furo do eixo ao centro do furo do pedal são exatamente 170 mm: 0,1319 mm por pixel. A escala foi conferida por um segundo caminho, os dois contatos de carga do módulo, que dão 2,6 mm entre centros, o passo padrão de 2,5 mm de pino pogo, com cabeças de 1,3 a 1,6 mm. Resultado: **37 a 39 mm de comprimento**, 18 a 22 de largura e 9 a 13 de altura, esta última fraca porque nenhuma foto tem perfil. O alvo do projeto passa de 60 para **38 mm de comprimento**: o que se perseguia já era quase o dobro do que a classe faz.
 
 ### Decidido

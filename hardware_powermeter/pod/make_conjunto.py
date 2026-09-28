@@ -22,10 +22,14 @@ What is real and what is a placeholder, because the difference matters:
     between the two axes, a body that tapers from 30 to 20 mm of width and
     is 14 mm thick, a spindle boss of 34 mm and a pedal boss of 22. It is
     there to show WHERE things sit, not to be fabricated from;
-  - the gauges are drawn at the size of a transducer-class shear pattern
-    (about 6 x 4 mm of carrier), in the 45 degree pair that reads torque
-    (01-lista-de-componentes.md, Extensometros). Where exactly along the
-    arm they are bonded is still open, and it is what sets the slope.
+  - the gauges are drawn at the size of a transducer-class pattern, about
+    6 x 4 mm of carrier, four of them. They are drawn at 45 degrees because
+    that is what 01-lista-de-componentes.md still specifies, and docs/06
+    now says that specification is wrong for a crank arm: bending gives
+    8,9 times more signal than shear here and is far less sensitive to a
+    misplaced bond. When the pattern is settled, the angle in this drawing
+    settles with it. Where along the arm they are bonded is also still
+    open, and it is what sets the slope.
 """
 from __future__ import annotations
 
@@ -93,7 +97,7 @@ def braco(m: PD.Malha) -> None:
 # ---------------------------------------------------------------- gauges
 GRADE_W, GRADE_H = 6.0, 4.0     # carrier of a transducer-class shear pattern
 GRADE_ESP = 0.05                # foil plus carrier: five hundredths of a mm
-CENTRO_X = 26.0                 # under the pod, where the bridge's wires land
+CENTRO_X = 14.0                 # toward the spindle, just before the bridge's pads
 
 
 def _retangulo_girado(cx, cy, w, h, ang):
@@ -125,24 +129,39 @@ def extensometros(m: PD.Malha) -> list:
     return centros
 
 
-def fios(m: PD.Malha, centros: list, z_topo: float) -> None:
-    """Five wires from the gauges to the slot in the pod's floor.
+def ilhas_da_ponte(pecas) -> list:
+    """The five bridge pads, where they really are, not where they look nice.
 
-    They lie on the arm, gather under the pod and rise through the slot into
-    the five plated holes on the board's edge (06-conectores, J301). Drawn as
-    thin square wires so the picture reads; a real one is round, 30 AWG.
+    J301 is read from the placed board and its box turned into five centres
+    at the footprint's 2,0 mm pitch, so the wires in the picture land on the
+    pads the board actually has (06-conectores-e-pontos-de-teste.md, J301).
     """
-    cy = PD.H_P / 2.0
+    x0, y0, x1, y1 = PD.no_pod(pecas["J301"]["caixa"])
+    cy = (y0 + y1) / 2.0
+    meia = (x1 - x0) / 2.0 - 1.25            # half a pad in from each end
+    cx = (x0 + x1) / 2.0
+    return [(cx - meia + 2.0 * k * meia / 4.0, cy) for k in range(5)]
+
+
+def fios(m: PD.Malha, centros: list, ilhas: list, z_topo: float) -> None:
+    """Five wires from the gauges to the five plated holes of the board.
+
+    Each one runs on the arm from its gauge to the point under its own pad,
+    then rises through the slot in the pod's floor and into the hole, where
+    the solder is the strain relief. Drawn square so the picture reads; the
+    real one is round, about 30 AWG, in the load-cell colours.
+    """
     d = 0.32
-    alvo_x = CENTRO_X + 11.0
     for k, (nome, cor) in enumerate(FIOS):
-        y = cy - 3.0 + k * 1.5
-        x0 = centros[min(k, len(centros) - 1)][0]
-        # along the arm to the gathering point
-        m.caixa(min(x0, alvo_x), y - d / 2, FACE_Z, max(x0, alvo_x), y + d / 2,
-                FACE_Z + d, cor)
-        # then up into the pod
-        m.caixa(alvo_x - d / 2, y - d / 2, FACE_Z, alvo_x + d / 2, y + d / 2,
+        ax, ay = centros[min(k, len(centros) - 1)]
+        px, py = ilhas[k]
+        # along the arm, in two straight runs: across, then along
+        m.caixa(min(ax, px) - d / 2, ay - d / 2, FACE_Z,
+                max(ax, px) + d / 2, ay + d / 2, FACE_Z + d, cor)
+        m.caixa(px - d / 2, min(ay, py) - d / 2, FACE_Z,
+                px + d / 2, max(ay, py) + d / 2, FACE_Z + d, cor)
+        # then straight up through the slot into the hole
+        m.caixa(px - d / 2, py - d / 2, FACE_Z, px + d / 2, py + d / 2,
                 z_topo, cor)
 
 
@@ -155,6 +174,7 @@ def main() -> int:
     pecas = PD.ler_placa()
     pod = PD.Pod(pecas)
 
+    ilhas = ilhas_da_ponte(pecas)
     base = PD.Malha()
     braco(base)
     centros = extensometros(base)
@@ -162,26 +182,31 @@ def main() -> int:
     concha, tampa = pod.concha(), pod.tampa()
     placa, celula = PD.placa_3d(), pod.celula_3d()
 
-    # assembled: the pod closed on the arm, the way it is ridden
+    # assembled: the pod closed on the arm, the way it is ridden. The wires
+    # end at the board's underside, which is where the holes are.
     m_cola = PD.Malha()
     cola(m_cola)
     m_fios = PD.Malha()
-    fios(m_fios, centros, PD.PLACA_Z0)
+    fios(m_fios, centros, ilhas, PD.PLACA_Z0)
     t, c = PD.juntar(base, m_cola, m_fios, concha, celula, placa, tampa,
                      pod.junta_3d())
     PD.renderizar(t, c, "conjunto-3d-montado.png", 1900, 1000, 205.0, 34.0)
 
-    # opened: the pod lifted, so the gauges and the wires are visible
+    # opened: the pod lifted, the wires stretched to the board they solder
+    # into, so the path gauge -> slot -> hole is one continuous thing
     dz = 26.0
     m_fios2 = PD.Malha()
-    fios(m_fios2, centros, FACE_Z + 6.0)
+    fios(m_fios2, centros, ilhas, PD.PLACA_Z0 + dz)
     t, c = PD.juntar(base, m_fios2,
                      PD.deslocar(PD.juntar(concha, celula, placa), dz),
                      PD.deslocar(PD.juntar(tampa, pod.junta_3d()), dz + 16.0))
     PD.renderizar(t, c, "conjunto-3d-aberto.png", 1900, 1200, 205.0, 26.0)
 
-    # close up on the gauges alone, which is the part nobody has seen
-    t, c = PD.juntar(base, m_fios2)
+    # close up on the arm alone: the four gauges and the five wires standing
+    # where they enter the pod, which is the part nobody had seen
+    m_fios3 = PD.Malha()
+    fios(m_fios3, centros, ilhas, FACE_Z + 5.0)
+    t, c = PD.juntar(base, m_fios3)
     PD.renderizar(t, c, "conjunto-3d-extensometros.png", 1700, 900, 210.0, 46.0)
     return 0
 
