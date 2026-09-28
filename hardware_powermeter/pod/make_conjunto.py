@@ -52,7 +52,11 @@ COR_GRADE = (0.72, 0.45, 0.20)      # the gauge's copper grid on its carrier
 COR_CARRIER = (0.88, 0.84, 0.72)    # the polyimide carrier under it
 COR_COLA = (0.55, 0.52, 0.45)
 
-# the five wires, in the usual load-cell colours (06-conectores, J301)
+# The wires, in the usual load-cell colours (06-conectores, J301). The
+# bridge itself has FOUR: the S5229 is a complete bridge on one carrier, so
+# only its two corners of excitation and two of signal come out. The fifth
+# hole of J301 is the cable's shield, which is not a gauge terminal, and it
+# is drawn from the same place because that is where the cable is.
 FIOS = (
     ("E+", (0.70, 0.13, 0.13)),
     ("S+", (0.15, 0.50, 0.22)),
@@ -94,38 +98,56 @@ def braco(m: PD.Malha) -> None:
     m.cilindro(PEDAL_X, cy, 7.1, FACE_Z - 0.4, FACE_Z + 0.01, (0.12, 0.12, 0.13), n=24)
 
 
-# ---------------------------------------------------------------- gauges
-GRADE_W, GRADE_H = 6.0, 4.0     # carrier of a transducer-class shear pattern
-GRADE_ESP = 0.05                # foil plus carrier: five hundredths of a mm
-CENTRO_X = 14.0                 # toward the spindle, just before the bridge's pads
+# ---------------------------------------------------------------- gauge
+# ONE piece, not four: the S5229 full bridge, N2K-13-S5229A-50C/DG/E3.
+# Every number below is off its page in the transducer-class databook
+# (2622-EN, rev. 12-Aug-2019, p. 58), in millimetres.
+MATRIZ_W, MATRIZ_H = 4.0, 3.7    # the carrier, the thing that gets bonded
+GRADE_L, GRADE_W = 0.71, 1.13    # one grid: length along its own axis, width
+GRADE_ESP = 0.05                 # foil plus carrier
+ILHA = 0.55                      # the four gold solder tabs (DG)
+CENTRO_X = 14.0                  # toward the spindle, before the bridge's pads
+# Across the arm the bridge sits OFF the middle: the middle line of the face
+# is the neutral axis, where bending strain is zero. How far off is still
+# open and it is what sets the slope (docs/06).
+DESLOC_Y = 4.5
 
 
-def _retangulo_girado(cx, cy, w, h, ang):
-    ca, sa = math.cos(math.radians(ang)), math.sin(math.radians(ang))
-    pts = []
-    for dx, dy in ((-w / 2, -h / 2), (w / 2, -h / 2), (w / 2, h / 2), (-w / 2, h / 2)):
-        pts.append((cx + dx * ca - dy * sa, cy + dx * sa + dy * ca))
-    return pts
+def _ret(cx, cy, w, h):
+    return [(cx - w / 2, cy - h / 2), (cx + w / 2, cy - h / 2),
+            (cx + w / 2, cy + h / 2), (cx - w / 2, cy + h / 2)]
 
 
 def extensometros(m: PD.Malha) -> list:
-    """Four gauges at 45 degrees, two stretching and two compressing.
+    """The S5229: four grids on one carrier, bonded once.
 
-    A torque in the arm shows up as shear, and a grid at 45 degrees to the
-    axis is what reads shear while cancelling bending: the pair at +45 goes
-    into tension and the pair at -45 into compression, which is exactly what
-    the four arms of a full bridge want (docs/06, Da ponte ao torque).
+    Two grids run along the arm and two across it, which is the Poisson
+    bridge the databook's drawing shows: under bending the longitudinal pair
+    reads +e and the transverse pair -v.e, so the four arms of the bridge
+    add up. It gives about two thirds of a pure bending bridge and still
+    some six times what a 45 degree shear pattern would (docs/06).
+
+    Returns the four solder tabs, which is where the wires start.
     """
-    cy = PD.H_P / 2.0
-    postos = [(CENTRO_X - 7.0, cy - 4.5, +45.0), (CENTRO_X - 7.0, cy + 4.5, -45.0),
-              (CENTRO_X + 7.0, cy - 4.5, -45.0), (CENTRO_X + 7.0, cy + 4.5, +45.0)]
-    centros = []
-    for cx, gy, ang in postos:
-        base = _retangulo_girado(cx, gy, GRADE_W, GRADE_H, ang)
-        m.extrusao(base, FACE_Z, FACE_Z + GRADE_ESP, COR_CARRIER)
-        grade = _retangulo_girado(cx, gy, GRADE_W * 0.62, GRADE_H * 0.55, ang)
-        m.extrusao(grade, FACE_Z + GRADE_ESP, FACE_Z + GRADE_ESP * 2, COR_GRADE)
-        centros.append((cx, gy))
+    cy = PD.H_P / 2.0 - DESLOC_Y
+    cx = CENTRO_X
+    m.extrusao(_ret(cx, cy, MATRIZ_W, MATRIZ_H), FACE_Z, FACE_Z + GRADE_ESP,
+               COR_CARRIER)
+    z0, z1 = FACE_Z + GRADE_ESP, FACE_Z + GRADE_ESP * 2
+    # the two longitudinal grids, above the centre line of the carrier
+    for dx in (-0.85, 0.85):
+        m.extrusao(_ret(cx + dx, cy - 0.85, GRADE_W, GRADE_L), z0, z1, COR_GRADE)
+    # and the two transverse ones, below it, turned a quarter
+    for dx in (-0.85, 0.85):
+        m.extrusao(_ret(cx + dx, cy + 0.85, GRADE_L, GRADE_W), z0, z1, COR_GRADE)
+    # the four gold tabs along the lower edge, where the cable is soldered
+    ilhas = []
+    for k in range(4):
+        tx = cx - 1.35 + k * 0.9
+        ty = cy + MATRIZ_H / 2.0 - ILHA / 2.0
+        m.extrusao(_ret(tx, ty, ILHA, ILHA), z0, z1 + 0.01, (0.85, 0.72, 0.35))
+        ilhas.append((tx, ty))
+    centros = ilhas
     return centros
 
 

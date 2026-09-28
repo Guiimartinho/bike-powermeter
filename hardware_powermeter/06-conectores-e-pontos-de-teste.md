@@ -145,6 +145,14 @@ A ordem `E+ S+ S− E−` é a ordem das cores usuais dos cabos de célula de
 carga (vermelho, verde, branco, preto), para que quem for soldar não
 precise de tabela.
 
+Com a ponte escolhida, o **S5229**, que é ponte completa numa peça só
+([01](01-lista-de-componentes.md#a-peça-achada-no-databook-do-fabricante-2026-09-28)),
+**quatro** destes cinco furos são terminais do extensômetro: as duas
+pontas da excitação e as duas do sinal. O quinto é a blindagem do cabo,
+que não é terminal de grade nenhuma; fica onde está porque é por ali que
+o cabo entra. Os cinco furos permanecem: a blindagem vale o furo, e o
+padrão de 2,0 mm em cinco ilhas ocupa 10 mm de borda que a placa já tem.
+
 ## Pontos de teste
 
 Pads de 1,0 mm **na face de trás**, para a bancada com a placa nua: no
