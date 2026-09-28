@@ -1228,6 +1228,14 @@ def main() -> int:
     # assembly looks like at the step where the cell goes in.
     t, c = juntar(concha, celula)
     renderizar(t, c, "pod-3d-celula-no-berco.png", 1800, 900, 200.0, 45.0)
+
+    # The shell seen from BELOW: the face that is glued to the crank arm,
+    # and the one the assembly manual talks about without ever showing. It
+    # carries the 15 mm bonding land, the relief that keeps the glue off
+    # the arm's fillet radius and the slot the bridge wires come up
+    # through. Negative elevation, same trick as the lid from inside.
+    t, c = juntar(pod.concha())
+    renderizar(t, c, "pod-3d-por-baixo.png", 1800, 1000, 200.0, -40.0)
     return 0
 
 
