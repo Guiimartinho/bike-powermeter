@@ -62,6 +62,8 @@ Não são circuitos integrados, mas definem a precisão. Referência: Micro-Meas
 | Cola | M-Bond AE-10 ou AE-15 para o módulo (resistentes à umidade); M-Bond 200 para a bancada | Guia de seleção, p. 8 |
 | Proteção | 3145 RTV + M-Coat B para longo prazo | Guia de seleção, p. 9 |
 
+**Tentativa de 2026-09-28, para ninguém repetir:** a lista de padrões não foi obtida. As páginas de catálogo da Micro-Measurements (`/pca/transducer-class-gages/full_bridge_patterns` e `/pca?search=s5030`, que são os próprios links do site) são carregadas por script e devolvem só a casca; o sitemap tem 114 endereços e nenhum de lista de padrões; a biblioteca de documentos serve PDF por identificador numérico, e os oito vizinhos do guia de seleção são fichas de segurança; HBK e Omega respondem 403; Kyowa lista as vinte famílias sem especificação; a TML lista resistências (60, 120, 350 e **1000 Ω**) e nenhuma das de uso geral é ponte completa. O que se confirmou no site do fabricante é que "padrões de ponte completa" e "padrões de alta resistência, 350 Ω a 20 kΩ" são **categorias separadas**. Falta o navegador com script ou uma pergunta ao fornecedor.
+
 **O que falta confirmar no catálogo, e é o que fecha a compra:** existe padrão de **ponte completa de flexão em 5 kΩ**? O guia nomeia 5 kΩ como resistência de catálogo, mas a disponibilidade é por padrão, e ponte completa num filme só costuma aparecer em 350 e 1000 Ω. Se só houver 1000 Ω, a ponte volta a drenar 3 mA e as 50 h só fecham com o modo duty-cycle do conversor ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)). Padrão e resistência são uma decisão só.
 
 ## Fora da placa
