@@ -10,4 +10,6 @@
 | [06-medicao-e-calibracao.md](06-medicao-e-calibracao.md) | ponte, amostragem, zero, inclinação, temperatura |
 | [07-status.md](07-status.md) | o que existe, o que falta |
 
-A lista fechada de componentes fica em [`../hardware_powermeter/01-lista-de-componentes.md`](../hardware_powermeter/01-lista-de-componentes.md).
+O hardware tem índice próprio em [`../hardware_powermeter/README.md`](../hardware_powermeter/README.md): a lista de componentes, o esquemático, a placa, o pod, o módulo de rádio e os relatórios de dry run.
+
+As imagens ficam em [`img/hardware/`](img/hardware): quinze vistas do produto, do pod e da placa, todas geradas por `hardware_powermeter/cad/make_3d.py`, `pod/make_pod.py` e `pod/make_conjunto.py`.

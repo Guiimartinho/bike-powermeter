@@ -143,8 +143,8 @@ qualquer número:
 
 | Pergunta | Por que ela decide |
 |---|---|
-| Quanta potência dá para colher a 90 rpm num braço de pedivela? | o aparelho gasta 1,5 mA a 3,0 V, cerca de **4,5 mW**. Se a colheita der microwatts, ela é um enfeite; se der miliwatts, muda o produto |
+| Quanta potência dá para colher a 90 rpm num braço de pedivela? | o aparelho gasta **0,68 mA a 3,0 V, cerca de 2,0 mW** (5 kΩ com o conversor em duty-cycle). Se a colheita der microwatts, ela é um enfeite; se der miliwatts, muda o produto — e a barra desceu de 4,5 para 2,0 mW, o que a torna mais plausível, não menos |
 | Qual princípio: indutivo (ímã no quadro + bobina no braço), piezoelétrico (vibração), ou gravitacional (massa oscilante, como relógio automático)? | cada um tem uma faixa de potência e um custo de massa e volume completamente diferentes |
-| Quanto pesa e quanto ocupa? | o requisito de massa é 20 g e o pod já usa 12; a referência da classe tem 20 g no total |
+| Quanto pesa e quanto ocupa? | o requisito de massa é 20 g e o pod já usa **13,3**; a referência da classe tem 20 g no total |
 | A colheita atrapalha a medida? | um ímã ou uma massa oscilante no braço muda a inércia e pode entrar no acelerômetro, que é quem dá a cadência |
 | O que já existe patenteado? | é a pergunta que decide se o caminho é livre |

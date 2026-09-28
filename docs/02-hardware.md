@@ -82,7 +82,7 @@ Estimativas de projeto a partir dos datasheets; nenhuma medida ainda.
 | Pedalando | TMP117 a 1 Hz | 0,004 mA | 3,5 µA |
 | Pedalando | nRF54L15 com BLE a 1 Hz e ANT+ a 4 Hz | 0,3 mA | estimativa de projeto; medir no DK |
 | Pedalando | MAX17048 | 0,003 mA | 3 µA em hibernate |
-| **Pedalando, total** | | **≈ 1,5 mA** | a célula que cabe no pod é 23 × 11 × 4,0 e vale **~78 mAh**, que dão **52 h**: acima das 50 h do requisito, e empatando com a referência da classe. Com a ponte de 1 kΩ eram 3,9 mA e 20 h |
+| **Pedalando, total** | | **≈ 1,5 mA** em conversão contínua, **0,68 mA** com o conversor em duty-cycle | a célula que cabe no pod é 23 × 11 × 4,0 e vale **~78 mAh**: 52 h contínuo, **114 h em duty-cycle**, que é o modo decidido. Com a ponte de 1 kΩ eram 3,9 mA e 20 h |
 | Parado | BMA400 a 100 Hz, ADS1220 em power-down entre rajadas de 8 amostras a cada 10 s, MCU em System ON dormindo, nPM1100 | ≈ 20 µA | 3,5 + 0,4 + a média das rajadas + ~10 + 0,8 µA |
 | Dormindo (10 min parado) | BMA400 em low-power a 25 Hz com a interrupção de despertar, ADS1220 em power-down, rádio anunciando a cada 2 s | ≈ 15 µA | 0,85 + 0,4 + ~10 + 0,8 µA |
 | Guardado | ship mode do nPM1100 | 0,46 µA | PS v1.5 |
@@ -113,7 +113,7 @@ O preço é ruído: o filtro passa a ter o ruído do modo normal a 1 kSPS, cerca
 
 O modo está ligado no devicetree das duas placas (`duty-cycle;` no nó `ads1220`) e é o driver próprio que escreve `MODE = 01` no `CONFIG1`. **Não foi medido em bancada**: os 0,68 mA vêm da ficha do conversor, não de um amperímetro.
 
-Só 350 Ω é que aperta: nem com duty-cycle fecha as 50 h numa célula de 100 mAh, e subir para 200 mAh leva o pod de 8,5 para cerca de 11 mm. Nesse caso é melhor voltar aos quatro extensômetros separados de 5 kΩ e pagar o alinhamento.
+Só 350 Ω é que aperta: nem com duty-cycle fecha as 50 h na célula que cabe, e subir de capacidade engorda a célula, que é o que fixa a altura do pod — hoje 10,0 mm com 4,0 de célula. Nesse caso é melhor voltar aos quatro extensômetros separados de 5 kΩ e pagar o alinhamento.
 
 O firmware já faz o que dá sem mudar peça: fora de `Active` e `Calibrating` o conversor fica em power-down e a excitação desligada, com uma rajada de 8 amostras a cada 10 s em `Idle` para o auto-zero e a saúde ([04](04-arquitetura-firmware.md#serviços)).
 
