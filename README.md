@@ -159,6 +159,7 @@ bash tools/fw/host_tests.sh          # 9 conjuntos, 134 casos
 bash tools/fw/host_tests.sh coverage # e falha abaixo de 95 % em qualquer módulo
 python tools/fw/board_check.py       # confere o devicetree contra o silício, docs/02 e o esquemático
 python tools/docs/mermaid_check.py   # valida os diagramas da documentação
+python tools/verificar_tudo.py       # a verificação inteira, três vezes
 ```
 
 A cadeia de CAD, com o intérprete certo de cada etapa (o `fill_zones.py` **só** roda com o Python do KiCad), está em [`hardware_powermeter/cad/README.md`](hardware_powermeter/cad/README.md#a-cadeia).
@@ -171,9 +172,9 @@ O CI está **desligado**: a verificação é local.
 flowchart TB
     ROOT["bike_powermeter/"]
     ROOT --> ZA["zephyr_app/<br/>src (app · svc · model · rf) · include<br/>modules/pm_drivers (ADS1220, BMA400)<br/>boards · tests/host"]
-    ROOT --> HW["hardware_powermeter/<br/>01 a 08 · cad (KiCad e geradores)<br/>esquematico · placa · pod (STL) · datasheets (fora do git)"]
-    ROOT --> DOCS["docs/<br/>01 a 07 · img/hardware"]
-    ROOT --> TOOLS["tools/<br/>fw · docs"]
+    ROOT --> HW["hardware_powermeter/<br/>01 a 10 · cad (KiCad e geradores)<br/>esquematico · placa · pod (gerador, dry run, STL)<br/>datasheets (fora do git)"]
+    ROOT --> DOCS["docs/<br/>01 a 07 · img/hardware (15 vistas)"]
+    ROOT --> TOOLS["tools/<br/>fw · docs · verificar_tudo.py"]
     ROOT --> AI["CLAUDE.md · AGENTS.md · .claude/skills/"]
 ```
 
@@ -190,6 +191,8 @@ flowchart TB
 | [07 · Status](docs/07-status.md) | o que existe, o que foi verificado e como, o que falta |
 | [Hardware](hardware_powermeter/README.md) | o esquemático, a placa, o pod, os dry runs e o que falta antes de fabricar |
 | [CAD](hardware_powermeter/cad/README.md) | os geradores, as regras e as armadilhas medidas |
+| [Pod](hardware_powermeter/pod/README.md) | o gerador do invólucro, as 18 regras do dry run e o que é decisão do desenho |
+| [Módulo de rádio](hardware_powermeter/09-modulo-de-radio.md) | o HOLYIOT-26001-A: por que entrou, o que o nRF54L15 muda, pinagem, mecânica, a antena |
 | [CHANGELOG](CHANGELOG.md) | histórico de mudanças |
 
 ## Estado e próximos passos
