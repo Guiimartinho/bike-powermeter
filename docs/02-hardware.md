@@ -129,7 +129,14 @@ Os blocos seriais seguem os portos: `spi00` no P2, e os blocos `20`, `21` e
 um servindo como `i2c`, `spi` **ou** `uart`, um de cada vez.
 
 O módulo é o **HOLYIOT-26001-A** e traz 30 dos 34 GPIO do SoC: `P0.00` a
-`P0.04`, `P1.02` a `P1.15` e `P2.00` a `P2.10`. O projeto usa 20.
+`P0.04`, `P1.02` a `P1.15` e `P2.00` a `P2.10`. O projeto usa 20, e sobram
+**nove** que existem de verdade nesta placa: `P0.00` a `P0.04`, `P1.03`,
+`P2.00`, `P2.09` e `P2.10`, três deles com clock (`P0.03`, `P1.03`,
+`P2.00`). `P0.05`, `P0.06` e `P1.00` estão livres **no SoC** e não têm pad
+no módulo; `P1.01` e `P1.02` são os pads da antena NFC. O
+`tools/fw/board_check.py` imprime as duas listas separadas desde
+2026-09-28: antes ele juntava as duas e convidava a escolher um pino que
+não dá para usar.
 
 | Sinal | Pino do SoC | Pad do módulo | Vai para | No DK |
 |---|---|---|---|---|
@@ -198,13 +205,13 @@ O primeiro desenho fechou em 65,4 × 19,4 × 10,5 mm, acima do alvo em comprimen
 
 | Onde | De | Para | Como |
 |---|---|---|---|
-| Espessura da célula | 4,0 mm | 2,5 mm | com a ponte de 5 kΩ, 50 h pedem cerca de 75 mAh: uma célula de 100 mAh basta e é mais fina que a de 150 |
+| Espessura da célula | 4,0 mm | ~~2,5 mm~~ **4,0 mm** | **esta linha estava errada e foi refeita em 2026-09-28**: em 23 × 11 × 2,5 uma LiPo de bolsa vale cerca de 49 mAh, não 100. A célula real é de classe `401123` (4,0 × 11 × 23, ≥ 78 mAh), e a 0,68 mA ela dá 114 h |
 | Teto sobre a placa | 3,2 mm | 2,7 mm | quem obrigava os 3,2 era o conector da célula; a célula passa a ser soldada por fio, que num pod envasado é mais robusto que conector |
-| **Altura total** | **10,5 mm** | **8,5 mm** | é o alvo, exatamente |
+| **Altura total** | **10,5 mm** | **10,0 mm** | com a célula de 4,0 mm de verdade, é o alvo, exatamente |
 | Comprimento da placa | 60 mm | cerca de 55 mm | passivos baixos na face de trás **fora da sombra da célula**: ela cobre 23 a 25 mm dos 60, e os outros 35 ficam sobre o fundo do pod. Um passivo 0402 pede 0,6 mm de vão, contra os 2,5 da célula, então não custa altura |
 | **Comprimento total** | **65,4 mm** | **cerca de 60 mm** | a placa menor, mais as paredes e a folga; o canal dos fios da célula na ponta deixa de existir, porque os fios saem pelo rebaixo do fundo |
 
-A largura já está dentro: 19,4 contra 20. O custo assumido é montagem nas duas faces, mais cara de fabricar, e a face de trás deixa de ser plana: ela passa a ser plana **sob a sombra da célula**, e é assim que as regras do dry run medem.
+A largura já está dentro, e a troca do módulo em 2026-09-28 a levou de 19,4 para 19,0. O custo assumido é montagem nas duas faces, mais cara de fabricar, e a face de trás deixa de ser plana: ela passa a ser plana **sob a sombra da célula**, e é assim que as regras do dry run medem.
 
 ## Conector magnético
 

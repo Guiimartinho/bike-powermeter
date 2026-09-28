@@ -13,7 +13,8 @@ script diz de que documento ou ficha tirou cada número.
 > [!WARNING]
 > Nada foi fabricado nem montado. A placa existe como
 > `pmeter.kicad_pcb`; o que foi medido está em
-> [08](../08-dry-run-2026-09-27.md).
+> [08](../08-dry-run-2026-09-27.md) e, depois da troca do modulo, em
+> [10](../10-dry-run-2026-09-28.md).
 
 ## A cadeia
 
@@ -22,14 +23,14 @@ flowchart LR
     SCH["make_sch.py<br/>raiz + 4 folhas"] --> CSCH["check_sch.py<br/>ERC, netlist × nets.py,<br/>geometria"]
     CSCH --> PDF["kicad-cli sch export pdf<br/>esquematico/pmeter-esquematico.pdf"]
     DXF["make_dxf.py<br/>contorno e zonas"] --> CDXF["check_dxf.py"]
-    CDXF --> PCB["make_pcb.py<br/>coloca as 57 peças"]
+    CDXF --> PCB["make_pcb.py<br/>coloca as 58 peças"]
     PCB --> ROUTE["route.py<br/>labirinto A* em 3 camadas"]
     ROUTE --> FILL["fill_zones.py<br/>malhas, Python do KiCad"]
     FILL --> DRC1["kicad-cli pcb drc<br/>_drc_all.json"]
     DRC1 --> REP["reparar.py<br/>fecha o que o DRC diz aberto"]
     REP --> FILL2["fill_zones.py de novo"]
     FILL2 --> CPCB["check_pcb.py --como-esta<br/>DRC, contorno, redes"]
-    CPCB --> DRY["dry_run_pcb.py<br/>22 regras das fichas"]
+    CPCB --> DRY["dry_run_pcb.py<br/>24 regras das fichas"]
     DRY --> M3D["make_3d.py<br/>GLB e vistas placa-3d-*.png"]
     M3D --> M2D["make_2d.py · montagem.py<br/>placa/pmeter-pcb.pdf, pmeter-montagem.pdf"]
     M3D --> POD["pod/make_pod.py"]
@@ -59,23 +60,23 @@ python hardware_powermeter/pod/make_pod.py
 ```
 
 O tamanho da placa sai de `make_dxf.py` (`W`, `H`) e pode ser
-experimentado sem editar o arquivo: `PMETER_W=52 python make_pcb.py`. O
+experimentado sem editar o arquivo: `PMETER_W=48 python make_pcb.py`. O
 colocador diz o que não coube e o roteador diz o que não ligou; foi assim
-que o alvo de 48 × 16 de `docs/02` virou o comprimento registrado em
+que o alvo de 48 × 16 de `docs/02` virou os **47 × 14** registrados em
 [04](../04-placa.md#o-contorno).
 
 ## Os arquivos
 
 | Arquivo | O que é |
 |---|---|
-| `parts.py` | as 57 peças com os pinos numerados pela ficha; `confirmed=False` marca a única pinagem não lida em ficha (o conector magnético genérico) |
-| `nets.py` | os 45 nós, pino a pino, e os 12 pinos deixados abertos de propósito |
+| `parts.py` | as 58 peças com os pinos numerados pela ficha; `confirmed=False` marca as **duas** pinagens não lidas em ficha: o conector magnético genérico e o módulo de rádio, cujo mapa saiu do desenho mecânico do anúncio |
+| `nets.py` | os 43 nós, pino a pino, e os pinos deixados abertos de propósito |
 | `sheets.py`, `blocos.py`, `simbolos.py` | as 4 folhas, os blocos funcionais de cada uma e os símbolos da biblioteca do KiCad que têm a pinagem certa |
 | `sch_lib.py`, `ksym.py`, `make_sch.py`, `check_sch.py`, `make_pro.py` | o gerador do esquemático, o leitor de símbolos do KiCad, o projeto `.kicad_pro` com as classes de rede |
 | `make_dxf.py`, `check_dxf.py` | o contorno (`contorno.dxf`), o furo de fixação M1,6 e as zonas (`zonas.dxf`): a área livre da antena cerâmica, o bloco de energia a 20 mm do módulo, o conector magnético, o canto analógico, os furos da ponte, os sensores, o Tag-Connect, a sombra da célula e a da tampa |
 | `footprints.py`, `fp_load.py` | qual footprint cada peça usa (biblioteca do KiCad ou gerado aqui com a cota da ficha), os corpos 3D em VRML, as alturas |
 | `make_pcb.py` | o colocador: posições fixas (módulo, conector magnético, furos da ponte, conector da célula), âncoras por zona, desacoplamento encostado no pino, o resto por conectividade; os planos de terra e a área sem plano sob o nó de chaveamento |
-| `route.py` | o roteador: vias de terra por pad, labirinto A* em `F.Cu`, `In2.Cu` e `B.Cu`, o par USB junto, costura de terra na borda, poda de vias soltas |
+| `route.py` | o roteador: vias de terra por pad, labirinto A* em `F.Cu`, `In2.Cu` e `B.Cu`, costura de terra na borda, poda de vias soltas. `PAR` está **vazio** desde 2026-09-28: não há mais par diferencial na placa |
 | `route_neg.py` | o segundo estágio, de congestão negociada (PathFinder, McMurchie e Ebeling 1995), chamado quando o labirinto empaca; recebe como obstáculo o cobre que não vai rotear. Cada rodada refaz **só as redes que estão no caminho umas das outras**, e a cada `RIPAGEM_TOTAL` rodadas refaz a placa inteira do zero |
 | `reparar.py` | fecha as ligações que o **DRC** ainda chama de abertas, na grade da placa pronta: parte sempre de um pad, mira o cobre inteiro da rede e recusa desenhar o que não encosta |
 | `fill_zones.py` | preenche as malhas com o Python do KiCad (só ele sabe) |
@@ -118,7 +119,7 @@ que violou e o que não pôde medir. Uma regra que não acha o que medir
 |---|---|---|
 | RF1, RF3, RF4 | nada sobre a área da antena; 5 mm em volta dela sem peça alheia; a antena cerâmica dentro da zona livre **e encostando numa borda da placa** | guia de montagem do HOLYIOT-26001-A ([09](../09-modulo-de-radio.md#a-antena-manda-no-layout)) |
 | RF9 | 20 mm do módulo a fonte chaveada ou indutor | 7.2, Interference Isolation Rule |
-| US1 | o par USB roteado com a largura de 90 Ω desta pilha | USB 2.0, 7.1.6; `route.py` |
+| US1 | as duas linhas da serial não atravessam o retângulo sem plano do nó de chaveamento do buck, em camada nenhuma | `make_pcb.sem_plano_no_chaveamento`; **não há mais par diferencial**: o nRF54L15 não tem USB e a 115200 baud não há impedância a controlar |
 | AL1 | desacoplamento a 0,5 mm do pino do módulo, 2 mm nos outros CIs, 5 mm nos de reserva | 7.2; fichas do nPM1100, ADS1220, BMA400, TMP117, MAX17048 |
 | AL5 | o filtro pi no pino de alimentação do módulo | 7.2 |
 | AL2 | largura por corrente, 10 °C de subida | IPC-2221B, 6.2 |

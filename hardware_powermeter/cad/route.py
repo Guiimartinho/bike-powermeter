@@ -166,13 +166,16 @@ NAO_ROTEAR: set[str] = set()
 # nao muda nada a 12 Mbit/s, e uma ligacao que nao existe muda tudo. Entao a
 # busca tenta a frente primeiro, nas duas folgas, e so troca de camada se a
 # frente nao tiver caminho.
-SO_FRENTE = NAO_ROTEAR | {"USB_DP", "USB_DM"}
-# The differential pair. They are routed one after the other, and the second
-# one is drawn towards the first, so they run together instead of taking two
-# unrelated paths across the board.
-PAR = ("USB_DP", "USB_DM")
+SO_FRENTE = NAO_ROTEAR
+# The differential pair, routed one after the other with the second drawn
+# towards the first. EMPTY since 2026-09-28: the nRF54L15 has no USB, so the
+# two contacts that carried D+ and D- now carry UART_TX and UART_RX, and at
+# 115200 baud there is no pair and no impedance to hold - they are two
+# ordinary signals. Measured before removing the old names: they matched no
+# net on the board, so nothing about the routing changes here.
+PAR: tuple[str, ...] = ()
 # Nets that go first and have to stay short: the switching loops.
-PRIMEIRO = ["BUCK_SW", "USB_DP", "USB_DM"]
+PRIMEIRO = ["BUCK_SW"]
 
 
 ALIMENTACAO = ("GND", "VSYS", "VBAT", "VBUS", "3V0", "3V0_MOD", "3V0_EXC")

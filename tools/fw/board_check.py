@@ -165,6 +165,29 @@ def doc_pins():
     return pins
 
 
+def pinos_do_modulo():
+    """Os GPIO que o módulo traz para fora, lidos da tabela do esquemático.
+
+    O SoC tem 34 GPIO e o HOLYIOT-26001-A traz 30: `P0.05`, `P0.06`, `P1.00`
+    e `P1.01` não têm pad no módulo, então não existem nesta placa. Listar um
+    deles como "livre" convida a escolher um pino que não dá para usar, e foi
+    o que este verificador fazia até 2026-09-28.
+
+    A lista sai de `PADS_HOLYIOT` em `cad/parts.py`, que é o de-para para o
+    pad do módulo, e não de uma cópia digitada aqui. Devolve `None` quando
+    não consegue ler, para quem chama poder dizer isso em vez de mentir.
+    """
+    caminho = SCH_NETS.parent / "parts.py"
+    if not caminho.is_file():
+        return None
+    texto = caminho.read_text(encoding="utf-8")
+    m = re.search(r"PADS_HOLYIOT\s*[:=][^=]*=?\s*\{(.*?)\n\}", texto, re.S)
+    if not m:
+        return None
+    nomes = set(re.findall(r'"(P\d\.\d\d)"', m.group(1)))
+    return nomes or None
+
+
 def sch_pins():
     """Os pinos do módulo no esquemático: {pino: [(rede, [outros membros])]}.
 
@@ -290,8 +313,29 @@ def main():
             name = pin_name(port, num)
             if name not in used and name not in NFC_PINS and name not in LFXO_PINS:
                 free.append(name)
-    print(f"livres ({len(free)}): {', '.join(free)}")
-    print(f"de clock ainda livres: {', '.join(sorted(CLOCK_PINS - used.keys()))}\n")
+    # Free on the SoC is not the same as usable: the module brings out 30 of
+    # the 34 GPIO, and a pin the module does not carry has no pad on the
+    # board. One list called "livres" invited picking a pin that does not
+    # exist here, so the two are separated, and the module's pads come from
+    # the schematic's own table instead of being retyped.
+    no_modulo = pinos_do_modulo()
+    uteis = [p for p in free if not no_modulo or p in no_modulo]
+    so_no_soc = [p for p in free if no_modulo and p not in no_modulo]
+    print(f"livres E presentes no modulo ({len(uteis)}): {', '.join(uteis)}")
+    if so_no_soc:
+        print(f"livres no SoC mas NAO no modulo ({len(so_no_soc)}): "
+              f"{', '.join(so_no_soc)}")
+    if not no_modulo:
+        print("  AVISO: nao foi possivel ler a lista de pads do modulo, "
+              "entao a lista acima e a do SoC inteiro")
+    # As mesmas exclusões da lista de livres: um pino que sai do reset como
+    # antena NFC ou como cristal não está disponível só porque tem clock.
+    # Sem isto a linha anunciava P1.02, que é pad de NFC.
+    clock_livres = CLOCK_PINS - used.keys() - NFC_PINS - LFXO_PINS
+    if no_modulo:
+        clock_livres &= set(no_modulo)
+    print(f"de clock ainda livres no modulo: "
+          f"{', '.join(sorted(clock_livres))}\n")
 
     if problems:
         print(f"{len(problems)} problema(s):")

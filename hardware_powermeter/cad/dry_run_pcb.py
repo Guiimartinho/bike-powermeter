@@ -83,10 +83,12 @@ REGRAS = [
             "de fonte de interferencia: 20 mm de fonte chaveada, indutor de "
             "potencia ou transformador",
      "MinewSemi ME54BS13 V1.0.0, 7.2, Interference Isolation Rule"),
-    ("US1", "o par USB_DP/USB_DM roteado, com a largura e o afastamento que "
-            "dao 90 ohm diferenciais nesta pilha",
-     "USB 2.0, 7.1.6: 90 ohm +-15%; a geometria sai do empilhamento, "
-     "calculada em route.py"),
+    ("US1", "as duas linhas da serial nao atravessam o retangulo sem plano "
+            "do no de chaveamento do buck, em camada nenhuma",
+     "SEM_PLANO_BUCK_SW de make_pcb.sem_plano_no_chaveamento: os pads do no "
+     "mais 0,6 mm, recortados de todos os planos porque e o ponto mais "
+     "barulhento da placa. Nao ha mais par diferencial: o nRF54L15 nao tem "
+     "USB e a 115200 baud nao ha impedancia a controlar"),
     ("AL1", "desacoplamento do modulo de radio a 0,5 mm do pino de "
             "alimentacao; dos demais CIs, 2 mm para o de alta frequencia e "
             "5 mm para o de reserva",
@@ -994,42 +996,68 @@ def main() -> int:
                 f"{t}: {p[1]} a {p[0]:.1f} de {lim:.0f} mm"
                 for t, lim, p in medidos))
 
-    # -- US1: o par diferencial do USB ---------------------------------------
-    # Not "is it routed" but "is it the pair the spec asks for". The width
-    # that gives 90 ohm differential on this stack-up is computed in route.py
-    # and printed here beside what is actually drawn, because a pair routed
-    # at the wrong width is not a pair - it is two tracks - and nothing else
-    # in the chain would ever say so.
-    import route as _R
-    # from the board's own net table, never from nets.py at run time
+    # -- US1: a serial longe do no de chaveamento ---------------------------
+    # Ate 2026-09-28 esta regra media a largura de 90 ohm do par USB_DP/
+    # USB_DM. Esse par nao existe: o nRF54L15 nao tem USB, os dois contatos
+    # do conector passaram a levar UART_TX e UART_RX, e a regra falhava
+    # apontando para redes que sairam da placa - a mesma doenca da ME7.
+    #
+    # A 115200 baud nao ha par nem impedancia a controlar. O que ainda
+    # importa e' por onde as duas linhas passam, e o projeto ja tem a
+    # geometria: SEM_PLANO_BUCK_SW, o retangulo dos pads do no de
+    # chaveamento mais 0,6 mm, recortado de TODOS os planos porque e' o
+    # ponto mais barulhento da placa. Atravessa-lo e' correr um sinal
+    # justamente por baixo do que nem o plano de terra quer ter embaixo.
     _numeros = redes_do_arquivo()
     _por_num = {n: r for r, n in _numeros.items()}
-    par = {}
-    for r in ("USB_DP", "USB_DM"):
-        sg = [q for q in seg if _por_num.get(q["n"], "") == r]
-        comp = sum(math.hypot(q["b"][0] - q["a"][0], q["b"][1] - q["a"][1])
-                   for q in sg)
-        larg = sorted({round(q["w"], 3) for q in sg})
-        par[r] = (len(sg), comp, larg)
-    alvo = _R.LARGURA_USB_CALC
-    faltando = [r for r, v in par.items() if v[0] == 0]
-    if faltando:
-        falhou("US1", "o par nao esta roteado: " + ", ".join(faltando))
+    SERIAL = ("UART_TX", "UART_RX")
+    # O retangulo e' refeito aqui a partir dos PADS DO ARQUIVO, com a mesma
+    # margem de make_pcb.sem_plano_no_chaveamento, e nao chamando aquela
+    # funcao: ela recebe a colocacao que o gerador planejou, e o que esta
+    # regra tem de medir e' a placa como ela ficou.
+    FOLGA_SW = 0.6
+    sw = [q for q in pads if q["rede"] == "BUCK_SW"]
+    zonas_sw = []
+    if len(sw) >= 2:
+        zonas_sw = [("SEM_PLANO_BUCK_SW",
+                     (min(q["x"] - q["hw"] for q in sw) - FOLGA_SW,
+                      min(q["y"] - q["hh"] for q in sw) - FOLGA_SW,
+                      max(q["x"] + q["hw"] for q in sw) + FOLGA_SW,
+                      max(q["y"] + q["hh"] for q in sw) + FOLGA_SW))]
+    if not zonas_sw:
+        falhou("US1", f"nao mede nada: a placa tem {len(sw)} pad(s) na rede "
+                      "BUCK_SW, e sem pelo menos dois nao ha no de "
+                      "chaveamento contra o que medir")
     else:
-        larguras = sorted({w for v in par.values() for w in v[2]})
-        maior = max(larguras)
-        if maior < alvo - 1e-6:
-            falhou("US1", "o par esta roteado a " +
-                   ", ".join(f"{w:.3f}" for w in larguras) +
-                   f" mm, e 90 ohm diferenciais nesta pilha pedem "
-                   f"{alvo:.3f} mm com {_R.PASSO_PAR:.1f} de afastamento. "
-                   f"Comprimentos: " +
-                   ", ".join(f"{r} {v[1]:.1f} mm" for r, v in par.items()) +
-                   ". Tem de ser terminado a mao")
+        sem_cobre = [r for r in SERIAL
+                     if not any(_por_num.get(q["n"], "") == r for q in seg)]
+        dentro = []
+        for q in seg:
+            r = _por_num.get(q["n"], "")
+            if r not in SERIAL:
+                continue
+            for nome_z, (zx0, zy0, zx1, zy1) in zonas_sw:
+                for px, py in (q["a"], q["b"]):
+                    if zx0 <= px <= zx1 and zy0 <= py <= zy1:
+                        dentro.append((r, nome_z, px, py))
+                        break
+        if sem_cobre:
+            falhou("US1", "sem cobre nenhum: " + ", ".join(sem_cobre))
+        elif dentro:
+            falhou("US1", f"{len(dentro)} trecho(s) da serial dentro do "
+                          "retangulo sem plano do no de chaveamento; o "
+                          "primeiro e " + ", ".join(
+                              f"{r} em ({px:.2f}; {py:.2f}) dentro de {z}"
+                              for r, z, px, py in dentro[:2]))
         else:
-            ok.append("US1: o par esta roteado a " +
-                      ", ".join(f"{w:.3f}" for w in larguras) +
-                      f" mm, contra os {alvo:.3f} que dao 90 ohm")
+            comp = {}
+            for r in SERIAL:
+                comp[r] = sum(
+                    math.hypot(q["b"][0] - q["a"][0], q["b"][1] - q["a"][1])
+                    for q in seg if _por_num.get(q["n"], "") == r)
+            ok.append("US1: as duas linhas da serial (" + ", ".join(
+                f"{r} {c:.1f} mm" for r, c in comp.items()) +
+                ") nao entram no retangulo sem plano do no de chaveamento")
 
     # -- AL5: o filtro pi no pino de alimentacao do modulo -------------------
     # 7.2, Power Supply Design: "For switching power supply applications, a
