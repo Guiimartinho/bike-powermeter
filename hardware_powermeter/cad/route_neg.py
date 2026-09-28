@@ -35,6 +35,8 @@ something open.
 
 from __future__ import annotations
 
+import time as _time
+
 import heapq
 import math
 
@@ -243,6 +245,35 @@ def _marcar(uso, celulas, off, rede, R=None, off_via=None):
         ant = (c, ix, iy)
 
 
+def _desmarcar(uso, celulas, off, rede, R=None, off_via=None):
+    """The exact inverse of _marcar: what a ripped-up net must leave behind.
+
+    A cell keeps the set of nets using it, so removing one net is removing
+    it from each set and dropping the entry when it empties. Getting this
+    wrong does not crash - it leaves a ghost net in the congestion map, and
+    the round after chases a conflict with something that is not there.
+    """
+    ant = None
+    for c, ix, iy in celulas:
+        for dx, dy in off:
+            k = (c, ix + dx, iy + dy)
+            s = uso.get(k)
+            if s is not None:
+                s.discard(rede)
+                if not s:
+                    del uso[k]
+        if off_via is not None and ant is not None and ant[0] != c:
+            for cam in range(R.NC):
+                for dx, dy in off_via:
+                    k = (cam, ix + dx, iy + dy)
+                    s = uso.get(k)
+                    if s is not None:
+                        s.discard(rede)
+                        if not s:
+                            del uso[k]
+        ant = (c, ix, iy)
+
+
 def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
           pre_seg=(), pre_via=()):
     """The whole loop. Returns (segmentos, vias, falhas, n_ok, rodadas).
@@ -263,16 +294,35 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
     hist: dict = {}
     melhor_saida = None
     pressao = PRESENTE_0
+    # State that now LIVES ACROSS ROUNDS. The loop used to clear all three at
+    # the top of every round and route every connection again: 84 searches a
+    # round, 30 s a round, 132 rounds. PathFinder rips up only the nets that
+    # are in the way, because a net whose cells nobody else wants is still
+    # legal and its history has not changed under it.
+    uso: dict = {}
+    vias_postas: set = set()
+    caminhos_por_rede: dict = {}
+    marcas: dict = {}          # per net: the offsets it was marked with
+    falhas: list[str] = []
+    # everything, the first time round
+    pendentes = list(ordem_redes)
     for rodada in range(MAX_RODADAS):
         # the last quarter negotiates no more: sharing is simply forbidden
         duro = rodada >= MAX_RODADAS - max(3, MAX_RODADAS // 4)
-        uso: dict = {}
-        vias_postas: set = set()
-        caminhos_por_rede: dict = {}
-        falhas: list[str] = []
+        # `duro` changes what is legal, so when it turns on every net has to
+        # be asked again - a path that was fine while sharing was allowed
+        # may not be now
+        if duro and rodada == MAX_RODADAS - max(3, MAX_RODADAS // 4):
+            pendentes = list(ordem_redes)
         sufocados: list = []
-        n_ok = 0
-        for rede in ordem_redes:
+        # rip up ONLY what is pending, and take its copper out of `uso`
+        for rede in pendentes:
+            for caminho_v, _l, _lp, _cc in caminhos_por_rede.pop(rede, []):
+                om, ovm = marcas.get(rede, (((0, 0),), ((0, 0),)))
+                _desmarcar(uso, caminho_v, om, rede, R=R, off_via=ovm)
+        falhas = [f for f in falhas
+                  if f.split(":", 1)[0].strip() not in set(pendentes)]
+        for rede in pendentes:
             pads = por_rede.get(rede, [])
             if len(pads) < 2:
                 continue
@@ -312,6 +362,7 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
             off_olha = _disco(R, larg_rede / 2.0)
             off_via_marca = _disco(R, R.VIA_D / 2.0 + R.folga_de(rede) + m)
             off_via_olha = _disco(R, R.VIA_D / 2.0)
+            marcas[rede] = (off_marca, off_via_marca)
             feito = set(celulas[0])
             caminhos_por_rede.setdefault(rede, [])
             restantes = list(range(1, len(celulas)))
@@ -360,12 +411,16 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
                         vias_postas.add((cel_v[1], cel_v[2]))
                     ant_v = cel_v
                 feito |= set(p)
-                n_ok += 1
 
         # The real question is the DRC's: does any net's centre line fall
         # inside another net's copper-plus-clearance? Asked after every
         # net is down, because a net drawn early never saw the late ones.
         disputadas = []
+        # and WHO is on each one, collected where the conflict is found: the
+        # cell that goes into `disputadas` is the path's, and the conflict is
+        # at a cell of its clearance disc, so looking it up afterwards finds
+        # only the net itself
+        culpadas: set = set()
         for rede_c, caminhos_c in caminhos_por_rede.items():
             larg_c = R.largura(rede_c)
             olha_c = _disco(R, larg_c / 2.0)
@@ -378,6 +433,8 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
                         quem = uso.get((c, ix + dx, iy + dy))
                         if quem and (quem - {rede_c}):
                             disputadas.append((c, ix, iy))
+                            culpadas.add(rede_c)
+                            culpadas |= (quem - {rede_c})
                             bateu = True
                             break
                     if not bateu and ant_c is not None and ant_c[0] != c:
@@ -386,17 +443,43 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
                                 quem = uso.get((cam, ix + dx, iy + dy))
                                 if quem and (quem - {rede_c}):
                                     disputadas.append((c, ix, iy))
+                                    culpadas.add(rede_c)
+                                    culpadas |= (quem - {rede_c})
                                     bateu = True
                                     break
                             if bateu:
                                 break
                     ant_c = (c, ix, iy)
+        # who has to be asked again: whoever is using a contested cell, plus
+        # whoever failed. A net nobody is fighting with keeps its path.
+        n_ok = sum(len(v) for v in caminhos_por_rede.values())
+        for f in falhas:
+            culpadas.add(f.split(":", 1)[0].strip())
+        pendentes = [r for r in ordem_redes if r in culpadas]
         if melhor_saida is None or (len(disputadas), len(falhas)) < melhor_saida[0]:
-            melhor_saida = ((len(disputadas), len(falhas)), caminhos_por_rede,
+            # a COPY: caminhos_por_rede is mutated in place from now on,
+            # and keeping a reference would let a later round rewrite the
+            # best result that was already put aside
+            melhor_saida = ((len(disputadas), len(falhas)),
+                            {k: list(v) for k, v in caminhos_por_rede.items()},
                             list(falhas), n_ok, rodada + 1)
-        print(f"    rodada {rodada + 1}{' (sem partilha)' if duro else ''}: "
-              f"{n_ok} ligacoes, {len(falhas)} sem caminho, "
-              f"{len(disputadas)} celulas disputadas", flush=True)
+        # Also to a FILE, one line per round. The owner could not tell a
+        # router that was working from one that had hung, and he was right
+        # to ask: this stage takes tens of minutes and every way of running
+        # it swallowed the progress (a `tail` in the pipeline buffers until
+        # the process ends). The file is written and flushed per round, so
+        # `tail -f cad/_progresso.txt` shows it live, whatever wraps the
+        # command.
+        linha = (f"    rodada {rodada + 1}{' (sem partilha)' if duro else ''}: "
+                 f"{n_ok} ligacoes, {len(falhas)} sem caminho, "
+                 f"{len(disputadas)} celulas disputadas, "
+                 f"{len(pendentes)} redes a refazer")
+        print(linha, flush=True)
+        try:
+            with open(R.HERE / "_progresso.txt", "a", encoding="utf-8") as fp:
+                fp.write(_time.strftime("%H:%M:%S") + "  " + linha.strip() + chr(10))
+        except OSError:
+            pass
         if rodada + 1 == MAX_RODADAS or (not disputadas and not falhas):
             for f in falhas[:8]:
                 print("      " + f, flush=True)

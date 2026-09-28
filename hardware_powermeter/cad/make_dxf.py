@@ -112,8 +112,14 @@ _ANT_FAIXA = 4.3           # board edge kept clear beside the antenna: the
 # 11,00 x 13,00. Declaring 10,50 x 13,00 here - the body plus a flat 0,5 -
 # is what made the placer refuse to seat U201 at all on 2026-09-28, and the
 # message it gave ("nao coube perto de") did not say why.
-_MOD_COMP = 13.5           # the module's courtyard along x (13,0 + 0,5)
-_MOD_ALT = 11.5            # across y (11,0 + 0,5)
+# And they are the courtyard EXACTLY, with no extra: the placement puts the
+# module at W minus half of _MOD_COMP, so any padding here leaves board
+# between the antenna and the edge - 0,25 mm of it, which is what made RF4
+# say the antenna touches no edge. The maker calls the middle of the board
+# the worst place for a ceramic antenna and the edge the best, so the
+# courtyard has to reach the edge.
+_MOD_COMP = 13.0           # the module's courtyard along x (12,5 + 0,5 de toe)
+_MOD_ALT = 11.0            # across y (10,0 + 0,5 de toe de cada lado)
 MOD_Y0 = H / 2.0 - _MOD_ALT / 2.0
 MOD_Y1 = H / 2.0 + _MOD_ALT / 2.0
 

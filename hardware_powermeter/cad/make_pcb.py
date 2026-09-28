@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import math
 import pathlib
+import re
 import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
@@ -1383,6 +1384,41 @@ def main() -> int:
     corpo_furo = corpo_furo.replace(
         '(property "Reference" "REF**"',
         '(property "Reference" "REF**" (hide yes)', 1)
+    # And its COURTYARD has to be the same number the placer reserved, or the
+    # two disagree and the DRC is right to say so. KiCad's footprint draws a
+    # circle of 2,45 mm for the head of an M2 screw sitting ON the board;
+    # here the head is on the pod's lid and only a 2,00 mm neck passes
+    # through, so make_dxf.FURO_RESERVA_R is what the placer keeps clear and
+    # it is what the courtyard has to be. Leaving the library's 2,45 gave
+    # four courtyard overlaps against parts the placer had legitimately put
+    # 2,5 to 3,0 mm away (2026-09-28).
+    _r = getattr(M, "FURO_RESERVA_R", None)
+    if _r is not None:
+        # Per CIRCLE, not by a loose regular expression. The footprint's
+        # FIRST fp_circle is the 2,2 mm one on Cmts.User - the hole itself -
+        # and the courtyard is the second; a non-greedy match from "fp_circle"
+        # to "F.CrtYd" therefore rewrote the WRONG circle and left the
+        # courtyard at 2,45 (2026-09-28).
+        def _corta(bloco: str) -> str:
+            saida, i = [], 0
+            while True:
+                j = bloco.find("(fp_circle", i)
+                if j < 0:
+                    saida.append(bloco[i:])
+                    break
+                k = bloco.find("(fp_circle", j + 1)
+                k = len(bloco) if k < 0 else k
+                pedaco = bloco[j:k]
+                if 'CrtYd"' in pedaco:
+                    pedaco = re.sub(r"(\(end )[\d.]+( 0\))",
+                                    lambda m: m.group(1) + f"{_r:.4f}" + m.group(2),
+                                    pedaco, count=1)
+                saida.append(bloco[i:j])
+                saida.append(pedaco)
+                i = k
+            return "".join(saida)
+
+        corpo_furo = _corta(corpo_furo)
     for i_furo, (dx_furo, dy_furo) in enumerate(M.FUROS_DOC):
         fx, fy = P_(dx_furo, dy_furo)
         saida.append('\t(footprint "MountingHole:MountingHole_2.2mm_M2"\n'

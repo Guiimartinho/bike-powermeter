@@ -926,7 +926,10 @@ def base(arv, todos):
     return g
 
 
-def terra(g: Grade, por_rede, segmentos, vias, falhas) -> int:
+def terra(g: Grade, por_rede, segmentos, vias, falhas, todos=()) -> int:
+    # `todos` and not `por_rede`: a pad with NO net is absent from
+    # por_rede, and a pad with no net is exactly the one a ground stub
+    # touched on 2026-09-28 (U102's pad 2). Copper is copper.
     """A stub from every ground pad to a via down into the plane.
 
     The stub is axis-aligned and the whole of it is checked before anything
@@ -973,6 +976,25 @@ def terra(g: Grade, por_rede, segmentos, vias, falhas) -> int:
         # 0.4 mm stub leaving a 0.3 mm ground pad sticks out on both sides and
         # lands inside the neighbouring pad's clearance
         larg_g = max(LARGURA, min(LARGURA_ALIM, 2 * hw, 2 * hh))
+        # And then MEASURE it, against the pads, before drawing it. The grid
+        # said this corridor was free and it was not: on 2026-09-28 three of
+        # these stubs came out 0,102, 0,010 and 0,000 mm from a neighbour's
+        # pad, the last one touching a pad of U102 that has no net - a short
+        # and a solder mask bridge. A stub that fails here is dropped: the
+        # pad it serves reaches the plane through the pour of its own face,
+        # which is what the 39 pads without a via of their own already do.
+        perto = False
+        for nome_p, idx_p, px, py, hw_p, hh_p in todos:
+            if nome_p == "GND" or (idx_p >= 0 and idx_p != idx):
+                continue
+            qx, qy = px - MP.ORIGEM[0], py - MP.ORIGEM[1]
+            if _dist_seg_ret((bx, by), posto, qx, qy, hw_p, hh_p) <                     larg_g / 2 + max(FOLGA, folga_de(nome_p or "GND")):
+                perto = True
+                break
+        if perto:
+            falhas.append(f"GND: a via ao lado de ({bx:.1f}; {by:.1f}) passaria perto "
+                          "demais de um pad vizinho; o pad fica pelo plano da face")
+            continue
         vias.append((posto[0], posto[1], "GND"))
         segmentos.append(((bx, by), posto, idx, "GND", larg_g))
         g.trilha(idx, (bx, by), posto, larg_g, "GND")
@@ -1311,7 +1333,7 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
     # are 2,5 mm apart and the maze routes the pair from them
     pre_ligados: dict = {}
     n_gnd = (0 if so_estas is not None
-             else terra(g, por_rede, segmentos, vias, falhas))
+             else terra(g, por_rede, segmentos, vias, falhas, todos))
 
     def alcance(r: str) -> float:
         xs = [q[2] for q in por_rede[r]]
@@ -1611,6 +1633,11 @@ def via_cabe_aqui(vx: float, vy: float, rede: str,
             return False
     for wx, wy, r in vias:
         if r == rede:
+            # its own net still may not have two vias in the same hole:
+            # KiCad calls that "holes co-located" and the fabricator drills
+            # the same spot twice (seen on 2026-09-28)
+            if perto(math.hypot(wx - vx, wy - vy), VIA_D * 0.5):
+                return False
             continue
         f = max(folga_de(rede), folga_de(r))
         if perto(math.hypot(wx - vx, wy - vy), VIA_D + f):
@@ -1685,15 +1712,19 @@ def emitir_caminhos(arv, todos, por_rede, caminhos_por_rede):
     return g, segmentos, vias
 
 
-def conferir(segmentos, vias) -> list[str]:
+def conferir(segmentos, vias, todos=()) -> list[str]:
     """Does what came out actually keep its distance? Ask the geometry.
 
     The grid is a model of the board and a model can be wrong. This checks
-    the RESULT: every pair of segments on the same layer, every pair of vias,
-    every segment against every via, by distance between the real shapes. It
-    is what turns "the router thinks it is fine" into a number, and it runs
-    before the board is written, so a defect in the grid shows up here and
-    not two minutes later in the DRC.
+    the RESULT by distance between real shapes: every pair of segments on the
+    same layer, every pair of vias, and - since 2026-09-28 - every segment
+    against every PAD of another net.
+
+    That last one was the hole. Without it this printed "0 pairs too close"
+    on a board where a ground stub ran 0,0000 mm from a pad of U102 that has
+    no net at all: it touched it, and the DRC found the short and a solder
+    mask bridge with it. A check that measures tracks against tracks and
+    calls the board clean is worse than no check, because it is believed.
     """
     def dist_seg(a0, a1, b0, b1) -> float:
         def pp(p, q0, q1):
@@ -1729,7 +1760,46 @@ def conferir(segmentos, vias) -> list[str]:
             if d < VIA_D + 0.12:
                 problemas.append(f"via {r} e via {r2} a {d:.3f} mm "
                                  f"(em {x:.1f}; {y:.1f})")
+    # tracks against PADS. A pad with no net is not exempt: copper is copper,
+    # and touching one shorts whatever the part connects internally.
+    orx, ory = MP.ORIGEM
+    for (p0, p1, c, r, w) in segmentos:
+        for nome, idx, px, py, hw, hh in todos:
+            if nome == r or (idx >= 0 and idx != c):
+                continue
+            qx, qy = px - orx, py - ory
+            d = _dist_seg_ret(p0, p1, qx, qy, hw, hh)
+            exigido = w / 2 + max(folga_de(r), folga_de(nome or r)) - 0.01
+            if d < exigido:
+                problemas.append(
+                    f"{r} na camada {CAMADAS[c]} a {d:.3f} mm do pad "
+                    f"{nome or '<sem rede>'} em ({qx:.1f}; {qy:.1f}), "
+                    f"pede {exigido:.3f}")
     return problemas
+
+
+def _dist_seg_ret(p0, p1, cx, cy, hw, hh) -> float:
+    """Distance from a segment's centre line to an axis-aligned pad."""
+    def dentro(x, y):
+        return abs(x - cx) <= hw and abs(y - cy) <= hh
+
+    def pp(px, py, ax, ay, bx, by):
+        vx, vy = bx - ax, by - ay
+        L = vx * vx + vy * vy
+        k = 0.0 if L == 0 else max(0.0, min(1.0, ((px - ax) * vx + (py - ay) * vy) / L))
+        return math.hypot(px - (ax + k * vx), py - (ay + k * vy))
+
+    if dentro(*p0) or dentro(*p1):
+        return 0.0
+    lados = ((cx - hw, cy - hh, cx + hw, cy - hh), (cx + hw, cy - hh, cx + hw, cy + hh),
+             (cx + hw, cy + hh, cx - hw, cy + hh), (cx - hw, cy + hh, cx - hw, cy - hh))
+    melhor = float("inf")
+    for ax, ay, bx, by in lados:
+        melhor = min(melhor, pp(p0[0], p0[1], ax, ay, bx, by),
+                     pp(p1[0], p1[1], ax, ay, bx, by),
+                     pp(ax, ay, p0[0], p0[1], p1[0], p1[1]),
+                     pp(bx, by, p0[0], p0[1], p1[0], p1[1]))
+    return melhor
 
 
 def escrever(caminho, texto, numeros, segmentos, vias) -> None:
@@ -1916,18 +1986,41 @@ def main() -> int:
                       f"{len(herda_via)} vias de {len(set(s[3] for s in herda_seg))} "
                       "redes que o negociado nao roteou", flush=True)
                 falhas2: list[str] = []
-                n_gnd2 = terra(g2, por_rede, seg2, via2, falhas2)
+                n_gnd2 = terra(g2, por_rede, seg2, via2, falhas2, todos)
                 n_cost2 = costurar(g2, via2)
                 n_malha2 = costurar_area(g2, via2)
                 # nao podar: a poda foi escrita para o roteador sequencial,
                 # que desenha uma ligacao de cada vez a partir de um pad. O
                 # estagio negociado devolve a arvore inteira de uma rede, e
                 # a poda cortava ramos legitimos dela (2026-09-27).
-                segmentos, vias = seg2, via2
-                falhas, n_gnd, n_ok = falhas2, n_gnd2, n_ok_n
-                n_cost, n_malha = n_cost2, n_malha2
-                print(f"    fechou em {rodadas} rodadas: {n_ok_n} ligacoes, "
-                      "0 celulas disputadas", flush=True)
+                # And MEASURE the merge before accepting it. The negotiated
+                # stage plans on a grid that holds only what it was told
+                # about, and it is NOT told about the sequential copper of a
+                # net it goes on to fail: that copper is inherited afterwards
+                # and can land on top of a track it planned. Measured on
+                # 2026-09-28 - 3V0 failed in the negotiated stage, its
+                # sequential copper came back, and SPI_MOSI's negotiated
+                # track ran 0,000 mm from it. The router SAW it, printed
+                # "15 pairs too close", and wrote the board anyway.
+                #
+                # Detection without a consequence is not a check. If the
+                # merge is dirty, the sequential answer is what gets written:
+                # fewer connections, but no short.
+                ruins2 = conferir(seg2, via2, todos)
+                if ruins2:
+                    print(f"    o resultado negociado foi RECUSADO: a mistura dele "
+                          f"com o cobre sequencial tem {len(ruins2)} pares perto "
+                          "demais", flush=True)
+                    for r in ruins2[:4]:
+                        print(f"      {r}", flush=True)
+                    print("    fica o resultado sequencial, que tem menos ligacoes "
+                          "e nenhum curto", flush=True)
+                else:
+                    segmentos, vias = seg2, via2
+                    falhas, n_gnd, n_ok = falhas2, n_gnd2, n_ok_n
+                    n_cost, n_malha = n_cost2, n_malha2
+                    print(f"    fechou em {rodadas} rodadas: {n_ok_n} ligacoes, "
+                          "0 celulas disputadas", flush=True)
             else:
                 print(f"    nao fechou: {n_falhas} sem caminho, {n_disputa} "
                       f"celulas disputadas depois de {rodadas} rodadas; "
@@ -1937,7 +2030,7 @@ def main() -> int:
     if n_enc:
         print(f"  {n_enc} pads alcançados por encosto final")
 
-    ruins = conferir(segmentos, vias)
+    ruins = conferir(segmentos, vias, todos)
     print(f"  conferencia geometrica: {len(ruins)} pares perto demais")
     for r in ruins[:8]:
         print(f"    {r}")

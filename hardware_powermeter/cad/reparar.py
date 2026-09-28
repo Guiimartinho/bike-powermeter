@@ -323,6 +323,18 @@ def main() -> int:
         if not s and not v:
             falhas.append(f"{rede}: o caminho saiu sem cobre nenhum")
             continue
+        # MEASURE what was just drawn, against everything already there,
+        # before keeping it. Measured on 2026-09-28: this pass closed four
+        # connections and gave the board four SHORTS (UART_RX to GND,
+        # SPI_MOSI to 3V0), three crossing tracks and two holes drilled in
+        # the same place - from 4 real DRC violations to 13. A pass that
+        # repairs by breaking is worse than one that leaves the gap, because
+        # the gap is visible and the short is not.
+        ruins = R.conferir(segmentos + s, vias + v, todos)
+        if ruins:
+            falhas.append(f"{rede}: o conserto criaria {len(ruins)} problema(s) de "
+                          f"geometria ({ruins[0][:70]}); nao foi desenhado")
+            continue
         segmentos += s
         vias += v
         cobre_cel[rede] = cobre_cel.get(rede, set()) | set(achou)

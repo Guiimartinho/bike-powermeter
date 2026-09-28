@@ -41,3 +41,7 @@ hardware_powermeter/datasheets/*
 
 # Logs de build da raiz (fw.sh > build_*.log)
 /build_*.log
+
+# progresso do roteador: uma linha por rodada, para acompanhar ao vivo
+hardware_powermeter/cad/_progresso.txt
+hardware_powermeter/cad/_drc_all.json

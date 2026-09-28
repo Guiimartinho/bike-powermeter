@@ -75,8 +75,10 @@ REGRAS = [
     ("RF3", "5 mm em volta da area da antena sem trilha de sinal, sem metal e "
             "sem fonte de interferencia; modulo na borda ou no canto",
      "MinewSemi ME54BS13 V1.0.0, 7.4"),
-    ("RF4", "a placa vazada sob a area da antena do modulo, deixando-a suspensa",
-     "MinewSemi ME54BS13 V1.0.0, 7.4"),
+    ("RF4", "a antena do modulo passando para FORA do plano de terra da "
+            "placa, que e o que uma antena ceramica pede",
+     "HOLYIOT-26001-A, guia de montagem do anuncio: a antena para fora da "
+     "borda e a melhor posicao, o canto e boa, o meio da placa e a pior"),
     ("RF9", "a distancia de isolacao que a ficha do modulo pede de cada tipo "
             "de fonte de interferencia: 20 mm de fonte chaveada, indutor de "
             "potencia ou transformador",
@@ -243,7 +245,12 @@ FOLGA_ANALOGICO_MODULO = 5.0
 # The antenna band of the ME54BS13, from its mechanical drawing: 4.46 mm of
 # the module's 16.5 mm length, across the whole 12 mm width. It is NOT the
 # keep-out rectangle, which is drawn larger and reaches the board edge.
-ANT_MOD = 4.46
+# 3,80 mm e nao 4,46: a faixa da antena e do HOLYIOT-26001-A, e sao os
+# 3,80 mm que o desenho mecanico dele mantem livres de pads entre a borda
+# de cima e a primeira fileira (09-modulo-de-radio.md). Os 4,46 eram do
+# ME54BS13, e deixados aqui faziam a faixa comecar 0,41 mm antes da zona
+# sem cobre - a RF4 reprovava a placa por uma cota de uma peca que saiu.
+ANT_MOD = 3.80
 FOLGA_ANTENA = 5.0       # 7.4: "3-5 mm around the antenna area"
 LIMITE_MODULO = 0.5      # 7.2: "trace length ... should be <= 0.5 mm"
 
@@ -928,16 +935,36 @@ def main() -> int:
                       "do proprio modulo fica mais perto de proposito (" +
                       ", ".join(f"{r} {d:.1f}" for d, r in proprias) + ")")
 
-    # -- RF4: a placa vazada sob a antena ------------------------------------
+    # -- RF4: a antena fora do plano de terra --------------------------------
+    #
+    # Esta regra mudou de pergunta em 2026-09-28 junto com o modulo, e a
+    # diferenca importa: o ME54BS13 tinha antena de TRACO e a ficha dele
+    # mandava vazar a placa embaixo, deixando a regiao suspensa. O
+    # HOLYIOT-26001-A tem antena CERAMICA e o guia de montagem do fabricante
+    # pede outra coisa - a antena para fora do plano de terra da placa
+    # hospedeira, com "best" na borda, "good" no canto e "bad" no meio.
+    # Continuar cobrando o vazado seria cobrar a ficha de uma peca que nao
+    # esta mais na placa.
     if ant:
-        vazado = any(cx1 > ant[0] and ant[2] > cx0 and
-                     cy1 > ant[1] and ant[3] > cy0
-                     for (cx0, cy0, cx1, cy1) in cortes)
-        if not vazado:
-            falhou("RF4", "a placa nao e vazada sob a area da antena; a ficha "
-                   "pede a regiao suspensa")
+        # quanto da faixa da antena tem plano de terra por baixo
+        planos = [z for z in getattr(M, "ZONES", ())
+                  if z[0].startswith("KEEPOUT_ANTENA")]
+        livre = any(z[1][0] <= ant[0] + 0.01 and z[1][2] >= ant[2] - 0.01 and
+                    z[1][1] <= ant[1] + 0.01 and z[1][3] >= ant[3] - 0.01
+                    for z in planos)
+        na_borda = ant[2] >= M.W - 0.05 or ant[0] <= 0.05 or             ant[3] >= M.H - 0.05 or ant[1] <= 0.05
+        if not planos:
+            falhou("RF4", "nao mede nada: nao ha zona de exclusao declarada "
+                   "para a antena em make_dxf.ZONES")
+        elif not livre:
+            falhou("RF4", "a faixa da antena nao esta inteira dentro da zona "
+                   "sem cobre: parte dela ficaria sobre o plano de terra")
+        elif not na_borda:
+            falhou("RF4", "a antena nao encosta em borda nenhuma da placa; o "
+                   "fabricante chama o meio da placa de a pior posicao")
         else:
-            ok.append("RF4: a placa e vazada sob a area da antena")
+            ok.append("RF4: a faixa da antena esta inteira dentro da zona sem "
+                      "cobre e encosta na borda da placa")
 
     # -- RF9: a tabela de isolacao da 7.2 ------------------------------------
     if MODULO in pecas:
