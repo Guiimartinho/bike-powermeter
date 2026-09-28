@@ -44,10 +44,10 @@ Transmissor pelo perfil `ant_bpwr` do add-on `sdk-ant` (C:\ncs\sdk-ant), que imp
 
 ## Atualização
 
-mcumgr SMP sobre BLE (grupo de imagem e de sistema), o mesmo transporte do ciclocomputador; e a recuperação serial do MCUboot sobre USB CDC ACM pelo conector magnético, para o cabo. A atualização é recusada pedalando e com bateria abaixo de 30 %.
+mcumgr SMP sobre BLE (grupo de imagem e de sistema), o mesmo transporte do ciclocomputador; e a recuperação serial do MCUboot sobre **UART** pelo conector magnético, para o cabo (o nRF54L15 não tem USB). A atualização é recusada pedalando e com bateria abaixo de 30 %.
 
 O serviço SMP também exige ligação cifrada, pelo mesmo motivo do serviço de configuração: `CONFIG_MCUMGR_TRANSPORT_BT_PERM_RW_ENCRYPT` nos dois arquivos de placa. O padrão do Zephyr com o gerenciador de segurança ligado é exigir **autenticação**, e num aparelho sem tela nem teclado isso não é alcançável: a característica ficaria impossível de escrever e a atualização por BLE, impossível de fazer. Medido no `.config` gerado em 2026-09-27.
 
 ## Porta serial
 
-Com o cabo no conector, o módulo aparece no PC como porta serial (USB CDC ACM) e aceita os mesmos comandos de texto do serviço de configuração, mais `$LOG` para o log do sistema. Serve à bancada de calibração sem rádio.
+Com o cabo no conector, o módulo é uma porta serial e aceita os mesmos comandos de texto do serviço de configuração, mais `$LOG` para o log do sistema. Serve à bancada de calibração sem rádio. No pod é uma **UART** a 115200, nos dois contatos do conector que antes levavam `D+` e `D−`, então o cabo leva um conversor USB-serial; no DK é uma porta CDC ACM de verdade. Os dois falam as mesmas linhas.

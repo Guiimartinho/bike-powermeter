@@ -37,7 +37,7 @@ flowchart LR
         T["TMP117<br/>I2C, junto da ponte"]
     end
     subgraph MCU["Módulo de rádio"]
-        M["ME54BS13<br/>nRF54LM20A"]
+        M["HOLYIOT-26001-A<br/>nRF54L15"]
     end
     subgraph EN["Energia"]
         P["nPM1100<br/>carga + buck 3,0 V"]
@@ -80,7 +80,7 @@ Estimativas de projeto a partir dos datasheets; nenhuma medida ainda.
 | Pedalando | ADS1220 modo normal, ganho 128 | 0,59 mA | 510 + 75 µA (SBAS501D) |
 | Pedalando | BMA400 modo normal, OSR 0 | 0,004 mA | 3,5 µA |
 | Pedalando | TMP117 a 1 Hz | 0,004 mA | 3,5 µA |
-| Pedalando | nRF54LM20A com BLE a 1 Hz e ANT+ a 4 Hz | 0,3 mA | estimativa de projeto; medir no DK |
+| Pedalando | nRF54L15 com BLE a 1 Hz e ANT+ a 4 Hz | 0,3 mA | estimativa de projeto; medir no DK |
 | Pedalando | MAX17048 | 0,003 mA | 3 µA em hibernate |
 | **Pedalando, total** | | **≈ 1,5 mA** | 100 mAh dão cerca de 66 h e 150 mAh cerca de 100 h: **acima das 50 h do requisito**. Com a ponte de 1 kΩ eram 3,9 mA e 38 h, abaixo |
 | Parado | BMA400 a 100 Hz, ADS1220 em power-down entre rajadas de 8 amostras a cada 10 s, MCU em System ON dormindo, nPM1100 | ≈ 20 µA | 3,5 + 0,4 + a média das rajadas + ~10 + 0,8 µA |
@@ -115,30 +115,47 @@ O firmware já faz o que dá sem mudar peça: fora de `Active` e `Calibrating` o
 
 ## Pinos do módulo
 
-Regras do nRF54LM20A que valem aqui como no ciclocomputador: SCL do TWIM e SCK do SPIM em pinos de clock (P0.03, P0.04, P0.06, P0.07, P1.03, P1.04, P1.07, P1.13, P1.14, P1.17, P1.18, P1.23, P1.24, P2.01, P2.06, P3.03 e P3.04, tabela 79 da ficha do SoC); P1.01 e P1.02 saem do reset como NFC; o bloco serial `spi00` fica no porto P2 e os blocos 20 a 24 nos portos P1 e P3. Os pads do módulo são os da ficha do ME54BS13 V1.0.0 (páginas 6 a 9), a mesma tabela `PADS_ME54BS13` do ciclocomputador. A alocação abaixo vale para o esquemático ([`../hardware_powermeter/cad/`](../hardware_powermeter/cad/README.md)), para a placa própria do firmware e para os testes; no nRF54LM20 DK os mesmos sinais vão para pinos livres dos conectores do kit (coluna da direita).
+Regras do **nRF54L15** que valem aqui: o `SCL` de um TWIM e o `SCK` de um
+SPIM precisam de pino com capacidade de clock, e a tabela desses pinos não
+está neste repositório — os arquivos da própria Nordic no NCS estão, e é
+deles que sai cada pino de barramento abaixo
+([`../hardware_powermeter/09`](../hardware_powermeter/09-modulo-de-radio.md#o-mapa-de-pinos-do-projeto)).
+Os blocos seriais seguem os portos: `spi00` no P2, e os blocos `20`, `21` e
+`22` no P1 — e esses três são **o mesmo periférico** em três endereços, cada
+um servindo como `i2c`, `spi` **ou** `uart`, um de cada vez.
+
+O módulo é o **HOLYIOT-26001-A** e traz 30 dos 34 GPIO do SoC: `P0.00` a
+`P0.04`, `P1.02` a `P1.15` e `P2.00` a `P2.10`. O projeto usa 20.
 
 | Sinal | Pino do SoC | Pad do módulo | Vai para | No DK |
 |---|---|---|---|---|
-| `SPI00 SCK` | P2.01 (clock) | E9 | ADS1220 SCLK e BMA400 SCK | P3.03 (`spi22`) |
-| `SPI00 MOSI` | P2.02 | D9 | ADS1220 DIN e BMA400 SDI | P3.00 |
-| `SPI00 MISO` | P2.04 | C8 | ADS1220 DOUT/DRDY e BMA400 SDO | P3.01 |
-| `ADC_CS` | P2.05 | D8 | ADS1220 CS | P3.02 |
-| `ADC_DRDY` | P2.03 | C9 | ADS1220 DRDY (entrada, borda de descida) | P3.06 |
-| `IMU_CS` | P2.07 | E8 | BMA400 CSB | P3.05 |
-| `IMU_INT1` | P2.08 | F8 | BMA400 INT1 (entrada, ativo alto) | P3.04 |
-| `I2C23 SDA` | P1.29 | B9 | TMP117 SDA, MAX17048 SDA | P1.29 |
-| `I2C23 SCL` | P1.03 (clock) | B8 | TMP117 SCL, MAX17048 SCL | P1.03 |
-| `EXC_EN` | P1.10 | E3 | TPS22916 ON (saída, alto liga a excitação) | P1.10 |
-| `CHG_N` | P1.11 | F5 | nPM1100 CHG (dreno aberto, baixo carregando), pull-up | P1.11 |
-| `ERR_N` | P1.12 | F4 | nPM1100 ERR (dreno aberto, baixo em erro), pull-up | P1.12 |
-| `SHPACT` | P1.25 | E5 | nPM1100 SHPACT (alto por 200 ms com o cabo fora: ship mode; sai com o cabo) | P1.25 |
-| `GAUGE_ALRT` | P1.22 | E4 | MAX17048 ALRT (dreno aberto), pull-up | P1.22 |
-| `LED_R`, `LED_G`, `LED_B` | P1.06, P1.08, P1.09 | A6, C6, D6 | LED RGB por resistor, ativo baixo | LEDs 0, 1 e 2 do DK |
-| `UART20 TX`, `RX` | P1.00, P1.31 | A7, B7 | console em dois pontos de teste | VCOM0 do DK |
-| `USB D−`, `USB D+` | pads 7 e 8 do módulo | 7, 8 | conector magnético, pelo TPD4E05U06; o nPM1100 lê D+ e D− para detectar a porta | USB-C do DK |
-| `VBUS` | pad 9 | 9 | 5 V do conector, depois do nPM1100 (o pad é o detector de USB do SoC) | |
-| `SWDIO`, `SWDCLK` | pads 5 e 6 | 5, 6 | conector magnético (100 Ω em série) e Tag-Connect TC2030 | |
-| `RESET` | pad 4 | 4 | só o Tag-Connect TC2030: o conector magnético tem seis contatos e não leva o reset | |
+| `SPI00 SCK` | P2.01 (clock) | 10 | ADS1220 SCLK e BMA400 SCK | P3.03 (`spi22`) |
+| `SPI00 MOSI` | P2.02 | 30 | ADS1220 DIN e BMA400 SDI | P3.00 |
+| `SPI00 MISO` | P2.04 | 16 | ADS1220 DOUT/DRDY e BMA400 SDO | P3.01 |
+| `ADC_CS` | P2.05 | 8 | ADS1220 CS | P3.02 |
+| `ADC_DRDY` | P2.03 | 29 | ADS1220 DRDY (entrada, borda de descida) | P3.06 |
+| `IMU_CS` | P2.07 | 28 | BMA400 CSB | P3.05 |
+| `IMU_INT1` | P2.08 | 11 | BMA400 INT1 (entrada, ativo alto) | P3.04 |
+| `I2C22 SCL` | P1.11 (clock) | 34 | TMP117 SCL, MAX17048 SCL | P1.11 |
+| `I2C22 SDA` | P1.12 | 33 | TMP117 SDA, MAX17048 SDA | P1.12 |
+| `EXC_EN` | P2.06 | 27 | TPS22916 ON (saída, alto liga a excitação) | P2.06 |
+| `CHG_N` | P1.09 | 22 | nPM1100 CHG (dreno aberto, baixo carregando), pull-up | P1.09 |
+| `ERR_N` | P1.08 | 12 | nPM1100 ERR (dreno aberto, baixo em erro), pull-up | P1.08 |
+| `SHPACT` | P1.15 | 19 | nPM1100 SHPACT (alto por 200 ms com o cabo fora: ship mode; sai com o cabo) | P1.15 |
+| `GAUGE_ALRT` | P1.07 | 13 | MAX17048 ALRT (dreno aberto), pull-up | P1.07 |
+| `VBUS_SENSE` | P1.06 | 14 | divisor 1 M / 470 k no `VBUS`: é assim que o aparelho sabe que o cabo entrou | P1.06 |
+| `LED_R`, `LED_G`, `LED_B` | P1.10, P1.13, P1.14 | 35, 21, 20 | LED RGB por resistor, ativo baixo | LEDs 0, 1 e 2 do DK |
+| `UART20 TX`, `RX` | P1.04, P1.05 | 18, 17 | conector magnético, pelo TPD4E05U06: console, comandos e recuperação do MCUboot | VCOM0 do DK |
+| `SWDIO`, `SWDCLK` | pads 4 e 5 | 4, 5 | conector magnético (100 Ω em série) e Tag-Connect TC2030 | |
+| `NRESET` | pad 1 | 1 | só o Tag-Connect TC2030: o conector magnético tem seis contatos e não leva o reset | |
+
+> [!IMPORTANT]
+> **Não há USB.** O `usbhs` não existe no nRF54L15, e por isso não há pino
+> `VBUS` no módulo: o pad 9 é o `P2.00`, um GPIO comum que os 5 V do cabo
+> destruiriam. Os dois contatos do conector magnético que levavam `D+` e
+> `D−` levam agora `TX` e `RX`, e eles **continuam chegando ao nPM1100**,
+> que lê essas duas linhas sozinho para escolher entre 500 mA e 100 e não
+> se importa com o que fala nelas.
 
 Os aliases que o firmware usa são `bridge-adc`, `bridge-excitation`, `imu0`, `temp0`, `fuel-gauge0`, `charger-status`, `charger-error`, `ship-activate`, `led-r`, `led-g`, `led-b` e `watchdog0`, e um alias que não existe deixa aquele bloco fora. Ship mode: o nPM1100 entra com `SHPACT` alto por 200 ms sem cabo (PS v1.5, 3.5) e só sai com o cabo, porque `SHPHLD` fica só no pull-up e o pod não tem botão; é o estado de fábrica e de guarda longa (460 nA), pedido pelo comando `$SHIP`. O `$SLEEP` é outra coisa: o SoC em System OFF com o BMA400 acordando pelo `IMU_INT1`. Configuração por pino do nPM1100 (PS v1.5): `VOUTBSET0` e `VOUTBSET1` altos dão 3,0 V (tabela da seção 6.3.1); `VTERMSET` alto dá 4,2 V na opção padrão (tabela 12); `ISET` no `AVSS` deixa a detecção da porta decidir 100 ou 500 mA (tabela 10); `MODE` baixo é o modo automático do buck; sem termistor no pack, `NTC` leva 10 kΩ ao `AVSS` (6.2.5); `ICHG` de 6,8 kΩ dá cerca de 75 mA (equação da 6.2.4), 0,5 C de uma célula de 150 mAh.
 
@@ -149,7 +166,7 @@ Os aliases que o firmware usa são `bridge-adc`, `bridge-excitation`, `imu0`, `t
 | Camadas | 4: `F.Cu`, `In1.Cu` terra, `In2.Cu` alimentação, `B.Cu` |
 | Espessura | 0,8 mm |
 | Contorno | derivado das peças e do pod; alvo 48 × 16 mm |
-| Antena | o lado de RF do módulo virado para a borda; 0,5 mm livres em volta do corpo; nenhum cobre nem peça a 4 mm do lado da antena na mesma camada; plano de terra contínuo sob a parte não-RF; via de terra junto de cada pad de terra do módulo (datasheet ME54BS13 v1.0.0, 7.1 a 7.3) |
+| Antena | **cerâmica**, na ponta do módulo virada para a borda da placa. O guia de montagem do fabricante classifica a antena passando para fora da borda como a melhor posição, o canto como boa e o meio da placa como a pior, e pede que ela fique **sem plano de terra embaixo**. Não há mais recorte vazado na placa: aquilo era o que a antena de traço do ME54BS13 pedia ([09](../hardware_powermeter/09-modulo-de-radio.md#a-antena-manda-no-layout)) |
 | Analógico | ponte e ADS1220 num canto, longe do buck e do módulo; filtro RC nas entradas e na referência como o datasheet do ADS1220 pede; retorno de terra da ponte direto ao AVSS |
 | Montagem | tudo de um lado, para o pod ser raso; o módulo é a peça mais alta (2,4 mm) |
 

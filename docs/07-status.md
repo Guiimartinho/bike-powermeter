@@ -12,7 +12,9 @@ O que existe, o que foi verificado e como, e o que falta. Nada rodou em placa: n
 | 2026-09-27 | os nove módulos do modelo escritos e testados no PC: 134 casos, 100 % das linhas, doze mutações mortas |
 | 2026-09-27 | o firmware embarcado inteiro escrito e compilando com zero avisos no nRF54LM20 DK e com `ANT=1`; nunca executado |
 | 2026-09-27 | o esquemático, a placa e o pod gerados por programa, com os dois dry runs |
-| 2026-09-28 | a ponte fechada numa peça só (S5229 de 5 kΩ) e a designação de compra dos braços do dono; o roteador passou a ser julgado pelo DRC do KiCad e não pela própria contabilidade; o pod fechou as 12 regras do dry run |
+| 2026-09-28 | a ponte fechada numa peça só (S5229 de 5 kΩ) e a designação de compra dos braços do dono; o roteador passou a ser julgado pelo DRC do KiCad e não pela própria contabilidade |
+| 2026-09-28 | a case ganhou vedação por anel O, dois parafusos, retenção da célula e da placa e dreno no conector, com uma regra medindo cada uma; o dry run foi de 12 para **16 regras, todas cumpridas** |
+| 2026-09-28 | o módulo passou a ser o **HOLYIOT-26001-A** (nRF54L15): placa de 51 × 16 para **47 × 14**, pod para **59,4 × 19,0 × 8,5**, firmware sem USB, mapa de pinos refeito com os pinos da própria Nordic |
 
 ```mermaid
 flowchart LR
@@ -50,18 +52,28 @@ O estimador de ângulo mudou do que a primeira versão de [04](04-arquitetura-fi
 
 ## Firmware embarcado
 
-Escrito em 2026-09-27, na forma de [04](04-arquitetura-firmware.md), e **compilando com zero avisos** para o nRF54LM20 DK (`bash tools/fw/fw.sh build`: 290.308 B de FLASH e 119.404 B de RAM, mais o MCUboot de 89.204 B nos seus 96 KB) e com o ANT+ (`ANT=1`: 325.588 B e 124.068 B). **Nada rodou**: não há DK com as placas de avaliação ligadas, e nenhuma linha abaixo foi vista funcionando.
+Escrito em 2026-09-27, na forma de [04](04-arquitetura-firmware.md), e **compilando com zero avisos** nos três alvos. **Nada rodou**: não há DK com as placas de avaliação ligadas, e nenhuma linha abaixo foi vista funcionando.
+
+| Alvo | FLASH | RAM | MCUboot |
+|---|---|---|---|
+| `pmboard/nrf54l15/cpuapp` (o pod) | 256.852 B de 659.312 (38,96 %) | 108.548 B de 188 KB (**56,39 %**) | 46.996 B de 60 KB |
+| nRF54LM20 DK | 290.308 B (44,03 %) | 119.404 B de 511 KB (22,82 %) | 53.324 B de 60 KB |
+| o mesmo, `ANT=1` | 325.588 B (49,38 %) | 124.068 B | idem |
+
+A RAM do pod é o número a vigiar: no nRF54L15 são 188 KB contra os 511 do
+nRF54LM20A, então a folga caiu de 387 KB para 80. Quem acrescentar função
+depois precisa saber disso.
 
 | Parte | Onde | Estado |
 |---|---|---|
 | base: `main`, canais do zbus, watchdog por thread, `pm_store` (settings, ZMS no nRF54L), `app_cmd` | `zephyr_app/src/app` | compila; a persistência do bloco de 60 bytes usa o subsistema settings com um handler estático |
 | driver do ADS1220 (`ti,ads1220`): conversão contínua e única, monitor da referência, power-down, DRDY por GPIO | `zephyr_app/modules/pm_drivers/drivers/adc` | compila; registradores e comandos da SBAS501D; não testado |
 | driver do BMA400 (`bosch,bma400`): API de sensor, trigger de dados prontos e de despertar no INT1, modos de energia | `zephyr_app/modules/pm_drivers/drivers/sensor` | compila; o `bosch,bma4xx` da árvore usa o mapa do BMA422 (dados em `0x12`, configuração em `0x40`) e não serve; não testado |
-| serviços `sample`, `motion`, `compute`, `power`, `radio`, `usb` | `zephyr_app/src/svc` | compilam; pilhas medidas ([04](04-arquitetura-firmware.md#pilhas-e-prioridades)) |
+| serviços `sample`, `motion`, `compute`, `power`, `radio` e a porta serial (`usb` no DK, `serial` no pod) | `zephyr_app/src/svc` | compilam; pilhas medidas ([04](04-arquitetura-firmware.md#pilhas-e-prioridades)) |
 | BLE: CPS (Measurement, Feature, Location, Control Point, Vector), serviço de configuração (comando, resposta, bloco, estado), DIS, BAS | `zephyr_app/src/rf/ble_cps.c`, `ble_cfg.c` | compila; os bytes vêm do modelo testado; comando e bloco exigem ligação cifrada ([05](05-protocolos.md#serviço-de-configuração)); a tabela GATT não foi vista por um cliente, e o emparelhamento nunca foi feito |
 | DFU por BLE (mcumgr SMP, MCUboot pelo sysbuild) e a recuperação serial do MCUboot pelo USB (CDC ACM, 1 s de espera a cada partida, MCUboot com 96 KB) | `zephyr_app/src/rf/dfu.c`, `zephyr_app/sysbuild/` | compilam; a recusa pedalando ou com bateria fraca é do hook do mcumgr; o serviço SMP exige ligação cifrada e **não** autenticada, senão seria inalcançável num aparelho sem tela |
 | ANT+ BPWR (páginas 1, 16, 18, 80, 81) pelo `ant_bpwr` do add-on | `zephyr_app/src/rf/ant_bpwr.c` | compila com `ANT=1`; a chave e o perfil são do add-on |
-| overlay do nRF54LM20 DK e a placa própria `pmboard` (`zephyr_app/boards/pm/pmboard`), os dois com os pinos de [02](02-hardware.md#pinos-do-módulo) | `zephyr_app/boards` | compilam; `tools/fw/board_check.py` confere o devicetree contra o silício, contra a tabela de [02] e contra a lista de nós do esquemático, nos dois sentidos: os 19 pinos do módulo batem nos três lados (2026-09-27) |
+| overlay do nRF54LM20 DK e a placa própria `pmboard` no **nRF54L15** (`zephyr_app/boards/pm/pmboard`), os dois com os pinos de [02](02-hardware.md#pinos-do-módulo) | `zephyr_app/boards` | compilam; `tools/fw/board_check.py` confere o devicetree contra o silício, contra a tabela de [02] e contra a lista de nós do esquemático, nos dois sentidos |
 
 O que falta no firmware: rodar no DK com as placas de avaliação; medir as pilhas na placa (`CONFIG_THREAD_ANALYZER`); o consumo real contra o orçamento de [02](02-hardware.md#orçamento-de-consumo).
 
@@ -96,6 +108,8 @@ ser a folga do **roteador**, medida em quantos lugares aceitam uma via
 | 2026-09-28 | a ponte é **uma peça só**: o S5229 de 5 kΩ em ponte completa, `N2K-13-S5229A-50C/DG/E3`, no lugar de quatro colagens |
 | 2026-09-28 | a célula estreita de 15 para 13 mm (13 % de volume) para o rasgo dos fios da ponte passar ao lado dela, em vez de afastar o `J301` do conversor |
 | 2026-09-28 | a placa cresce de 48 para 51 mm: o que faltava ao roteador era lugar para via, e 3 mm dão 36 % mais |
+| 2026-09-28 | a case passa a ser **vedada de verdade**: anel O em sulco na parede (27,5 % de compressão), dois parafusos M1,6, berço da célula, placa prensada entre pilares e dedos da tampa, e dreno no lábio do conector |
+| 2026-09-28 | o módulo de rádio vira o **HOLYIOT-26001-A** (nRF54L15). Ele era 26 % da área da placa numa peça só, mais que as 37 peças pequenas somadas, e é a única alavanca de tamanho. Custa o USB, que este SoC não tem: a serial dos comandos e a recuperação do MCUboot vão por UART nos contatos `D+`/`D−` do conector, e um divisor no `VBUS` num GPIO diz que o cabo entrou ([`09`](../hardware_powermeter/09-modulo-de-radio.md)) |
 
 ## Em aberto
 

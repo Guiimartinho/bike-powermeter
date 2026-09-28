@@ -19,7 +19,7 @@ flowchart LR
     PW -- "chan_system_state" --> MO
     PW -- "chan_system_state" --> R
     MO -- "chan_motion_state" --> PW
-    U["usb<br/>porta serial de comandos"] -- "chan_cmd" --> CP
+    U["serial<br/>porta de comandos"] -- "chan_cmd" --> CP
 ```
 
 | Serviço | Thread | O que faz | Dorme em |
@@ -29,7 +29,7 @@ flowchart LR
 | `compute` | 5 | a cada torque usa o ω da última amostra do acelerômetro (`Δθ = ω·Δt`) e alimenta `rev_power_feed()`; fecha a volta no evento do ponto baixo e publica `chan_power` e `chan_vector` (16 bins de torque por ângulo); a 1 Hz publica o estado (`rev_power_status`, zero depois de 3 s sem volta) e `chan_health`; executa as calibrações de [06](06-medicao-e-calibracao.md#calibração) a pedido (`$ZERO`, `$SLOPE`, `$TEMP`, o control point, a página do ANT+), coletando as amostras da ponte e respondendo em `chan_cmd_result`; revisa o zero sozinho a cada 30 s parado, dentro do passo configurado | caixa de entrada, 1 s |
 | `radio` | 6 | sobe o ANT (com `ANT=1`) antes do Bluetooth, anuncia como `PM-XXXX` (os dois últimos bytes do endereço) com o CPS e o BAS; leva `chan_power` à Measurement do CPS e às páginas 16 e 18 do ANT+, `chan_vector` ao Vector, `chan_battery` ao BAS e `chan_health` ao estado do serviço de configuração; responde em `chan_cmd_result` pela origem do comando (linha `$ACK`/`$NAK` no serviço de configuração, indicação do control point, resposta de calibração do ANT+); o control point roda na thread de recepção do BT e só decide, publica e responde; em `Sleep` anuncia a cada 2 s | caixa de entrada, 1 s |
 | `power` | 9 | roda a máquina `pm_fsm` com os eventos da caixa de entrada (movimento, cabo, comandos, atualização) e o seu `tick` de 1 s, e publica `chan_system_state`; a cada 10 s lê o MAX17048 (API de fuel gauge) e os pinos CHG e ERR do nPM1100 e publica `chan_battery`; crítico a 2 % sem carga; `$SLEEP` põe o SoC em System OFF depois de publicar `Sleep` (o `motion` arma o despertar), `$SHIP` levanta o SHPACT por 300 ms com o cabo fora; `$DFU` é o pedido de atualização à máquina | caixa de entrada, 1 s |
-| `usb` | 8 | porta serial de comandos (CDC ACM, as mesmas linhas do serviço de configuração), com a ISR só movendo bytes para um ring; publica `chan_vbus` pelos eventos do stack USB, que é como o `power` sabe do cabo | caixa de entrada, 100 ms |
+| `serial` (ou `usb`) | 8 | porta serial de comandos, as mesmas linhas do serviço de configuração, com a ISR só movendo bytes para um ring. **São dois arquivos e só um é compilado**: `usb_svc.c` sobre CDC ACM onde o SoC tem USB (o DK), `serial_svc.c` sobre a UART onde não tem (o pod, no nRF54L15). Publica `chan_vbus`, que é como o `power` sabe do cabo: pelos eventos do stack USB num caso, por um GPIO com divisor no `VBUS` no outro, lido nas duas bordas **e na partida**, porque o cabo pode já estar lá quando o pod liga |
 
 Regras que valem para todos: ISR não processa; sem alocação depois do boot; cada serviço só publica nos seus canais e nunca chama outro serviço; toda espera tem tempo máximo abaixo do watchdog de 4 s.
 
@@ -104,7 +104,7 @@ Lógica pura, sem tipos do Zephyr, em `src/model/`, um módulo por assunto, cada
 
 ## Atualização
 
-MCUboot pelo sysbuild, como no ciclocomputador: mcumgr SMP sobre BLE (`src/rf/dfu.c` com os hooks do mcumgr) para a atualização pelo celular ou pelo ciclocomputador. O hook de cada bloco recusa a atualização com o pedivela girando ou com a bateria abaixo de 30 % sem cabo, e o progresso vai em `chan_dfu`. A imagem nova é confirmada quando o serviço `radio` sobe (os serviços partiram e o rádio respondeu: a imagem funciona); confirmar só depois de uma volta válida, como a primeira versão desta página dizia, deixaria uma atualização feita em casa reverter no reinício seguinte se ninguém pedalasse. A recuperação serial do MCUboot pelo USB (`sysbuild/mcuboot.conf` e `sysbuild/mcuboot.overlay`): o pod não tem botão, então a cada partida o MCUboot sobe o USB e espera 1 s por um pedido de recuperação (mcumgr por SMP) na porta CDC ACM dele, pelo conector magnético, e só então carrega a aplicação. O stack USB dentro do MCUboot não cabe nos 64 KB do layout do fabricante (estourou por 23.668 B em 2026-09-27): o bootloader fica com 96 KB e cada slot desce de 920 KB para 904 KB, nos três devicetrees (a placa própria, o overlay do DK e o do MCUboot), que têm de concordar.
+MCUboot pelo sysbuild, como no ciclocomputador: mcumgr SMP sobre BLE (`src/rf/dfu.c` com os hooks do mcumgr) para a atualização pelo celular ou pelo ciclocomputador. O hook de cada bloco recusa a atualização com o pedivela girando ou com a bateria abaixo de 30 % sem cabo, e o progresso vai em `chan_dfu`. A imagem nova é confirmada quando o serviço `radio` sobe (os serviços partiram e o rádio respondeu: a imagem funciona); confirmar só depois de uma volta válida, como a primeira versão desta página dizia, deixaria uma atualização feita em casa reverter no reinício seguinte se ninguém pedalasse. A recuperação serial do MCUboot pela **UART** (`sysbuild/mcuboot.conf` e `sysbuild/mcuboot.overlay`): o pod não tem botão, então a cada partida o MCUboot sobe a `uart20` e espera 1 s por um pedido de recuperação (mcumgr por SMP), pelo conector magnético, e só então carrega a aplicação. Era por USB CDC ACM até 2026-09-27; o nRF54L15 não tem USB. O console do **bootloader** fica desligado na imagem dele, e não por gosto: o `serial_adapter.c` recusa compilar com ele ligado, porque a recuperação **toma** a UART e um console imprimindo nos mesmos pinos corromperia os quadros SMP. O bootloader fica com **60 KB**, que não é o padrão do fabricante (64) nem os 96 que o USB pedia: o FPROTECT cobre no máximo 62 KB nesta série e o MCUboot afirma isso em tempo de compilação, e desligar o FPROTECT deixaria o bootloader gravável pela aplicação que ele carrega, que é a única coisa que ele existe para impedir. Sobre UART ele mede 46.996 B no pod e 53.324 no DK. Os **três** devicetrees carregam a mesma tabela de partições e têm de concordar: em 2026-09-28 o do MCUboot foi para slots de 664 KB enquanto o do DK ainda dizia 904, e as duas imagens ligaram sem uma palavra.
 
 ## Pilhas e prioridades
 
@@ -117,7 +117,7 @@ Medidas com `CONFIG_STACK_USAGE` em 2026-09-27 (os quadros das funções do proj
 | `compute` | `compute_thread` 336 B (calibrações inclusas), `rev_power_close` 72 | ≈ 1,4 KB (respostas com float) | 3072 B |
 | `radio` | `radio_thread` 264 B, `cp_request` 104, `ble_cps_notify_vector` 104 | ≈ 2 KB (`bt_enable` e a carga dos bonds) | 3072 B |
 | `power` | `power_thread` 112 B, `publish_state` 56 | ≈ 1,5 KB (fuel gauge, `LOG_PANIC` do desligamento) | 3072 B |
-| `usb` | `usb_thread` 184 B, `app_cmd_handle` 248, `pm_cmd_parse` 360 | ≈ 1,8 KB (respostas com float) | 3072 B |
+| `serial` / `usb` | `thread` 184 B, `app_cmd_handle` 248, `pm_cmd_parse` 360 | ≈ 1,8 KB (respostas com float) | 3072 B |
 | thread RX do BT | `write_cmd` → `app_cmd_handle` 248 → `pm_cmd_parse` 360, `read_cfg` 168 | ≈ 1,5 KB sobre o uso do stack | `CONFIG_BT_RX_STACK_SIZE` 4096 |
 | thread do driver BMA400 | `bma400_thread` (leitura de estado pelo SPI) | ≈ 0,5 KB | 1536 B |
 

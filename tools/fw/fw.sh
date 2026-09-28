@@ -9,7 +9,7 @@
 #
 # Variáveis: BUILD_DIR (padrão: zephyr_app/build), BOARD (padrão:
 # nrf54lm20dk/nrf54lm20a/cpuapp, o DK de desenvolvimento; a placa do pod é
-# pmboard/nrf54lm20a/cpuapp, em zephyr_app/boards/pm),
+# pmboard/nrf54l15/cpuapp, em zephyr_app/boards/pm),
 # FAMILY (família do nrfutil, deduzida da BOARD: nrf54l, ou nrf52 para outra),
 # NRF_SERIAL (número de série do J-Link) e as de tools/fw/ncs_env.sh
 # (NCS_ROOT, NCS_VERSION, NCS_TOOLCHAIN).

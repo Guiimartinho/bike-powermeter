@@ -13,12 +13,16 @@ O que ele confere:
 
 1. **Pino em dois lugares.** Um pino só pode ter uma função. Os estados
    ``_default`` e ``_sleep`` do mesmo periférico não contam.
-2. **Pinos de clock.** No nRF54LM20A o SCL de um TWIM e o SCK de um SPIM só
-   funcionam nos pinos da tabela 79 da ficha 4539_001 v1.0.
-3. **Pads do NFC.** P1.01 e P1.02 saem do reset como antena NFC.
-4. **Cristal.** P1.20 e P1.21 levam o cristal de 32,768 kHz.
-5. **Limite da porta.** P0 tem 10 pinos, P1 tem 32, P2 tem 11 e P3 tem 13.
-6. **Blocos seriais.** Cada bloco (00, 20 a 24, 30) tem **um** periférico.
+2. **Pinos de clock.** O SCL de um TWIM e o SCK de um SPIM só funcionam em
+   alguns pinos. A ficha do nRF54L15 não está aqui, então a lista é a dos
+   pinos que a **própria Nordic** usa para isso nos arquivos de placa do
+   NCS, cada um com o arquivo citado.
+3. **Pads do NFC.** P1.01 e P1.02 saem do reset como antena NFC (e o
+   módulo não os expõe).
+4. **Cristal.** P1.20 e P1.21 levam o cristal de 32,768 kHz no nRF54LM20A;
+   no nRF54L15 eles não existem, e o cristal é interno ao módulo.
+5. **Limite da porta.** No nRF54L15, P0 tem 7 pinos, P1 tem 16 e P2 tem 11.
+6. **Blocos seriais.** Cada bloco (00, 20 a 22, 30) tem **um** periférico.
 7. **Apelidos.** Os serviços acham o hardware por apelido; um que falte
    deixa o serviço sem o dispositivo, em silêncio.
 8. **A tabela de docs/02.** Todo pino ``Px.yy`` da coluna "Pino do SoC" da
@@ -49,19 +53,38 @@ SCH_NETS = ROOT / "hardware_powermeter" / "cad" / "nets.py"
 # A referência do módulo no esquemático (hardware_powermeter/03-netlist.md)
 MODULE_REF = "U201"
 
-# Tabela 79 da ficha do nRF54LM20A
+# Os pinos de clock do nRF54L15, e a fonte deles NÃO é uma tabela de ficha:
+# a ficha do nRF54L15 não está neste repositório, e a do nRF54LM20A (tabela
+# 79) descreve outro chip - usá-la aqui foi o que fez este verificador
+# reprovar o P1.11 em 2026-09-28, um pino que a própria Nordic usa como
+# TWIM_SCL.
+#
+# A evidência é o NCS instalado: cada pino abaixo é usado pela Nordic como
+# SCL de TWIM ou SCK de SPIM num arquivo de placa do nRF54L, e o arquivo
+# está citado ao lado. Enquanto a ficha não estiver aqui, esta lista é o que
+# há, e ela é conservadora: um pino que não está nela não é necessariamente
+# ruim, só não tem evidência - por isso o problema diz exatamente isso.
 CLOCK_PINS = {
-    "P0.03", "P0.04", "P0.06", "P0.07",
-    "P1.03", "P1.04", "P1.07", "P1.13", "P1.14", "P1.17", "P1.18", "P1.23", "P1.24",
-    "P2.01", "P2.06",
-    "P3.03", "P3.04",
+    "P1.02",  # nrf54l15dk_nrf54l_05_10_15-pinctrl.dtsi e vários shields
+    "P1.03",  # idem
+    "P1.08",
+    "P1.11",  # nrf/boards/shields/pca63565/.../nrf54l15dk_nrf54l15_cpuapp.overlay
+    "P1.12",
+    "P1.13",
+    "P2.00",
+    "P2.01",  # spi00 SCK do DK do L15
+    "P2.03",
+    "P0.03",  # nrf/boards/shields/nrf2240ek/.../nrf54l15dk_nrf54l15_cpuapp.overlay
 }
 
 NFC_PINS = {"P1.01", "P1.02"}
 LFXO_PINS = {"P1.20", "P1.21"}
 
 # ngpios de cada porta (zephyr/dts/vendor/nordic/nrf54lm20_a_b.dtsi)
-PORT_PINS = {0: 10, 1: 32, 2: 11, 3: 13}
+# nRF54L15, do `ngpios` de nrf54l_05_10_15.dtsi no NCS instalado.
+# Eram {0: 10, 1: 32, 2: 11, 3: 13} do nRF54LM20A, e a diferença não é
+# cosmética: P1 acaba em P1.15 aqui, e o mapa antigo usava P1.29 e P1.31.
+PORT_PINS = {0: 7, 1: 16, 2: 11}
 
 # Apelidos que os serviços procuram (docs/02, Pinos do módulo)
 REQUIRED_ALIASES = [
@@ -187,7 +210,9 @@ def main():
     for pin, owners in sorted(used.items()):
         for owner in owners:
             if ("TWIM_SCL" in owner or "SPIM_SCK" in owner) and pin not in CLOCK_PINS:
-                problems.append(f"{pin} leva {owner} e não é pino de clock (tabela 79)")
+                problems.append(f"{pin} leva {owner} e não há evidência de que seja pino "
+                                "de clock: a Nordic não o usa assim em nenhum arquivo "
+                                "de placa do nRF54L do NCS")
 
     for pin in sorted(NFC_PINS & used.keys()):
         problems.append(f"{pin} é pad do NFC e sai do reset sem GPIO: {used[pin]}")

@@ -14,7 +14,7 @@ Tudo parte da raiz do repositório. O firmware é o `zephyr_app/`; não existe c
 | SDK | nRF Connect SDK v3.3.0 em `C:\ncs\v3.3.0` (Zephyr 4.3.99) |
 | Toolchain | `C:\ncs\toolchains\936afb6332` (Zephyr SDK 0.17.0, GCC 12.2.0, CMake 4.2.1, west 1.5.0, Python 3.12.4) |
 | Alvo padrão | `nrf54lm20dk/nrf54lm20a/cpuapp` (`tools/fw/fw.sh:33` e os `.bat`), com `zephyr_app/boards/nrf54lm20dk_nrf54lm20a_cpuapp.overlay` e `.conf`: os periféricos do pod em pinos livres do DK, para as placas de avaliação |
-| Placa do projeto | `BOARD=pmboard/nrf54lm20a/cpuapp`, em `zephyr_app/boards/pm/pmboard/` mais `boards/pmboard_nrf54lm20a_cpuapp.conf`; use outra `BUILD_DIR` (`zephyr_app/build_custom`). **Existe como alvo que compila: nenhuma placa foi fabricada** |
+| Placa do projeto | `BOARD=pmboard/nrf54l15/cpuapp`, em `zephyr_app/boards/pm/pmboard/` mais `boards/pmboard_nrf54l15_cpuapp.conf`; use outra `BUILD_DIR` (`zephyr_app/build_custom`). **Existe como alvo que compila: nenhuma placa foi fabricada** |
 | ANT+ | `ANT=1` com o add-on `sdk-ant` em `C:\ncs\sdk-ant` e `zephyr_app/modules/ant_ncs33_compat`; em outra pasta (`zephyr_app/build_ant`), porque trocar o `ANT` pede `pristine` |
 | Gravação | `nrfutil device` 2.17.5 do toolchain, pelo J-Link OB do DK |
 | Debug | SEGGER J-Link V8.76, V8.96 e V9.24a em `C:\Program Files\SEGGER` |
@@ -27,7 +27,7 @@ O `tools/fw/ncs_env.sh` (Git Bash) e o `tools/fw/ncs_env.bat` (cmd) montam o amb
 |---|---|---|
 | Build incremental | `bash tools/fw/fw.sh build` | `build.bat` |
 | Build do zero | `bash tools/fw/fw.sh build pristine` | `build.bat pristine` |
-| Build da placa do projeto | `BOARD=pmboard/nrf54lm20a/cpuapp BUILD_DIR=zephyr_app/build_custom bash tools/fw/fw.sh build` | — |
+| Build da placa do projeto | `BOARD=pmboard/nrf54l15/cpuapp BUILD_DIR=zephyr_app/build_custom bash tools/fw/fw.sh build` | — |
 | Build com ANT+ | `ANT=1 BUILD_DIR=zephyr_app/build_ant bash tools/fw/fw.sh build` | `set ANT=1` antes do `build.bat` |
 | Conferir o mapa de pinos da placa | `python tools/fw/board_check.py` | — |
 | Gravar apagando tudo | `bash tools/fw/fw.sh flash` | `flash.bat` |

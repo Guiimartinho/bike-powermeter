@@ -4,7 +4,7 @@
 
 **Medidor de potência para bicicleta, aberto do extensômetro ao pod: torque por ponte de classe transdutor colada no braço do pedivela, cadência por acelerômetro, potência por BLE e ANT+. Par do [GNSS Bike Computer](https://github.com/Guiimartinho/gnss-bike-computer).**
 
-![MCU](https://img.shields.io/badge/MCU-nRF54LM20A%20%C2%B7%20ME54BS13-00A9CE)
+![MCU](https://img.shields.io/badge/MCU-nRF54L15%20%C2%B7%20HOLYIOT--26001--A-00A9CE)
 ![SDK](https://img.shields.io/badge/nRF%20Connect%20SDK-v3.3.0-00A9CE)
 ![RTOS](https://img.shields.io/badge/Zephyr-4.3.99-7929D2)
 ![Rádio](https://img.shields.io/badge/r%C3%A1dio-BLE%20CPS%20%2B%20ANT%2B%20BPWR-0082FC)
@@ -44,11 +44,11 @@ O firmware é **obra original** em C puro sobre Zephyr, não um port. A placa, o
 flowchart LR
     subgraph POD["Pod colado no braço esquerdo"]
         G["Ponte S5229<br/>5 kΩ, uma peça"] -->|"2 mV"| A["ADS1220<br/>24 bits, ganho 128"]
-        I["BMA400<br/>ângulo e cadência"] --> M["nRF54LM20A<br/>ME54BS13"]
+        I["BMA400<br/>ângulo e cadência"] --> M["nRF54L15<br/>HOLYIOT-26001-A"]
         T["TMP117<br/>±0,1 °C"] --> M
         A --> M
         P["nPM1100 + célula LiPo"] --> M
-        C["conector magnético<br/>carga, USB, SWD"] --> P
+        C["conector magnético<br/>carga, serial, SWD"] --> P
     end
     M -- "BLE Cycling Power" --> CC["ciclocomputador<br/>ou qualquer app"]
     M -- "ANT+ Bicycle Power" --> CC
@@ -67,9 +67,9 @@ flowchart LR
 | | |
 |---|---|
 | ![O conjunto em vista explodida: a tampa, o pod com a placa dentro, os cinco fios descendo e a ponte colada no braço](docs/img/hardware/conjunto-3d-aberto.png) | ![O pod em vista explodida: concha, placa, tampa com a janela do conector](docs/img/hardware/pod-3d-explodida.png) |
-| *Aberto: a ponte fica no **braço**, não no pod, e cinco fios sobem por um rasgo no fundo* | *O pod: 56,4 × 19,4 × 8,5 mm, 11,9 g estimados, dois STL* |
+| *Aberto: a ponte fica no **braço**, não no pod, e cinco fios sobem por um rasgo no fundo* | *O pod: 59,4 × 19,0 × 8,5 mm, 11,9 g estimados, dois STL* |
 | ![A placa vista pela frente: o módulo de rádio à direita, o conector magnético na borda de cima, o conversor no meio](docs/img/hardware/placa-3d-frente.png) | ![A placa pelo verso: os pontos de teste e os passivos que não precisam ser alcançados](docs/img/hardware/placa-3d-tras.png) |
-| *A placa, 51 × 16 mm em 4 camadas, 56 peças* | *O verso: pads de teste e o que não precisa ser alcançado, sobre o fundo rebaixado do pod* |
+| *A placa, 47 × 14 mm em 4 camadas, 58 peças* | *O verso: pads de teste e o que não precisa ser alcançado, sobre o fundo rebaixado do pod* |
 
 O envelope de referência veio de **fotogrametria** sobre as fotos de imprensa de um medidor da classe, porque nenhum fabricante publica as medidas: 37 a 39 mm de comprimento, 18 a 22 de largura e 9 a 13 de altura, com a escala aferida por dois caminhos independentes ([docs/01](docs/01-visao-geral.md)). É contra esse número que o pod é medido.
 
@@ -102,10 +102,10 @@ A ponte é **uma peça só**, não quatro colagens: o padrão S5229 do databook 
 | Conversor | TI ADS1220 | 0,26 µV RMS com ganho 128, 585 µA medindo, referência **ratiométrica** (a excitação é a referência, então a tensão da célula sai da conta) |
 | Cadência e ângulo | Bosch BMA400 | 850 nA a 25 Hz; driver próprio, porque o `bosch,bma4xx` da árvore usa o mapa do BMA422 |
 | Temperatura | TI TMP117 | ±0,1 °C para o ajuste do zero e da inclinação |
-| MCU e rádio | MinewSemi ME54BS13 (nRF54LM20A) | o mesmo do ciclocomputador: BLE, ANT+, USB, DFU |
+| MCU e rádio | **HOLYIOT-26001-A** (nRF54L15), antena cerâmica | 10,0 × 12,5 mm contra 16,5 × 12,0 do ME54BS13: o módulo era **26 % da área da placa**, mais que as 37 peças pequenas somadas, e é a única alavanca de tamanho que move alguma coisa. Custa o USB, que este SoC não tem ([09](hardware_powermeter/09-modulo-de-radio.md)) |
 | Carga e 3,0 V | Nordic nPM1100 | carregador e buck numa peça, 800 nA |
 | Excitação | TI TPS22916 | desliga a ponte entre amostras; é ela que faz os 5 kΩ valerem a pena |
-| Conector | magnético de 6 contatos | carga, USB e SWD num cabo só, sem tampa de borracha para perder |
+| Conector | magnético de 6 contatos, **desenhado aqui** | carga, serial e SWD num cabo só, sem tampa de borracha para perder. Contatos chatos de ouro no aparelho e molas no cabo, para o pod poder ser vedado ([06](hardware_powermeter/06-conectores-e-pontos-de-teste.md#j101--conector-magnético)) |
 
 Lista completa, com a ficha e o código de compra de cada peça: [`hardware_powermeter/01-lista-de-componentes.md`](hardware_powermeter/01-lista-de-componentes.md).
 
@@ -121,7 +121,7 @@ Lista completa, com a ficha e o código de compra de cada peça: [`hardware_powe
 | Serviço de configuração por BLE, com **escrita cifrada obrigatória** | compila; nunca emparelhado |
 | ANT+ Bicycle Power (páginas 1, 16, 18, 80, 81) | compila com `ANT=1`; nenhum canal aberto de verdade |
 | Atualização por BLE (mcumgr + MCUboot) e recuperação serial pelo USB | compila; recusa pedalando ou com bateria fraca |
-| Placa e pod gerados por programa, com dry run | placa colocada e roteada; pod fecha **12 de 12** regras |
+| Placa e pod gerados por programa, com dry run | placa colocada; pod fecha **16 de 16** regras, com vedação por anel O, parafusos, retenção e dreno |
 
 ## Início rápido
 
@@ -130,7 +130,7 @@ Lista completa, com a ficha e o código de compra de cada peça: [`hardware_powe
 ```sh
 # Git Bash, na raiz do repositório
 bash tools/fw/fw.sh build            # compila para o nRF54LM20 DK (sysbuild + MCUboot)
-BOARD=pmboard/nrf54lm20a/cpuapp BUILD_DIR=zephyr_app/build_custom bash tools/fw/fw.sh build
+BOARD=pmboard/nrf54l15/cpuapp BUILD_DIR=zephyr_app/build_custom bash tools/fw/fw.sh build
 ANT=1 BUILD_DIR=zephyr_app/build_ant bash tools/fw/fw.sh build   # com a pilha ANT+
 bash tools/fw/host_tests.sh          # 9 conjuntos, 134 casos
 bash tools/fw/host_tests.sh coverage # e falha abaixo de 95 % em qualquer módulo

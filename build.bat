@@ -10,7 +10,7 @@ REM Alvo: BOARD (padrao nrf54lm20dk/nrf54lm20a/cpuapp, com os perifericos do
 REM pod em zephyr_app\boards\nrf54lm20dk_nrf54lm20a_cpuapp.overlay), com
 REM sysbuild e MCUboot. Versao do SDK e do toolchain: tools\fw\ncs_env.bat.
 REM Defina BUILD_DIR para compilar em outra pasta e BOARD para outro alvo
-REM (a placa do pod: pmboard/nrf54lm20a/cpuapp, em zephyr_app\boards\pm).
+REM (a placa do pod: pmboard/nrf54l15/cpuapp, em zephyr_app\boards\pm).
 REM Defina NOPAUSE=1 para nao esperar tecla no fim.
 REM Defina ANT=1 para compilar com o ANT: o add-on sdk-ant em SDK_ANT_DIR
 REM (padrao %NCS_ROOT%\sdk-ant), zephyr_app\modules\ant_ncs33_compat e
