@@ -1477,7 +1477,7 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
                 campos_cel.append((a0[0], a0[1], a1[0], a1[1]))
             so_camada = 0 if rede in SO_FRENTE else None
             perto = None
-            if rede == PAR[1] and PAR[0] in caminhos:
+            if len(PAR) == 2 and rede == PAR[1] and PAR[0] in caminhos:
                 perto = caminhos[PAR[0]]
             p = None
             tentativas = [(so_camada, 100), (so_camada, 350)]
@@ -1503,7 +1503,7 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
             emitir(p, rede, larg, larg_pad, campo)
             feito |= set(p)
             n_ok += 1
-            if rede == PAR[0]:
+            if len(PAR) == 2 and rede == PAR[0]:
                 # the cells its partner should hug: the path itself and one
                 # step around it, which at a 0.15 mm grid is the pair pitch
                 viz = set()
@@ -1525,6 +1525,34 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
     if os.environ.get("PMETER_SEM_PODA") != "1":
         podar_soltas(segmentos, vias, todos)
     return segmentos, vias, falhas, falharam, n_gnd, n_ok, n_cost, n_malha
+
+
+def toco_limpo(p0, p1, cam: int, rede: str, w: float,
+               segmentos: list, todos) -> str:
+    """O toco que se quer desenhar guarda distancia de tudo? Devolve o porque.
+
+    A mesma geometria da `conferir`, mas de UM segmento contra o resto, para
+    poder ser chamada antes de desenhar em vez de depois. Devolve "" quando
+    esta limpo.
+    """
+    for (q0, q1, c2, r2, w2) in segmentos:
+        if c2 != cam or r2 == rede:
+            continue
+        exigido = w / 2 + w2 / 2 + max(folga_de(rede), folga_de(r2)) - 0.01
+        d = _dist_seg_seg(p0, p1, q0, q1)
+        if d < exigido:
+            return (f"encostaria em {r2} a {d:.3f} mm, pede {exigido:.3f}")
+    orx, ory = MP.ORIGEM
+    for nome, idx, px, py, hw, hh in todos:
+        if nome == rede or (idx >= 0 and idx != cam):
+            continue
+        qx, qy = px - orx, py - ory
+        d = _dist_seg_ret(p0, p1, qx, qy, hw, hh)
+        exigido = w / 2 + max(folga_de(rede), folga_de(nome or rede)) - 0.01
+        if d < exigido:
+            return (f"encostaria no pad {nome or '<sem rede>'} a {d:.3f} mm, "
+                    f"pede {exigido:.3f}")
+    return ""
 
 
 def encostar_nos_pads(segmentos: list, vias: list, todos: list,
@@ -1568,6 +1596,7 @@ def encostar_nos_pads(segmentos: list, vias: list, todos: list,
         return False
 
     postos = 0
+    recusados: list[str] = []
     for nome, idx, px, py, hw, hh in todos:
         if not nome:
             continue
@@ -1607,12 +1636,25 @@ def encostar_nos_pads(segmentos: list, vias: list, todos: list,
             # room, the pad stays open and says so, which is the truth.
             if not via_cabe_aqui(p[0], p[1], nome, segmentos, vias, todos):
                 continue
+        # And MEASURE the stub itself. Until 2026-09-28 this pass narrowed
+        # the piece and checked the via, but never asked whether the SEGMENT
+        # cleared anything: a pad left open by 0,15 mm became a 1,4 mm track
+        # lying across someone else's pad. The router then printed "5 pairs
+        # too close" and wrote the board anyway, and those five were the
+        # four DRC errors of the day - three of them the same ground stub
+        # touching U101's SHPACT pad, counted as a short, as a clearance
+        # violation and as a mask bridge.
+        porque = toco_limpo(p, (x, y), destino, nome, wl, segmentos, todos)
+        if porque:
+            recusados.append(f"{nome} em ({x:.1f}; {y:.1f}): {porque}")
+            continue
+        if not mesma:
             vias.append((p[0], p[1], nome))
             vias_rede.setdefault(nome, []).append((p[0], p[1]))
         segmentos.append((p, (x, y), destino, nome, wl))
         por_camada.setdefault((destino, nome), []).append((p, (x, y), wl))
         postos += 1
-    return postos
+    return postos, recusados
 
 
 def via_cabe_aqui(vx: float, vy: float, rede: str,
@@ -1715,6 +1757,25 @@ def emitir_caminhos(arv, todos, por_rede, caminhos_por_rede):
     return g, segmentos, vias
 
 
+def _dist_seg_seg(a0, a1, b0, b1) -> float:
+    """Distancia entre os eixos de dois segmentos; 0 se eles se cruzam."""
+    def pp(p, q0, q1):
+        vx, vy = q1[0] - q0[0], q1[1] - q0[1]
+        L = vx * vx + vy * vy
+        t = 0.0 if L == 0 else max(0.0, min(1.0, ((p[0] - q0[0]) * vx +
+                                                  (p[1] - q0[1]) * vy) / L))
+        return math.hypot(p[0] - (q0[0] + t * vx), p[1] - (q0[1] + t * vy))
+    d1 = (a1[0] - a0[0], a1[1] - a0[1])
+    d2 = (b1[0] - b0[0], b1[1] - b0[1])
+    den = d1[0] * d2[1] - d1[1] * d2[0]
+    if abs(den) > 1e-12:
+        t = ((b0[0] - a0[0]) * d2[1] - (b0[1] - a0[1]) * d2[0]) / den
+        u = ((b0[0] - a0[0]) * d1[1] - (b0[1] - a0[1]) * d1[0]) / den
+        if -1e-9 <= t <= 1 + 1e-9 and -1e-9 <= u <= 1 + 1e-9:
+            return 0.0
+    return min(pp(a0, b0, b1), pp(a1, b0, b1), pp(b0, a0, a1), pp(b1, a0, a1))
+
+
 def conferir(segmentos, vias, todos=()) -> list[str]:
     """Does what came out actually keep its distance? Ask the geometry.
 
@@ -1729,23 +1790,7 @@ def conferir(segmentos, vias, todos=()) -> list[str]:
     mask bridge with it. A check that measures tracks against tracks and
     calls the board clean is worse than no check, because it is believed.
     """
-    def dist_seg(a0, a1, b0, b1) -> float:
-        def pp(p, q0, q1):
-            vx, vy = q1[0] - q0[0], q1[1] - q0[1]
-            L = vx * vx + vy * vy
-            t = 0.0 if L == 0 else max(0.0, min(1.0, ((p[0] - q0[0]) * vx +
-                                                      (p[1] - q0[1]) * vy) / L))
-            return math.hypot(p[0] - (q0[0] + t * vx), p[1] - (q0[1] + t * vy))
-        d1 = (a1[0] - a0[0], a1[1] - a0[1])
-        d2 = (b1[0] - b0[0], b1[1] - b0[1])
-        den = d1[0] * d2[1] - d1[1] * d2[0]
-        if abs(den) > 1e-12:
-            t = ((b0[0] - a0[0]) * d2[1] - (b0[1] - a0[1]) * d2[0]) / den
-            u = ((b0[0] - a0[0]) * d1[1] - (b0[1] - a0[1]) * d1[0]) / den
-            if -1e-9 <= t <= 1 + 1e-9 and -1e-9 <= u <= 1 + 1e-9:
-                return 0.0
-        return min(pp(a0, b0, b1), pp(a1, b0, b1), pp(b0, a0, a1), pp(b1, a0, a1))
-
+    dist_seg = _dist_seg_seg
     problemas: list[str] = []
     for i, (p0, p1, c, r, w) in enumerate(segmentos):
         for (q0, q1, c2, r2, w2) in segmentos[i + 1:]:
@@ -1871,9 +1916,68 @@ def sem_cobre(texto: str) -> str:
     return "".join(saida)
 
 
+def sem_preenchimento(texto: str) -> tuple[str, int]:
+    """Esvazia as malhas de cobre. Devolve o texto e quantas esvaziou.
+
+    O cobre despejado e obstaculo para a busca, e ele cobre quase toda a
+    placa. Medido em 2026-09-28, mesma placa e mesmo codigo: com as malhas
+    vazias sao 70 ligacoes na primeira passagem e 440 segmentos no fim; com
+    elas preenchidas, 64 e 395. A ordem da cadeia ja manda preencher DEPOIS
+    de rotear, mas nada impedia o contrario, e o resultado pior nao avisava.
+
+    O `fill_zones.py` refaz o preenchimento logo em seguida, entao esvaziar
+    aqui nao perde nada: e a outra metade do que o `sem_cobre` faz na
+    gravacao, e pelo mesmo motivo - rotear tem de ser algo que se pode
+    rodar de novo.
+    """
+    saida = []
+    i, n, quantas = 0, len(texto), 0
+    while i < n:
+        j = texto.find("(filled_polygon", i)
+        if j < 0:
+            saida.append(texto[i:])
+            break
+        saida.append(texto[i:j])
+        d, k = 0, j
+        while k < n:
+            if texto[k] == "(":
+                d += 1
+            elif texto[k] == ")":
+                d -= 1
+                if d == 0:
+                    k += 1
+                    break
+            k += 1
+        quantas += 1
+        i = k
+    return "".join(saida), quantas
+
+
 def main() -> int:
     caminho = HERE / "pmeter.kicad_pcb"
     texto = caminho.read_text(encoding="utf-8")
+    # A placa tem de ser a que o `make_pcb.py` escreveu, e nao uma que o
+    # KiCad salvou depois. Medido em 2026-09-28, mesma colocacao e mesmo
+    # codigo, so mudando por onde o arquivo passou:
+    #
+    #     direto do make_pcb.py      70 ligacoes na 1a passagem, 36 falhas
+    #                                440 segmentos, 31 nao roteados
+    #     depois do fill_zones.py    64 ligacoes na 1a passagem, 42 falhas
+    #                                395 segmentos, 35 nao roteados
+    #
+    # Esvaziar as malhas NAO devolve o resultado bom (testado): o que muda e
+    # o arquivo inteiro, que o pcbnew reescreve a sua maneira. Entao aqui
+    # nao se adivinha: se a placa ja passou pelo preenchimento, este passe
+    # para e diz o que rodar. A ordem da cadeia sempre foi essa; o que
+    # faltava era ela ser exigida em vez de sugerida.
+    _resto, n_malhas = sem_preenchimento(texto)
+    if n_malhas:
+        print("A placa ja passou pelo fill_zones.py "
+              f"({n_malhas} malha(s) preenchida(s)), e rotear sobre ela da um "
+              "resultado PIOR: 4 ligacoes e 45 trilhas a menos, medido em "
+              "2026-09-28.", flush=True)
+        print("Rode `python make_pcb.py` antes deste passe.", flush=True)
+        return 2
     arv = fp_load.parse(texto)
     # the numbers the FILE uses: nets.py may have moved on since make_pcb
     numeros = fp_load.redes_da_placa(arv)
@@ -1914,6 +2018,10 @@ def main() -> int:
         else:
             break
 
+    # quantas ligacoes a placa tem ao todo, para o contador do passe
+    # incremental nao precisar adivinhar
+    n_ligacoes_totais = melhor[5] + len(so_ligacoes(melhor[2]))
+
     # And then incremental rip-up: freeze every net that closed and hand
     # the ones that did not the whole of the rest of the board. A full
     # re-route throws away ninety good connections to chase twenty, and
@@ -1930,8 +2038,15 @@ def main() -> int:
                          mantidos=(seg_bons, via_boas), so_estas=pendentes)
         gnd_falhas = [f for f in melhor[2]
                       if f.startswith("GND: sem lugar para a via")]
+        # `n_ok` (o indice 5) NAO pode vir do passe incremental: ele roteou
+        # so as redes pendentes (`so_estas`), entao conta so elas. Tomando o
+        # numero dele, a placa inteira era relatada como "1 ligacoes
+        # roteadas" enquanto tinha 395 segmentos - medido em 2026-09-28. O
+        # que vale e quantas ligacoes existem no fim, e isso e o total menos
+        # as que faltam.
+        n_ok_total = n_ligacoes_totais - len(so_ligacoes(list(r[2]) + gnd_falhas))
         combinado = (list(r[0]), list(r[1]), list(r[2]) + gnd_falhas, r[3],
-                     melhor[4], r[5], r[6], r[7])
+                     melhor[4], n_ok_total, r[6], r[7])
         n_antes = len(so_ligacoes(melhor[2]))
         n_depois = len(so_ligacoes(combinado[2]))
         print(f"  incremental {k + 1}, {len(pendentes)} redes soltas: "
@@ -1947,7 +2062,17 @@ def main() -> int:
     # size or the rip-up strategy (route_neg.py opens with the measurements).
     # So when something is still open, hand the whole board to the
     # negotiated-congestion router and keep its answer if it is better.
-    if so_ligacoes(falhas):
+    # PMETER_SEM_NEGOCIADO=1 pula este estagio. Nao e para o resultado
+    # final: e para iterar nos passes que vem DEPOIS dele (o encosto, a
+    # conferencia, o reparo) sem pagar quarenta minutos de negociacao a cada
+    # tentativa. Vale so quando a negociacao do dia foi recusada e o que
+    # ficou foi o resultado sequencial, que e deterministico - e a linha
+    # abaixo diz isso em toda execucao, para ninguem publicar uma placa
+    # achando que ela passou pelo estagio que nao rodou.
+    if so_ligacoes(falhas) and os.environ.get("PMETER_SEM_NEGOCIADO") == "1":
+        print("  congestao negociada PULADA (PMETER_SEM_NEGOCIADO=1): "
+              "fica o resultado sequencial", flush=True)
+    elif so_ligacoes(falhas):
         print("  congestao negociada (route_neg):", flush=True)
         import route_neg as RN
         ordem_redes = [r for r in por_rede
@@ -2029,9 +2154,14 @@ def main() -> int:
                       f"celulas disputadas depois de {rodadas} rodadas; "
                       "fica o resultado sequencial", flush=True)
 
-    n_enc = encostar_nos_pads(segmentos, vias, todos)
+    n_enc, enc_recusados = encostar_nos_pads(segmentos, vias, todos)
     if n_enc:
         print(f"  {n_enc} pads alcançados por encosto final")
+    if enc_recusados:
+        print(f"  {len(enc_recusados)} encostos RECUSADOS por encostarem em "
+              "outra coisa; o pad fica aberto:")
+        for r in enc_recusados[:6]:
+            print(f"    {r}")
 
     ruins = conferir(segmentos, vias, todos)
     print(f"  conferencia geometrica: {len(ruins)} pares perto demais")
