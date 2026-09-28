@@ -96,7 +96,20 @@ O maior consumidor pedalando é a ponte, e a primeira versão desta tabela a con
 | Modo duty-cycle do ADS1220 (MODE 01) com a excitação chaveada em volta de cada conversão | daria 1,8 mA, pior que os 1,5, e custa resolução: o filtro passa a ter o ruído do modo normal a 1 kSPS. Fica como reserva se o padrão de 5 kΩ não existir |
 | Célula de 200 mAh | daria 51 h com a ponte de 1 kΩ, no limite, e **cresce o pod**, que já está acima do alvo em comprimento e altura ([Pod](#pod)) |
 
-**O que falta confirmar, e é o risco desta decisão:** que exista padrão de cisalhamento ou torque a 45° em 5 kΩ no catálogo da Micro-Measurements. A classe transdutor vai de 350 Ω a 20 kΩ, mas os padrões de cisalhamento listados até agora são de 120, 350 e 1000 Ω ([01](../hardware_powermeter/01-lista-de-componentes.md#extensômetros)). Se 5 kΩ não existir nesse padrão, a saída é o modo duty-cycle da tabela acima, não voltar a 1 kΩ.
+**O que falta confirmar, e é o risco desta decisão:** que exista **ponte completa de flexão numa peça só** em 5 kΩ. O catálogo da Micro-Measurements trata "padrões de ponte completa" e "padrões de alta resistência, de 350 Ω a 20 kΩ" como **duas famílias separadas**, o que já é sinal de que a interseção pode não existir; as páginas de padrão são carregadas por script e não abriram desta máquina em 2026-09-28, então isso se confirma com o fornecedor.
+
+**Se não existir em 5 kΩ, recalculado:**
+
+| Ponte | Modo | Total pedalando | 100 mAh | 150 mAh |
+|---|---|---|---|---|
+| 5 kΩ | contínuo | 1,50 mA | 67 h | 100 h |
+| 1 kΩ | contínuo | 3,90 mA | 26 h | 39 h |
+| **1 kΩ** | **duty-cycle 30 %** | **1,40 mA** | **71 h** | 107 h |
+| 350 Ω | duty-cycle 30 % | 3,07 mA | 33 h | 49 h |
+
+A linha que resolve é a terceira: com o **modo duty-cycle do ADS1220** a ponte de 1 kΩ fica melhor que os 5 kΩ contínuos, 1,40 mA contra 1,50, porque o conversor também cai de 0,585 para 0,190 mA nesse modo. E a célula continua sendo a de 100 mAh, ou seja, **o pod continua em 8,5 mm**. O preço é ruído: o filtro passa a ter o ruído do modo normal a 1 kSPS, cerca do dobro. Isso era proibitivo com o padrão de cisalhamento, que dá 0,31 mV, e é folgado com o de flexão, que dá 2,76 mV ([06](06-medicao-e-calibracao.md#cisalhamento-ou-flexão-o-padrão-especificado-está-errado)).
+
+Só 350 Ω é que aperta: nem com duty-cycle fecha as 50 h numa célula de 100 mAh, e subir para 200 mAh leva o pod de 8,5 para cerca de 11 mm. Nesse caso é melhor voltar aos quatro extensômetros separados de 5 kΩ e pagar o alinhamento.
 
 O firmware já faz o que dá sem mudar peça: fora de `Active` e `Calibrating` o conversor fica em power-down e a excitação desligada, com uma rajada de 8 amostras a cada 10 s em `Idle` para o auto-zero e a saúde ([04](04-arquitetura-firmware.md#serviços)).
 
