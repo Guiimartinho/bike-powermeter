@@ -54,12 +54,15 @@ Não são circuitos integrados, mas definem a precisão. Referência: Micro-Meas
 
 | O que | Escolha | Fonte |
 |---|---|---|
-| Padrão | Classe transdutor, roseta de cisalhamento/torque a 45° ou ponte completa numa peça só; padrões de alta resistência (350 Ω a 20 kΩ), que o fabricante indica para "torquímetros eletrônicos, balanças e telemetria sem fio" | [Transducer Class](https://www.micro-measurements.com/transducer-class) |
+| Padrão | **Ponte completa numa peça só, de flexão**, classe transdutor: um filme, uma colagem, um alinhamento, com as quatro grades já posicionadas e ligadas de fábrica. Era alternativa nesta linha e vira a escolha, por dois motivos medidos: o padrão de cisalhamento a 45° é de torquímetro de eixo e dá 8,9 vezes menos sinal num braço de pedivela ([`docs/06`](../docs/06-medicao-e-calibracao.md#cisalhamento-ou-flexão-o-padrão-especificado-está-errado)), e quatro colagens separadas multiplicam por quatro o erro de alinhamento, que é o gargalo da precisão | [Transducer Class](https://www.micro-measurements.com/transducer-class); `docs/06` |
 | Padrões de análise (para a bancada) | CEA 062UV e 187UVA (350 Ω), CEA 125US e 250USA (120, 350 e 1000 Ω), C2A 062LV | [Shear and torque patterns](https://www.micro-measurements.com/shear-pattern-strain-gages) |
-| Resistência | 1 kΩ: reduz o efeito dos fios e a corrente de excitação | Guia de seleção, p. 4 |
+| Resistência | **5 kΩ** (decisão do dono). O guia do fabricante nomeia 120, 350, 1 k e 5 kΩ e diz que, havendo escolha, a resistência mais alta é preferível: gera menos calor na grade, sofre menos dessensibilização pelo fio e melhora a relação sinal-ruído, por permitir excitação maior sem auto-aquecimento | Guia de seleção, p. 4, citado |
+| Fios já presos | **Opção P2**, que pelo fabricante "praticamente elimina a necessidade de soldar durante a instalação": cabo de 3,1 m, 30 AWG estanhado, grade inteira encapsulada, vida em fadiga inalterada e sem aumento de rigidez. **Dois poréns medidos:** o cabo da P2 tem **três** condutores e uma ponte cheia precisa de quatro, então para o padrão de ponte cheia a fiação tem de ser confirmada peça a peça; e o limite é −50 a +80 °C, pelo vinil, que cobre com folga os −10 a +50 °C do requisito. A alternativa é a **opção W**, terminais de circuito impresso já presos, que aceita fio mais grosso mas encurta a vida em fadiga e engrossa a peça | Guia de seleção, p. 5 e 6, citado |
 | Compensação térmica | S-T-C casado com o material: 13 para alumínio (braço), 06 para aço (eixo) | Guia de seleção |
 | Cola | M-Bond AE-10 ou AE-15 para o módulo (resistentes à umidade); M-Bond 200 para a bancada | Guia de seleção, p. 8 |
-| Proteção | 3145 RTV + M-Coat B para longo prazo; opção P2 com fios pré-soldados | Guia de seleção, p. 9 |
+| Proteção | 3145 RTV + M-Coat B para longo prazo | Guia de seleção, p. 9 |
+
+**O que falta confirmar no catálogo, e é o que fecha a compra:** existe padrão de **ponte completa de flexão em 5 kΩ**? O guia nomeia 5 kΩ como resistência de catálogo, mas a disponibilidade é por padrão, e ponte completa num filme só costuma aparecer em 350 e 1000 Ω. Se só houver 1000 Ω, a ponte volta a drenar 3 mA e as 50 h só fecham com o modo duty-cycle do conversor ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)). Padrão e resistência são uma decisão só.
 
 ## Fora da placa
 
