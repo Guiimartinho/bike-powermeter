@@ -19,9 +19,15 @@ não venha de um documento ou de uma medida.
 
 | Medida | Alvo de [`docs/02`](../docs/02-hardware.md#requisitos) | O que o desenho dá | Situação |
 |---|---|---|---|
-| Comprimento | 60 mm | **65,4 mm** | acima: a placa que roteia tem 60 mm ([04](04-placa.md#o-contorno)), mais o canal dos fios da célula (2,5), a folga da ponta direita (0,5) e duas paredes (2,4) |
+| Comprimento | 60 mm | **56,4 mm** | dentro: placa de 51 mm ([04](04-placa.md#o-contorno)), mais o canal dos fios da célula (2,5), a folga da ponta direita (0,5) e duas paredes (2,4) |
 | Largura | 20 mm | **19,4 mm** | dentro: placa de 16 mais 0,5 de folga e 1,2 de parede de cada lado |
-| Altura | 8,5 mm | **10,0 mm** | acima: a pilha com a célula **sob** a placa não fecha em 8,5, e [`docs/02`](../docs/02-hardware.md#pod) já dizia isso |
+| Altura | 8,5 mm | **8,5 mm** | dentro, e é o número mais caro dos três: só fecha com célula de 2,5 mm de espessura, que só é possível porque os extensômetros de 5 kΩ derrubaram o consumo |
+
+As três medidas passaram a caber em 2026-09-28, e não por desenho novo: a
+face de trás da placa passou a carregar o que não precisa ser alcançado
+(pontos de teste, o desacoplamento do módulo e o dos dois chips do verso), o
+que encolheu a placa de 60 para 51 mm; a célula de 2,5 mm fechou a altura; e
+a largura nunca esteve acima.
 
 > [!IMPORTANT]
 > **O tamanho do pod e o orçamento de consumo são a mesma decisão, e a
@@ -34,23 +40,26 @@ não venha de um documento ou de uma medida.
 > |---|---|
 > | Extensômetros de **5 kΩ** | **nenhum**: a ponte cai de 3,0 para 0,6 mA e o total pedalando de 3,9 para cerca de 1,5 mA sem tocar na célula. A 1,5 mA, 50 h pedem cerca de 75 mAh, então a faixa da célula pode descer de 100 a 150 para 100 mAh, o que **ajuda** o pod. Quanto, ninguém sabe: nenhuma célula foi escolhida e o envelope de 25 × 15 × 4 cobre a faixa inteira |
 > | Modo **duty-cycle** do ADS1220 | nenhum: é firmware |
-> | Célula de **200 mAh** | **piora**: a célula fica sob a placa, então cresce na altura, que já está 1,5 mm acima do alvo, e provavelmente no comprimento |
+> | Célula de **200 mAh** | **piora**: a célula fica sob a placa, então cresce na altura, que é o número que fechou mais apertado, e provavelmente no comprimento |
 >
 > Quem decide o consumo precisa saber disso antes de escolher a célula de
 > 200 mAh.
 
-Os dois excessos têm a mesma origem e a mesma saída, que é decisão do
-dono:
+O que ainda governa cada medida:
 
-- **o comprimento** segue a placa. A placa não cabe em 48 × 16 (o alvo):
-  as 57 peças de [05](05-materiais.md) numa face só, com a folga que o
-  roteamento exige entre contornos de ocupação, pedem 60 mm ([04](04-placa.md#o-contorno)
-  tem a tabela dos comprimentos tentados). Encurtar a placa quer dizer
-  montar peça nos dois lados, e o lado de baixo é onde a célula encosta;
-- **a altura** é a pilha abaixo. Para 8,5 a célula teria de ficar **ao
-  lado** da placa, e aí o comprimento cresce mais ainda: uma célula de
-  25 × 15 ao lado de uma placa de 60 × 16 dá 87 mm de comprimento ou
-  35 mm de largura, os dois piores que estes 10 mm de altura.
+- **o comprimento** segue a placa, e a placa segue o **roteador**, não o
+  colocador: de 48 a 54 mm todas as 56 peças assentam, e o que muda é
+  quantos lugares aceitam uma via. Em 48 mm o roteamento parava com 13
+  ligações abertas; 51 dá 36 % mais sítios de via
+  ([04](04-placa.md#o-contorno) tem a tabela remedida). Encurtar mais quer
+  dizer montar peça nos dois lados, e o lado de baixo é onde a célula
+  encosta;
+- **a altura** é a pilha abaixo, e só fecha em 8,5 com a célula de 2,5 mm
+  **sob** a placa. Pôr a célula **ao lado** estouraria o comprimento: uma
+  de 25 × 15 ao lado de uma placa de 51 × 16 dá 78 mm de comprimento ou
+  35 mm de largura, os dois bem piores;
+- **a largura** é o limite do pod, não uma escolha: a face interna do braço
+  dá 20 mm, menos duas paredes de 1,2 e duas folgas de 0,5.
 
 ## A pilha de alturas
 

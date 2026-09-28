@@ -38,6 +38,8 @@ reads cad/pmeter.kicad_pcb through make_pod.ler_placa)
 
 from __future__ import annotations
 
+import math
+
 import pathlib
 import sys
 
@@ -329,6 +331,107 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     else:
         r.ok("PD12", f"a aba da tampa ({f2(C.ABA_LARG)} larga, desce {f2(C.ABA_ALT)}) nao bate em "
                      "peca nenhuma da borda")
+
+    # -- PD13: the O-ring groove ----------------------------------------------
+    terra_fora = (C.PAREDE - C.JUNTA_SULCO_L) / 2.0
+    compr = (C.JUNTA_CORDAO - C.JUNTA_SULCO_P) / C.JUNTA_CORDAO * 100.0
+    a_sulco = C.JUNTA_SULCO_L * C.JUNTA_SULCO_P
+    a_cordao = math.pi * (C.JUNTA_CORDAO / 2.0) ** 2
+    problemas = []
+    if terra_fora < 0.35:
+        problemas.append(f"so {f2(terra_fora)} de parede de cada lado do sulco; um sulco de "
+                         f"{f2(C.JUNTA_SULCO_L)} numa parede de {f2(C.PAREDE)} pede 0,35")
+    if not (20.0 <= compr <= 30.0):
+        problemas.append(f"a compressao do anel e {compr:.1f} %, fora dos 20 a 30 % de uma "
+                         "vedacao estatica de face")
+    if a_sulco < a_cordao * 1.05:
+        problemas.append(f"o sulco tem {a_sulco:.2f} mm2 de secao e o cordao {a_cordao:.2f}: "
+                         "o anel nao cabe quando esmagado")
+    if problemas:
+        r.falha("PD13", "; ".join(problemas))
+    else:
+        r.ok("PD13", f"sulco de {f2(C.JUNTA_SULCO_L)} x {f2(C.JUNTA_SULCO_P)} numa parede de "
+                     f"{f2(C.PAREDE)}, cordao de {f2(C.JUNTA_CORDAO)}: {compr:.1f} % de compressao, "
+                     f"{f2(terra_fora)} de parede de cada lado, secao {a_sulco:.2f} contra "
+                     f"{a_cordao:.2f} mm2")
+
+    # -- PD14: the closing screws ---------------------------------------------
+    problemas = []
+    if not C.PARAF_XY:
+        problemas.append("nao ha parafuso nenhum: a tampa depende so da cola")
+    cavidade = (C.PAREDE, C.PAREDE, C.W_P - C.PAREDE, C.H_P - C.PAREDE)
+    for cx, cy in C.PARAF_XY:
+        b = (cx - C.PARAF_BOSS_D / 2, cy - C.PARAF_BOSS_D / 2,
+             cx + C.PARAF_BOSS_D / 2, cy + C.PARAF_BOSS_D / 2)
+        if _cruza(b, placa):
+            problemas.append(f"o ressalto em ({f2(cx)}; {f2(cy)}) invade a placa")
+        if _cruza(b, celula):
+            problemas.append(f"o ressalto em ({f2(cx)}; {f2(cy)}) invade a celula")
+        if not _dentro(b, cavidade, 0.0):
+            problemas.append(f"o ressalto em ({f2(cx)}; {f2(cy)}) sai da cavidade")
+    paredinha = (C.PARAF_BOSS_D - C.PARAF_FURO_D) / 2.0
+    if paredinha < 0.8:
+        problemas.append(f"so {f2(paredinha)} de parede no ressalto; um M1,6 autoatarraxante "
+                         "pede 0,8")
+    if problemas:
+        r.falha("PD14", "; ".join(problemas))
+    else:
+        r.ok("PD14", f"{len(C.PARAF_XY)} parafusos M{C.PARAF_D:g} com ressalto de "
+                     f"{f2(C.PARAF_BOSS_D)} e furo-guia de {f2(C.PARAF_FURO_D)} "
+                     f"({f2(paredinha)} de parede), livres da placa e da celula")
+
+    # -- PD15: the cell and the board are HELD --------------------------------
+    ribs = pod.berco()
+    ressalto = (C.PAREDE + C.RESSALTO, C.PAREDE + C.RESSALTO,
+                C.W_P - C.PAREDE - C.RESSALTO, C.H_P - C.PAREDE - C.RESSALTO)
+    lados = {"esquerda": False, "direita": False, "cima": False, "baixo": False}
+    for a, b, c, d in ribs:
+        if c <= celula[0] + 1e-6:
+            lados["esquerda"] = True
+        if a >= celula[2] - 1e-6:
+            lados["direita"] = True
+        if b >= celula[3] - 1e-6:
+            lados["cima"] = True
+        if d <= celula[1] + 1e-6:
+            lados["baixo"] = True
+    encosta = {"esquerda": celula[0] <= ressalto[0] + 1e-6,
+               "direita": celula[2] >= ressalto[2] - 1e-6,
+               "cima": celula[3] >= ressalto[3] - 1e-6,
+               "baixo": celula[1] <= ressalto[1] + 1e-6}
+    problemas = []
+    for lado, tem in lados.items():
+        if not tem and not encosta[lado]:
+            problemas.append(f"a celula nao tem nervura nem ressalto do lado {lado}: ela anda")
+    if not pod.pilares:
+        problemas.append("a placa nao tem pilar: nao ha o que prender contra a tampa")
+    if C.APERTO_PAD <= 0.0:
+        problemas.append("o dedo da tampa encosta na placa sem pastilha: prende no rigido")
+    if problemas:
+        r.falha("PD15", "; ".join(problemas))
+    else:
+        presos = ", ".join(k for k, v in lados.items() if v)
+        r.ok("PD15", f"a celula fica presa por {len(ribs)} nervuras ({presos}) e pelos ressaltos "
+                     f"que ela encosta, e a placa entre {len(pod.pilares)} pilares e os dedos da "
+                     f"tampa, com {f2(C.APERTO_PAD)} de pastilha")
+
+    # -- PD16: the connector's well drains ------------------------------------
+    barras = pod.labio()
+    jx0, jy0, jx1, jy1 = pod.janela
+    L = C.POCO_LABIO_L
+    volta = 2 * ((jx1 - jx0) + 2 * L) + 2 * ((jy1 - jy0) + 2 * L)
+    coberto = sum(max(b[2] - b[0], b[3] - b[1]) for b in barras)
+    problemas = []
+    if not barras:
+        problemas.append("nao ha labio em volta da janela: a agua fica sobre os contatos")
+    elif coberto >= volta - 1e-6:
+        problemas.append("o labio e fechado: ele segura a agua em vez de deixar escorrer")
+    if C.DRENO_L < 0.8:
+        problemas.append(f"o dreno tem {f2(C.DRENO_L)} e entope; pede 0,8")
+    if problemas:
+        r.falha("PD16", "; ".join(problemas))
+    else:
+        r.ok("PD16", f"labio de {f2(C.POCO_LABIO)} de altura em {len(barras)} trechos em volta da "
+                     f"janela, com um dreno de {f2(C.DRENO_L)} para a borda mais proxima")
 
 
 def main() -> int:

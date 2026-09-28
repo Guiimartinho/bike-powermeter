@@ -64,7 +64,14 @@ import make_dxf as MD         # noqa: E402
 import make_pcb as MP         # noqa: E402
 
 # ----------------------------------------------------------------- the pod
-PAREDE, FUNDO, TAMPA = 1.2, 1.0, 1.0
+# The wall is 2,0 and not 1,2 since 2026-09-28, and the reason is the
+# O-ring: the seal is a groove of 1,05 mm cut in the top face of the wall
+# (JUNTA_SULCO_L below), and 1,2 mm of wall cannot hold it. It is 2,0
+# EVERYWHERE and not only at the rim: a stepped wall would give back
+# 1,6 mm at the bottom, and the bottom is exactly where the pod is BONDED
+# to the crank arm, so the step would cost bonding area and stiffness to
+# buy a millimetre where it does not show.
+PAREDE, FUNDO, TAMPA = 2.0, 1.0, 1.0
 R_P = 3.0
 FOLGA_PLACA = 0.5             # board to wall, right end and both long sides
 CANAL_FIO = 2.5               # left end: the cell's leads rise here to the JST
@@ -117,11 +124,93 @@ MASSA_ALVO = 20.0             # docs/02: module with cell, in grams
 # 401530), and the parts as a solid at the density of a small IC package
 DENS_POD, DENS_ENVASE, DENS_FR4, DENS_CELULA, DENS_PECAS = 1.15, 1.0, 1.85, 2.0, 2.5
 
+# ------------------------------------------------------- sealing (2026-09-28)
+# Until now the pod was "sealed" by the potting alone, and the only gasket in
+# the drawing was the flat ring round the connector's window. That is not
+# IPX7 on a part that lives in the rain, gets washed with a hose and has to
+# be opened for service: potting seals what it touches and says nothing about
+# the lid's joint.
+#
+# The seal is AXIAL, in a groove cut in the top face of the wall, and NOT
+# radial in the lid's lip. Measured trade on 2026-09-28: a radial groove
+# needs a lip about 1,6 mm thick where today's is 0,4, and the lip drops into
+# the 0,5 mm the board leaves to the wall - so the cavity, and the whole pod,
+# would grow 2,4 mm in width. The axial groove grows only the WALL, and only
+# at the rim, which is the end away from the crank arm: 1,6 mm of width
+# against 2,4, and it lands where there is clearance to the frame instead of
+# against the arm.
+#
+# The cord is 0,80 mm. The groove is 1,05 wide and 0,58 deep, which squeezes
+# it to 0,58 of its 0,80 - 27,5 % of compression, inside the 20 to 30 % a
+# static face seal asks for. The wall at the rim is 2,0 mm: 1,05 of groove
+# plus 0,45 of material outside and 0,50 inside.
+JUNTA_CORDAO = 0.80           # the O-ring's cord diameter
+JUNTA_SULCO_L = 1.05          # groove width
+JUNTA_SULCO_P = 0.58          # groove depth: 27,5 % of compression
+PAREDE_VEDA = 2.00            # the wall the groove needs (see PAREDE)
+VEDA_ALT = 1.60               # how far down the rim's thicker wall runs
+
+# --------------------------------------------- closing screws (2026-09-28)
+# The lid is bonded and the pod is potted, and a bonded lid still has to be
+# CLAMPED while the adhesive cures and while the O-ring is compressed, or the
+# joint opens in the middle. Two M1,6 self-tapping screws, one at each end,
+# into bosses that rise from the floor.
+#
+# What they cost is length, and it is the honest number: a boss is 3,4 mm
+# across and the board takes the middle, so each one needs its own room
+# outside the board. The left end already has the cell's 2,5 mm wire channel;
+# the right end has 0,5 mm of play and grows.
+PARAF_D = 1.60                # M1,6 self-tapping
+PARAF_BOSS_D = 3.40           # boss outside diameter
+PARAF_FURO_D = 1.35           # the pilot hole a self-tapping M1,6 wants
+PARAF_CABECA_D = 3.20         # head diameter, countersunk into the lid
+
+# ------------------------------------------------- retention (2026-09-28)
+# The cell used to be held by "the potting", which is not a design. Four ribs
+# make a cradle round its envelope so it cannot walk under vibration before
+# the potting cures, and the board is CLAMPED: the lid's lip comes down on
+# its top face through a compressible pad instead of stopping in the air. A
+# measurement chain that starts at a strain gauge cannot have its board
+# moving relative to the arm.
+BERCO_LARG = 0.8              # the cradle's ribs round the cell
+BERCO_FOLGA = 0.25            # play round the cell so it drops in
+APERTO_PAD = 0.30             # the pad between the lip and the board
+
+# ---------------------------------------- the connector's well (2026-09-28)
+# The window is the only hole in the pod, so it is where the water goes. A
+# lip round it on the OUTSIDE keeps a standing puddle off the contacts, and a
+# channel takes what gets past it out to the edge instead of leaving it in
+# the well. Neither exists in a potted pod by accident.
+POCO_LABIO = 0.60             # how far the lip stands proud, outside
+POCO_LABIO_L = 0.80           # how wide that lip is
+DRENO_L, DRENO_P = 1.20, 0.50  # the channel out of the well: width and depth
+
 # ------------------------------------------------ where everything sits
-W_P = PAREDE + CANAL_FIO + PLACA_W + FOLGA_PLACA + PAREDE
-H_P = PLACA_H + 2.0 * (FOLGA_PLACA + PAREDE)
-PLACA_X0 = PAREDE + CANAL_FIO
-PLACA_Y0 = PAREDE + FOLGA_PLACA
+# The wall is PAREDE_VEDA everywhere, not only at the sealing rim. A stepped
+# wall would give back 1,6 mm at the bottom, and the bottom is exactly where
+# the pod is BONDED to the crank arm: a wider base is more bonding area and a
+# stiffer box, so the step would cost strength to buy a millimetre where it
+# does not show. The thin PAREDE stays as the number the old drawings used.
+PAREDE_EFET = PAREDE   # kept as a name; the wall IS the sealing wall
+
+# What the closing screws cost, computed and not guessed. A boss is
+# PARAF_BOSS_D across and needs 0,4 mm of clearance to the board; the board
+# takes the middle, so each end has to hold its own boss in the room it
+# already has - the cell's wire channel on the left, the board's play on the
+# right - and the pod grows by whatever is missing.
+PARAF_VAO = 0.4
+_boss = PARAF_BOSS_D + 2.0 * PARAF_VAO
+PARAF_EXTRA_ESQ = max(0.0, _boss - CANAL_FIO)
+PARAF_EXTRA_DIR = max(0.0, _boss - FOLGA_PLACA)
+
+W_P = (PAREDE_EFET + CANAL_FIO + PARAF_EXTRA_ESQ + PLACA_W
+       + FOLGA_PLACA + PARAF_EXTRA_DIR + PAREDE_EFET)
+H_P = PLACA_H + 2.0 * (FOLGA_PLACA + PAREDE_EFET)
+PLACA_X0 = PAREDE_EFET + CANAL_FIO + PARAF_EXTRA_ESQ
+PLACA_Y0 = PAREDE_EFET + FOLGA_PLACA
+# the two screws, on the centre line, one in each end's own room
+PARAF_XY = ((PAREDE_EFET + (CANAL_FIO + PARAF_EXTRA_ESQ) / 2.0, H_P / 2.0),
+            (W_P - PAREDE_EFET - (FOLGA_PLACA + PARAF_EXTRA_DIR) / 2.0, H_P / 2.0))
 CELULA_Z0 = FUNDO
 CELULA_Z1 = FUNDO + CELULA_ESP
 PLACA_Z0 = CELULA_Z1 + CELULA_VAO
@@ -384,10 +473,93 @@ class Pod:
                                       H_P - PAREDE - folga, max(0.3, R_P - PAREDE - folga))
         return fora, dentro
 
+    def sulco(self):
+        """The O-ring groove in the wall's top face, as two contours.
+
+        Centred in the wall: 0,475 mm of land outside and 0,475 inside, which
+        is what is left of 2,00 mm of wall after a groove of 1,05.
+        """
+        g0 = (PAREDE - JUNTA_SULCO_L) / 2.0
+        g1 = g0 + JUNTA_SULCO_L
+        return (contorno_arredondado(g0, g0, W_P - g0, H_P - g0, max(0.3, R_P - g0)),
+                contorno_arredondado(g1, g1, W_P - g1, H_P - g1, max(0.3, R_P - g1)))
+
+    def berco(self) -> list:
+        """The ribs that box the cell in, clear of it by BERCO_FOLGA.
+
+        A rib only exists where there is ROOM for it: where the cell already
+        lies against a ledge - and it does, on the wall side - the ledge is
+        the retention and a rib there would only push the cell out of its
+        envelope. A rib that runs across the bridge's wire slot is CUT round
+        it, not dropped: the long side of the cradle is what stops the cell
+        sliding, and dropping it because 3 mm of it fall over the slot would
+        leave the cell held on one side (measured 2026-09-28: dropping gave
+        one rib out of four).
+        """
+        ent = (PAREDE + RESSALTO, PAREDE + RESSALTO,
+               W_P - PAREDE - RESSALTO, H_P - PAREDE - RESSALTO)
+        x0 = CELULA_X0 - BERCO_FOLGA - BERCO_LARG
+        y0 = CELULA_Y0 - BERCO_FOLGA - BERCO_LARG
+        x1 = CELULA_X0 + CELULA_W + BERCO_FOLGA + BERCO_LARG
+        y1 = CELULA_Y0 + CELULA_H + BERCO_FOLGA + BERCO_LARG
+        # each rib is dropped only when ITS OWN side has no room; the other
+        # two sides are simply clamped to the usable area, which is what was
+        # wrong on the first try (the corner overhang dropped three of four)
+        brutas = [((x0, y0, x0 + BERCO_LARG, y1), x0 >= ent[0]),
+                  ((x1 - BERCO_LARG, y0, x1, y1), x1 <= ent[2]),
+                  ((x0, y0, x1, y0 + BERCO_LARG), y0 >= ent[1]),
+                  ((x0, y1 - BERCO_LARG, x1, y1), y1 <= ent[3])]
+        ribs = []
+        for (a, b, c, d), cabe in brutas:
+            if not cabe:
+                continue              # that side is a ledge already: no room
+            a, b = max(a, ent[0]), max(b, ent[1])
+            c, d = min(c, ent[2]), min(d, ent[3])
+            for pedaco in self._sem_rasgo(a, b, c, d):
+                if pedaco[2] - pedaco[0] > 0.3 and pedaco[3] - pedaco[1] > 0.3:
+                    ribs.append(pedaco)
+        return ribs
+
+    def _sem_rasgo(self, a, b, c, d) -> list:
+        """A rectangle cut into the pieces that do not lie over the slot.
+
+        In BOTH axes. Cutting only in x dropped the cradle's right rib whole,
+        because it crosses the slot's x range while overlapping only 0,6 mm
+        of its y range (measured 2026-09-28).
+        """
+        r = self.rasgo
+        if not r or c <= r[0] or r[2] <= a or d <= r[1] or r[3] <= b:
+            return [(a, b, c, d)]
+        saida = []
+        if a < r[0]:
+            saida.append((a, b, min(c, r[0]), d))
+        if r[2] < c:
+            saida.append((max(a, r[2]), b, c, d))
+        mx0, mx1 = max(a, r[0]), min(c, r[2])
+        if mx1 > mx0:
+            if b < r[1]:
+                saida.append((mx0, b, mx1, min(d, r[1])))
+            if r[3] < d:
+                saida.append((mx0, max(b, r[3]), mx1, d))
+        return saida
+
     def concha(self) -> Malha:
         m = Malha()
         fora, dentro = self.contornos()
-        m.anel(fora, dentro, 0.0, TAMPA_Z0, COR_POD)
+        # the wall up to the groove's floor, then the two lands that frame it
+        z_sulco = TAMPA_Z0 - JUNTA_SULCO_P
+        m.anel(fora, dentro, 0.0, z_sulco, COR_POD)
+        s_fora, s_dentro = self.sulco()
+        m.anel(fora, s_fora, z_sulco, TAMPA_Z0, COR_POD)
+        m.anel(s_dentro, dentro, z_sulco, TAMPA_Z0, COR_POD)
+        # the two screw bosses, hollow, from the floor up to the lid
+        for cx, cy in PARAF_XY:
+            m.anel(poligono_regular(cx, cy, PARAF_BOSS_D / 2.0, 16),
+                   poligono_regular(cx, cy, PARAF_FURO_D / 2.0, 16),
+                   FUNDO, TAMPA_Z0, COR_POD)
+        # the cell's cradle
+        for r in self.berco():
+            m.caixa(r[0], r[1], FUNDO, r[2], r[3], CELULA_Z1, COR_POD)
         furos = [self.rasgo] if self.rasgo else []
         m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, 0.0, FUNDO, furos, COR_POD)
         # the ledges under the board's long edges and its right end
@@ -410,7 +582,21 @@ class Pod:
         if self.led:
             lx, ly = self.led
             furos.append((lx - LED_FURO / 2, ly - LED_FURO / 2, lx + LED_FURO / 2, ly + LED_FURO / 2))
+        # the two screw holes, clear for the screw's shank
+        for cx, cy in PARAF_XY:
+            r = PARAF_D / 2.0 + 0.15
+            furos.append((cx - r, cy - r, cx + r, cy + r))
         m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, z0, z1, furos, COR_TAMPA)
+        # the lip round the window, on the OUTSIDE, with the drain gap
+        for a, b, c, d in self.labio():
+            m.caixa(a, b, z1, c, d, z1 + POCO_LABIO, COR_TAMPA)
+        # the fingers that CLAMP the board. They come down over the two
+        # posts, so the board is held between a post below and a finger
+        # above instead of merely resting on the ledges: a chain that starts
+        # at a strain gauge cannot have its board moving against the arm.
+        # They stop APERTO_PAD short, and that gap is a compressible pad.
+        for cx, cy in self.pilares:
+            m.cilindro(cx, cy, PILAR_D / 2.0, PLACA_Z1 + APERTO_PAD + dz, z0, COR_TAMPA)
         # the lip that drops inside the walls
         aba_fora = contorno_arredondado(PAREDE + ABA_FOLGA, PAREDE + ABA_FOLGA, W_P - PAREDE - ABA_FOLGA,
                                         H_P - PAREDE - ABA_FOLGA, max(0.3, R_P - PAREDE - ABA_FOLGA))
@@ -418,6 +604,47 @@ class Pod:
                                           W_P - PAREDE - ABA_FOLGA - ABA_LARG, H_P - PAREDE - ABA_FOLGA - ABA_LARG,
                                           max(0.3, R_P - PAREDE - ABA_FOLGA - ABA_LARG))
         m.anel(aba_fora, aba_dentro, z0 - ABA_ALT, z0, COR_TAMPA)
+        return m
+
+    def labio(self) -> list:
+        """The raised lip round the window, and the gap that drains it.
+
+        The window is the only hole in the pod, so it is where the water
+        goes. The lip keeps a standing puddle off the contacts; a closed lip
+        would only trap it, so one side is CUT - DRENO_L wide, on the side
+        that faces the nearest edge of the lid, which is the shortest way
+        out. The gap is the drain: there is nothing to clog and nothing that
+        stops working when the pod is potted.
+        """
+        x0, y0, x1, y1 = self.janela
+        L = POCO_LABIO_L
+        a0, b0, a1, b1 = x0 - L, y0 - L, x1 + L, y1 + L
+        # which side is nearest the lid's edge: that is where the water goes
+        dist = {"y0": b0 - PAREDE, "y1": (H_P - PAREDE) - b1,
+                "x0": a0 - PAREDE, "x1": (W_P - PAREDE) - a1}
+        saida = min(dist, key=dist.get)
+        cx, cy = (a0 + a1) / 2.0, (b0 + b1) / 2.0
+        g = DRENO_L / 2.0
+        barras = []
+        for lado, r in (("y0", (a0, b0, a1, b0 + L)), ("y1", (a0, b1 - L, a1, b1)),
+                        ("x0", (a0, b0, a0 + L, b1)), ("x1", (a1 - L, b0, a1, b1))):
+            if lado != saida:
+                barras.append(r)
+                continue
+            if lado in ("y0", "y1"):
+                barras.append((r[0], r[1], cx - g, r[3]))
+                barras.append((cx + g, r[1], r[2], r[3]))
+            else:
+                barras.append((r[0], r[1], r[2], cy - g))
+                barras.append((r[0], cy + g, r[2], r[3]))
+        return [b for b in barras if b[2] - b[0] > 0.05 and b[3] - b[1] > 0.05]
+
+    def anel_oring(self, dz: float = 0.0) -> Malha:
+        """The O-ring sitting in its groove, drawn for the views."""
+        m = Malha()
+        s_fora, s_dentro = self.sulco()
+        z0 = TAMPA_Z0 - JUNTA_SULCO_P + dz
+        m.anel(s_fora, s_dentro, z0, z0 + JUNTA_CORDAO, COR_JUNTA)
         return m
 
     def junta_3d(self, dz: float = 0.0) -> Malha:

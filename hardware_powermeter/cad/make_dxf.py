@@ -42,12 +42,20 @@ HERE = pathlib.Path(__file__).resolve().parent
 #   - the magnetic connector, 18 x 5 in plan, lies along the top edge over
 #     the middle, its plungers up through the pod's lid.
 #
-# 48 x 16 is the TARGET of docs/02 (Placa); 60 is what the 57 parts of
-# 05-materiais.md actually take on one face, measured by running the
-# placer at one length after another (04-placa.md has the table). PMETER_W
-# and PMETER_H override both, so the size can be searched again without
-# editing the file, and the placer says what does not fit.
-W = float(os.environ.get("PMETER_W", 48.0))
+# 48 x 16 is the TARGET of docs/02 (Placa) and 51 is what the board is,
+# measured by running the placer and then the router at one length after
+# another (04-placa.md has the table). PMETER_W and PMETER_H override both,
+# so the size can be searched again without editing the file, and the placer
+# says what does not fit.
+#
+# Why 51 and not 48 (2026-09-28): placement is not what decides any more -
+# every length from 48 to 54 seats all 56 parts. What decides is the room
+# the ROUTER has, and the number that matters is not free area but how many
+# places a via fits, because an escape from a fine-pitch pad needs one and
+# `cabe_via` was false all round the pads that stayed open. From 48 to 51 mm
+# the free cells grow 8,8 % and the via sites 36 % (1491 to 2026 on a one-in-
+# four sample). The owner allowed about 3 mm.
+W = float(os.environ.get("PMETER_W", 51.0))
 H = float(os.environ.get("PMETER_H", 16.0))
 THICKNESS = 0.8
 

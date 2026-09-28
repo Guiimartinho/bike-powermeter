@@ -691,10 +691,83 @@ def wrl_led_3528(caminho, w: float, h: float, alt: float) -> None:
         "".join(partes), encoding="utf-8", newline=NL)
 
 
+def wrl_pogo_magnetico(caminho, w: float, h: float, alt: float) -> None:
+    """The 6-way magnetic connector, drawn part by part.
+
+    NOTHING here is a maker's drawing: no supplier page for a 6-way magnetic
+    receptacle could be reached, so this body is DESIGNED by this project
+    from the footprint outwards, and every number below is a purchase
+    requirement, not a measurement. It replaces the plain box the generator
+    used to write, which said nothing about how the thing works and hid the
+    one decision that matters for sealing.
+
+    That decision: **the flat contacts are on the DEVICE and the spring pins
+    are in the CABLE.** A magnetic connector can be built either way round.
+    Putting the springs on the pod would put six moving parts, six barrels
+    and six gaps into a part that has to survive IPX7, road grit and a
+    pressure wash, and each barrel is a path for water into a housing that
+    is potted shut. Flat gold targets have nothing to jam and nothing to
+    let water past; the wear and the mechanism go in the cable, which is
+    cheap to replace and lives indoors. It is also what a sealed device
+    does - a smartwatch charger has the pins in the puck, not in the watch.
+
+    The geometry, from the footprint (pogo_magnetico) outwards:
+
+      - housing 8,6 x 4,6, black LCP, 0,2 mm inside the 9,0 x 5,0 courtyard;
+      - a 0,35 mm chamfer round the top, so the cable's head self-centres
+        instead of stopping on a square edge;
+      - six gold targets of 1,3 mm over the six 1,5 mm pads, standing
+        0,05 mm proud of the housing so the spring lands on gold and not on
+        plastic;
+      - two nickel-plated magnets of 1,1 x 4,2 x 2,6 at the ends, over the
+        MP1 and MP2 tabs, exposed on the top face: they are the magnetic
+        circuit AND the mechanical anchor, which is why those two pads are
+        4,4 mm long;
+      - the solder side: six tinned pads and the two tabs, 0,08 mm thick.
+
+    The total height of 3,20 mm is not a maker's number either: it is the
+    pod's requirement, because the lid sits that far over the board and the
+    face has to reach it (06-conectores-e-pontos-de-teste.md).
+    """
+    CORPO_PLAST = (0.10, 0.10, 0.11)     # black LCP, the usual for this
+    OURO = (0.83, 0.69, 0.22)
+    NIQUEL = (0.78, 0.79, 0.81)
+    ESTANHO = (0.74, 0.75, 0.77)
+    cw, ch = w - 0.4, h - 0.4            # housing, inside the courtyard
+    chanfro = 0.35
+    partes = [
+        # the housing, in two steps so the top reads as chamfered
+        _bloco(-cw / 2, -ch / 2, 0.0, cw / 2, ch / 2, alt - chanfro, CORPO_PLAST),
+        _bloco(-cw / 2 + chanfro, -ch / 2 + chanfro, alt - chanfro,
+               cw / 2 - chanfro, ch / 2 - chanfro, alt, CORPO_PLAST),
+    ]
+    # the two magnets at the ends, through the housing and exposed on top
+    for sx in (-1, 1):
+        partes.append(_bloco(sx * 3.9 - 0.55, -2.1, 0.0,
+                             sx * 3.9 + 0.55, 2.1, alt, NIQUEL))
+        # and their solder tabs under the board side
+        partes.append(_bloco(sx * 3.9 - 0.4, -2.2, 0.0,
+                             sx * 3.9 + 0.4, 2.2, 0.08, ESTANHO))
+    # the six gold targets, over the six pads, proud of the housing
+    for i in range(6):
+        col, lin = i % 3, i // 3
+        x, y = -2.5 + col * 2.5, -1.25 + lin * 2.5
+        partes.append(_cilindro(x, y, alt - 0.10, alt + 0.05, 0.65, OURO, 16))
+        partes.append(_cilindro(x, y, 0.0, 0.08, 0.75, ESTANHO, 16))
+    caminho.write_text(
+        "#VRML V2.0 utf8" + NL +
+        "# conector magnetico de 6 vias, 9,0 x 5,0 x 3,2: DESENHADO POR ESTE"
+        " PROJETO, nao por um fabricante." + NL +
+        "# Contatos chatos de ouro no APARELHO e molas no CABO, para o pod"
+        " poder ser vedado." + NL +
+        "".join(partes), encoding="utf-8", newline=NL)
+
+
 DESENHADOS = {
     "pmeter:MinewSemi_ME54BS13_16.5x12mm":
         lambda c, w, h, a: wrl_me54bs13(c),
     "pmeter:LED_RGB_3528_3.5x2.8mm": wrl_led_3528,
+    "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm": wrl_pogo_magnetico,
 }
 
 

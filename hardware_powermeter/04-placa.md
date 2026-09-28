@@ -24,24 +24,42 @@ medido está em [08](08-dry-run-2026-09-27.md).
 
 | Item | Valor |
 |---|---|
-| Tamanho | **60 × 16 mm** |
+| Tamanho | **51 × 16 mm** |
 | Espessura | 0,8 mm |
 | Raio dos cantos | 1,5 mm |
 | Furos de fixação | nenhum: a placa assenta em ressaltos e é envasada ([07](07-pod.md)) |
 | Recorte | sob a área da antena do módulo, 4,3 × 10,2 mm na borda direita |
 
-O alvo de [`docs/02`](../docs/02-hardware.md#placa) era 48 × 16. **60 é o
-que as 57 peças realmente ocupam numa face só**, e o número saiu de rodar
-o colocador em um comprimento atrás do outro (`PMETER_W=52 python
-make_pcb.py`), não de uma conta:
+O alvo de [`docs/02`](../docs/02-hardware.md#placa) era 48 × 16, e o
+comprimento saiu de rodar o colocador e o roteador em um comprimento atrás
+do outro (`PMETER_W=52 python make_pcb.py`), não de uma conta.
 
-| Comprimento | Colocação | Observação |
-|---|---|---|
-| 48 mm | **não cabe**: 18 peças sem lugar | o alvo de `docs/02` |
-| 49, 50, 51 mm | não cabe: 19, 9 e 5 peças sem lugar | |
-| 52 mm | cabe | mas o roteamento fecha menos ligações: a placa fica sem canal livre |
-| **60 mm** | cabe | o que está desenhado |
-| 64 mm | cabe | e **piora** o roteamento: trilhas mais longas cruzam mais |
+**A medida de 2026-09-28 substitui a de 2026-09-27**, e o que mudou não foi
+a placa: foi o colocador. Depois que a face de trás passou a carregar os
+pontos de teste, o desacoplamento do módulo e o dos dois chips do verso, a
+colocação deixou de ser o gargalo — **todo comprimento de 48 a 54 assenta as
+56 peças sem uma sobrando**. A tabela antiga dizia que 48 deixava 18 peças
+sem lugar e 51 deixava 5; nenhuma das duas coisas é verdade hoje.
+
+Quem decide agora é a folga do **roteador**, e o número que importa não é
+área livre e sim **quantos lugares aceitam uma via**: a fuga de um pad de
+passo fino precisa de uma, e `cabe_via` era falso em volta de todos os pads
+que ficavam abertos.
+
+| Comprimento | Células livres | Sítios de via | Colocação |
+|---|---|---|---|
+| 48 mm | 67.936 | 1.491 | cabe |
+| 49 mm | 69.941 | 1.640 | cabe |
+| 50 mm | 72.103 | 1.744 | cabe |
+| **51 mm** | **73.894** (+8,8 %) | **2.026** (+36 %) | cabe — o que está desenhado |
+| 52 mm | 75.978 | 2.189 | cabe |
+| 53 mm | 78.123 | 2.331 | cabe |
+| 54 mm | 79.859 | 2.576 | cabe |
+
+Os sítios de via são amostrados de 2 em 2 células nos dois eixos, então o
+número absoluto vale para comparar, não como contagem. Em 48 mm o
+roteamento parava com 13 ligações abertas; o dono autorizou cerca de 3 mm e
+51 é o que se ganha por eles.
 
 A largura de 16 mm é o limite do pod, não uma escolha: a face interna do
 braço do pedivela dá 20 mm de envelope, menos duas paredes de 1,2 e duas
@@ -71,9 +89,9 @@ alimentação.
 
 ```mermaid
 flowchart LR
-    E["0 a 23<br/>ENERGIA<br/>nPM1100 · indutor<br/>medidor · J102"]
-    C["23 a 43<br/>conector magnético na borda de cima<br/>Tag-Connect e LED · ADS1220 e filtro<br/>furos da ponte na borda de baixo · sensores"]
-    M["43 a 60<br/>MÓDULO<br/>antena na borda direita"]
+    E["0 a 14<br/>ENERGIA<br/>nPM1100 · indutor<br/>medidor · J102"]
+    C["14 a 34<br/>conector magnético na borda de cima<br/>Tag-Connect e LED · ADS1220 e filtro<br/>furos da ponte na borda de baixo · sensores"]
+    M["34 a 51<br/>MÓDULO<br/>antena na borda direita"]
     E --- C --- M
 ```
 
@@ -94,9 +112,14 @@ O que decide cada limite:
 - **o canto analógico** (ADS1220, filtro, chave da excitação) fica entre
   os dois, o mais longe que a placa permite do buck e do módulo.
 
-Tudo numa face só. Na face de trás vão apenas os sete pontos de teste, que
-são pads: a célula encosta nessa face dentro do pod, e ela tem de ser
-plana ([07](07-pod.md#o-que-segura-cada-peça)).
+Quase tudo numa face só. A face de trás leva os sete pontos de teste, que
+são pads, e onze peças que não precisam ser alcançadas: o desacoplamento do
+módulo com os resistores de barramento (`C201` a `C203`, `FB201`, `R204`,
+`R205`), os dois chips baixos da ponta direita (`U302` e `U402`) e o
+desacoplamento deles (`C307`, `C308`, `C403`). Isso é possível porque a
+célula cobre só 23 dos 51 mm: passada ela o fundo do pod desce, e a regra
+`PD4` mede o ar sob **cada** peça em vez de proibir todas
+([07](07-pod.md#o-que-segura-cada-peça)).
 
 ## Zonas proibidas
 
@@ -104,12 +127,15 @@ plana ([07](07-pod.md#o-que-segura-cada-peça)).
 |---|---|---|
 | `KEEPOUT_ANTENA_MODULO` | 4,7 mm da borda direita: sem cobre, sem componente, sem metal | ME54BS13 V1.0.0, 7.3 e 7.4 |
 | `RECORTE_ANTENA_MODULO` | a placa é **vazada** sob a área da antena | 7.4 |
-| `SOMBRA_TAMPA_MAX_3-2MM` | teto de 3,2 mm sobre a face da frente | [07](07-pod.md#a-pilha-de-alturas) |
+| `SOMBRA_TAMPA_MAX_2-7MM` | teto de 2,7 mm sobre a face da frente | [07](07-pod.md#a-pilha-de-alturas) |
 
-O teto de 3,2 mm **não** é dado pelo módulo: quem o fixa é o conector da
-célula, um JST SH de 2,90 mm, mais 0,3 de ar. O módulo tem 2,40. Isso foi
-medido pelo dry run do pod, que reprovou a peça quando o teto ainda era
-2,7 ([08](08-dry-run-2026-09-27.md#o-pod)).
+O teto é o de `make_dxf.TETO_TAMPA` e o nome da zona sai dele, então os dois
+nunca divergem. Quem o fixa é a peça mais alta que fica **sob a tampa**: hoje
+o módulo, com 2,40 mm mais 0,3 de ar. Ele já foi 3,2, quando a célula
+chegava por um conector JST SH de 2,90 mm; desde que ela passou a ser
+soldada em dois furos (`J102`, sem corpo), o teto voltou para 2,7. A regra
+`PD2` do dry run do pod é quem mede isso a cada execução, e o único que
+atravessa a tampa é o conector magnético (`make_dxf.ATRAVESSA_TAMPA`).
 
 ## O land pattern do módulo
 

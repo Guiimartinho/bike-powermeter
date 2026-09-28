@@ -11,6 +11,8 @@ O que existe, o que foi verificado e como, e o que falta. Nada rodou em placa: n
 | 2026-09-27 | estrutura do repositório, documentação de requisitos, arquitetura, protocolos e método de medição com referências; lista de componentes fechada por datasheet |
 | 2026-09-27 | os nove módulos do modelo escritos e testados no PC: 134 casos, 100 % das linhas, doze mutações mortas |
 | 2026-09-27 | o firmware embarcado inteiro escrito e compilando com zero avisos no nRF54LM20 DK e com `ANT=1`; nunca executado |
+| 2026-09-27 | o esquemático, a placa e o pod gerados por programa, com os dois dry runs |
+| 2026-09-28 | a ponte fechada numa peça só (S5229 de 5 kΩ) e a designação de compra dos braços do dono; o roteador passou a ser julgado pelo DRC do KiCad e não pela própria contabilidade; o pod fechou as 12 regras do dry run |
 
 ```mermaid
 flowchart LR
@@ -65,7 +67,24 @@ O que falta no firmware: rodar no DK com as placas de avaliação; medir as pilh
 
 ## Hardware
 
-A fazer: `parts.py`, `nets.py`, blocos e folhas do esquemático (mesmo padrão do ciclocomputador: uma folha por bloco funcional, caixas tracejadas, símbolos de alimentação, rótulos, papel medido), placa de 4 camadas com o recorte da antena do módulo, footprints com corpo 3D medido, dry run da placa, pod com dry run e STL.
+Escrito e gerado entre 2026-09-27 e 2026-09-28, em
+[`hardware_powermeter/`](../hardware_powermeter/README.md). **Nada foi
+fabricado, impresso nem colado**, e as medidas do braço do pedivela ainda
+são lugares reservados.
+
+| Parte | Estado |
+|---|---|
+| Esquemático | 4 folhas, 57 peças, 45 nós; `check_sch.py` compara a lista de nós do KiCad com a de `nets.py` **pino a pino** e o ERC passa |
+| Placa | 51 × 16 mm, 4 camadas, 56 peças colocadas sem uma sobrando, 44 redes; o roteamento é o item aberto ([`hardware_powermeter/04`](../hardware_powermeter/04-placa.md#roteamento)) |
+| Pod | 56,4 × 19,4 × 8,5 mm dentro do alvo de 60 × 20 × 8,5, 11,9 g estimados contra 20; dois STL |
+| Dry run da placa | `dry_run_pcb.py`, regras das fichas e da IPC-2221B medidas no arquivo |
+| Dry run do pod | `dry_run_pod.py`, **12 regras medidas e cumpridas, 0 violadas** |
+| Vistas | 3D da placa (frente, verso, ângulo, montagem), do pod (fechado, aberto, explodido) e do conjunto no braço do pedivela |
+
+O que decide o comprimento da placa mudou em 2026-09-28: deixou de ser a
+colocação — todo comprimento de 48 a 54 mm assenta as 56 peças — e passou a
+ser a folga do **roteador**, medida em quantos lugares aceitam uma via
+([`hardware_powermeter/04`](../hardware_powermeter/04-placa.md#o-contorno)).
 
 ## Decisões
 
@@ -74,6 +93,9 @@ A fazer: `parts.py`, `nets.py`, blocos e folhas do esquemático (mesmo padrão d
 | 2026-09-27 | fase 1 no braço esquerdo, ADS1220, nPM1100, TPS22916 na excitação, conector magnético de 6 pinos, ME54BS13, repositório par do ciclocomputador |
 | 2026-09-27 | o bloco de configuração é binário versionado com CRC-16 (não CBOR); a máquina do sistema mora no modelo (`pm_fsm`), não no SMF, para que cada transição seja um teste de host |
 | 2026-09-27 | o esquemático segue o padrão do ciclocomputador (pedido do dono nesse dia) |
+| 2026-09-28 | a ponte é **uma peça só**: o S5229 de 5 kΩ em ponte completa, `N2K-13-S5229A-50C/DG/E3`, no lugar de quatro colagens |
+| 2026-09-28 | a célula estreita de 15 para 13 mm (13 % de volume) para o rasgo dos fios da ponte passar ao lado dela, em vez de afastar o `J301` do conversor |
+| 2026-09-28 | a placa cresce de 48 para 51 mm: o que faltava ao roteador era lugar para via, e 3 mm dão 36 % mais |
 
 ## Em aberto
 

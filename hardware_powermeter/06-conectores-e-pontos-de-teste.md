@@ -58,19 +58,47 @@ flowchart LR
 
 ## J101 · Conector magnético
 
-Seis contatos pogo em linha, dois ímãs com polaridade nos extremos, na
-face de cima da placa, atravessando a janela da tampa do pod
-([07](07-pod.md)). O cabo termina em USB-A (5 V, GND, D+, D−) e numa saída
-SWD de 10 vias para o J-Link ([`docs/02`](../docs/02-hardware.md#conector-magnético)).
+Seis contatos em **duas fileiras de três** a 2,5 mm, dois ímãs com
+polaridade nos extremos, na face de cima da placa, atravessando a janela da
+tampa do pod ([07](07-pod.md)). O cabo termina em USB-A (5 V, GND, D+, D−) e
+numa saída SWD de 10 vias para o J-Link
+([`docs/02`](../docs/02-hardware.md#conector-magnético)).
 
 > [!IMPORTANT]
-> **Nenhuma peça foi escolhida.** Todas as páginas de fornecedor tentadas
-> em 2026-09-27 estavam fora de alcance desta máquina. O footprint
-> `pmeter:Pogo_Magnetico_6P_P2.5mm` é um lugar reservado (seis pads
-> redondos de 1,5 mm a 2,5 mm de passo, dois pads de 1 × 3 mm para as
-> abas dos ímãs, corpo de 18 × 5 × 3 mm) e a numeração abaixo é deste
-> projeto. Quando a peça for escolhida, o footprint, a altura e a janela
-> da tampa mudam com ela, e o dry run do pod mede os três.
+> **Nenhuma peça foi escolhida.** Todas as páginas de fornecedor tentadas em
+> 2026-09-27 e 2026-09-28 estavam fora de alcance desta máquina. O footprint
+> `pmeter:Pogo_Magnetico_6P_2x3_P2.5mm` e o corpo 3D são **deste projeto**,
+> desenhados a partir do que o circuito e o pod exigem, e cada número abaixo
+> é um **requisito de compra**, não uma medida. Quando a peça for escolhida,
+> o footprint, a altura e a janela da tampa mudam com ela, e o dry run do pod
+> mede os três.
+
+### A peça que este projeto desenhou
+
+| Medida | Valor | De onde vem |
+|---|---|---|
+| Contatos | 6, em 2 fileiras de 3, passo 2,5 mm | seis em fila custariam 12,5 mm só de contatos; em 2 × 3 ocupam 5,0 × 2,5 |
+| Pad de cada contato | Ø 1,5 mm | escolha deste projeto |
+| Abas dos ímãs | 0,8 × 4,4 mm em `x = ±3,9` | a 3,5 o cobre encostava no contato de 1,5 e o DRC acusava curto |
+| Corpo | 8,6 × 4,6, dentro do courtyard de 9,0 × 5,0 | escolha deste projeto |
+| Altura | **3,20 mm, no mínimo** | requisito do pod: a tampa fica a essa altura sobre a placa e a face do conector tem de alcançá-la |
+| Chanfro do topo | 0,35 mm | para a cabeça do cabo se centrar sozinha em vez de parar numa quina viva |
+
+**Os contatos chatos ficam no aparelho e as molas no cabo.** Um conector
+magnético pode ser feito dos dois jeitos, e este é o que o pod exige: pôr as
+molas na placa seria pôr seis peças móveis, seis barris e seis frestas numa
+peça que tem de aguentar IPX7, poeira de estrada e jato de lavagem, e cada
+barril é caminho de água para dentro de um corpo que é envasado e não abre
+mais. Alvos chatos de ouro não têm o que emperrar nem por onde vazar; o
+desgaste e o mecanismo vão para o cabo, que é barato de trocar e vive dentro
+de casa. É o que faz qualquer aparelho vedado: num carregador de relógio as
+molas estão no berço, não no relógio.
+
+O corpo 3D em `cad/3d/Pogo_Magnetico_6P_2x3_P2.5mm.wrl` desenha exatamente
+isso — caixa preta de LCP com chanfro, seis alvos de ouro de 1,3 mm 0,05 mm
+salientes sobre os pads, dois ímãs niquelados de 1,1 × 4,2 × 2,6 expostos no
+topo sobre as abas, e do lado da solda os seis pads estanhados e as duas
+abas — e é o que aparece nas vistas 3D da placa.
 
 | Contato | Sinal | Direção | Por quê nesta posição |
 |---|---|---|---|
