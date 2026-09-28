@@ -78,7 +78,26 @@ O databook de classe transdutor (2622-EN, rev. 12-ago-2019, 116 páginas, em `da
 
 **Como se lê a designação:** `N2K` é a série, padrões de liga Karma modificada sobre filme de poliimida, com ilhas de solda douradas (`DG`) e encapsulamento epóxi; `13` é o número de autocompensação térmica, que o databook diz ser o de estoque para **ligas de alumínio** (`06` é o de aços), e é ele que casa o extensômetro com o material do braço.
 
-**O que ainda falta:** confirmar o material do braço do dono, que decide entre `13` e `06`, e confirmar preço e prazo com o distribuidor. Se o S5229 não vier em `13`, a saída é o S5067 em 1000 Ω com o modo duty-cycle do conversor, que dá 1,40 mA e mantém o pod ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)).
+### Os braços do dono, e o que eles fecham (2026-09-28)
+
+O dono começa pelos **Shimano 105 e Ultegra**, os dois de **liga de alumínio**, e quer depois cobrir SRAM e braços de aço e de carbono. O alumínio fecha o código: **S-T-C 13**. A designação de compra fica
+
+> **`N2K-13-S5229A-50C/DG/E3`**
+
+**Duas armadilhas de compra, do próprio databook:** se o código não for escrito no pedido, o fabricante **embarca o 06**, que é o de aço, e num braço de alumínio isso faz a leitura andar com a temperatura. E o fator de grade da liga K, que é a do N2K, é **2,1**, não 2,0: as contas deste projeto usaram 2,0 e ficam conservadoras em 5 %.
+
+**Braço Shimano é oco, e isso melhora o sinal.** Refazendo a conta com parede de 3 mm numa seção externa de 20 × 14 mm, o momento de inércia cai de 9.333 para 7.504 mm⁴ e a deformação sobe de 459 para **571 µε**, 24 % mais. Com a ponte de Poisson do S5229, que entrega cerca de dois terços de uma ponte de flexão pura, a saída fica em **2,28 mV** a 3,0 V, dentro da faixa que [`docs/06`](../docs/06-medicao-e-calibracao.md) sempre assumiu.
+
+**Para os outros materiais da fase seguinte:**
+
+| Material | O que muda |
+|---|---|
+| Aço (SRAM e outros) | só o código: `N2K-06-S5229A-50C/DG/E3`. Mesma peça, mesma colagem |
+| Carbono | não é só o código. O databook diz que resistências altas são usadas justamente em compósitos, mas o S-T-C é o coeficiente de dilatação do material em ppm/°F, e o de carbono-epóxi é perto de zero na direção das fibras: o número sai do sistema de designação por liga, e ainda há a camada rica em resina da superfície e a anisotropia. É estudo à parte, não troca de código |
+
+Cada braço muda a inclinação, porque muda a seção e a distância da colagem ao pedal. Isso **não é problema**: a inclinação é calibrada por unidade, com massa pendurada, e é justamente o que permite cobrir vários pedivelas com a mesma eletrônica. O que muda de verdade por modelo é a **largura da face interna** e o raio de concordância, que decidem se o pod assenta.
+
+**O que ainda falta:** preço e prazo com o distribuidor. Se o S5229 não vier em `13`, a saída é o S5067 em 1000 Ω com o modo duty-cycle do conversor, que dá 1,40 mA e mantém o pod ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)).
 
 **Onde estão os catálogos:** biblioteca do fabricante, PDF direto, sem cadastro. Classe transdutor `docs.micro-measurements.com/?id=12970`; extensômetros de precisão `?id=4079`; acessórios `?id=12967`; instrumentação `?id=4078`.
 
