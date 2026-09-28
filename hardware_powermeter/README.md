@@ -25,9 +25,9 @@ venha de uma ficha ou de uma medida.
 
 | Parte | Estado |
 |---|---|
-| Esquemático | 4 folhas, 57 peças, 45 nós, gerado e conferido nó a nó contra `nets.py` pelo `check_sch.py` |
-| Placa | 51 × 16 mm, 4 camadas, 56 peças colocadas, 44 redes; roteada por programa |
-| Pod | 56,4 × 19,4 × 8,5 mm, 11,9 g estimados, dois STL (concha e tampa) |
+| Esquemático | 4 folhas, 58 peças, 43 nós, gerado e conferido nó a nó contra `nets.py` pelo `check_sch.py` |
+| Placa | **47 × 14 mm**, 4 camadas, 58 peças mais um furo de fixação M1,6, 43 redes; roteada por programa |
+| Pod | **55,7 × 19,0 × 10,0 mm**, 13,3 g estimados, vedado por anel O e fechado por dois parafusos M1,6, dois STL (concha e tampa) |
 | Ponte | S5229 de 5 kΩ numa peça só, `N2K-13-S5229A-50C/DG/E3`, colada no braço |
 
 ## A cadeia
@@ -59,12 +59,14 @@ regera a placa se você esquecer o `--como-esta`.
 |---|---|
 | [01 · Lista de componentes](01-lista-de-componentes.md) | cada peça com o número da ficha, incluindo a ponte S5229 e as armadilhas de compra |
 | [02 · Esquemático](02-esquematico.md) | as quatro folhas, bloco a bloco |
-| [03 · Netlist](03-netlist.md) | os 45 nós, pino a pino, e os pinos deixados abertos de propósito |
+| [03 · Netlist](03-netlist.md) | os 43 nós, pino a pino, e os pinos deixados abertos de propósito |
 | [04 · Placa](04-placa.md) | contorno, camadas, posicionamento, zonas proibidas, land pattern do módulo, roteamento |
 | [05 · Materiais](05-materiais.md) | a lista de montagem com footprint e código de compra |
 | [06 · Conectores e pontos de teste](06-conectores-e-pontos-de-teste.md) | o conector magnético, os furos da ponte, os furos da célula, o Tag-Connect |
 | [07 · Pod](07-pod.md) | o invólucro: envelope, pilha de alturas, o que segura cada peça, vedação, massa |
 | [08 · Dry run de 2026-09-27](08-dry-run-2026-09-27.md) | a primeira medida completa da placa e do pod |
+| [09 · Módulo de rádio](09-modulo-de-radio.md) | o HOLYIOT-26001-A: por que ele entrou, o que o nRF54L15 muda, pinagem, mecânica, a antena |
+| [10 · Dry run de 2026-09-28](10-dry-run-2026-09-28.md) | a medida completa depois da troca do módulo, da célula real e da vedação |
 | [CAD](cad/README.md) | os geradores, o que muda em relação ao ciclocomputador, as regras e as armadilhas |
 
 ## Os dry runs

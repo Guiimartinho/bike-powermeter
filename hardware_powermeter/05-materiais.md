@@ -32,11 +32,11 @@ A fonte é [`cad/parts.py`](cad/parts.py) e [`cad/footprints.py`](cad/footprints
 
 | Referência | Componente | Valor ou código | Footprint | Qtd | Código |
 |---|---|---|---|---|---|
-| J101 | Conector magnético de 6 pinos pogo | **genérico**, passo 2,5 mm, 1 A por pino, ouro | `pmeter:Pogo_Magnetico_6P_P2.5mm` (18 × 5 × 3, a trocar pelo desenho do fornecedor) | 1 | **sem fornecedor** ([06](06-conectores-e-pontos-de-teste.md#j101--conector-magnético)) |
+| J101 | Conector magnético de 6 contatos, 2 fileiras de 3 | **genérico**, passo 2,5 mm, 1 A por contato, ouro | `pmeter:Pogo_Magnetico_6P_2x3_P2.5mm` (corpo 8,6 × 4,6 × 3,2 no courtyard de 9,0 × 5,0; footprint e corpo 3D **deste projeto**, a trocar pelo desenho do fornecedor) | 1 | **sem fornecedor** ([06](06-conectores-e-pontos-de-teste.md#j101--conector-magnético)) |
 | D101 | ESD dos quatro sinais do conector | TI TPD4E05U06DQAR, USON-10 | `pmeter:TPD4E05U06_USON-10_1x2.5mm_P0.5mm` | 1 | C138714 |
 | U101 | Carregador Li-ion e buck de 3,0 V | Nordic nPM1100-QDAB, QFN-24 4 × 4 | `Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm` | 1 | C2903119, a conferir |
 | U102 | Medidor de carga ModelGauge, 0x36 | Analog Devices MAX17048G+T10, TDFN-8 | `Package_DFN_QFN:TDFN-8-1EP_2x2mm_P0.5mm_EP0.8x1.2mm` | 1 | C2680383, a conferir |
-| J102 | Conector da célula, 2 vias, entrada lateral | JST SM02B-SRSS-TB (SH, passo 1,0 mm) | `Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal` | 1 | C160404, a conferir |
+| J102 | Fios da célula: dois furos metalizados, soldados à mão | sem peça: a célula já vem com dois fios | `pmeter:Furos_Celula_2x1.5mm_P2.5mm` (Ø 1,5 mm, passo 2,5) | — | — |
 | L101 | Indutor do buck | 2,2 µH, ≤ 400 mΩ, Isat ≥ 350 mA (Murata DFE201610E-2R2M) | `Inductor_SMD:L_0805_2012Metric` | 1 | C296426 |
 | C101 | `VBUS` do nPM1100 | 2,2 µF, 25 V | 0603 | 1 | — |
 | C102 | `VOUTB`, o trilho `3V0` | 22 µF | 0603 | 1 | — |
@@ -56,7 +56,7 @@ A fonte é [`cad/parts.py`](cad/parts.py) e [`cad/footprints.py`](cad/footprints
 
 | Referência | Componente | Valor ou código | Footprint | Qtd | Código |
 |---|---|---|---|---|---|
-| U201 | Módulo de rádio com o nRF54LM20A | MinewSemi ME54BS13, 16,5 × 12,0 × 2,4, antena de PCB | `pmeter:MinewSemi_ME54BS13_16.5x12mm` (20 castelados + 60 LGA, o mesmo gerador do ciclocomputador) | 1 | a comprar do fabricante |
+| U201 | Módulo de rádio com o nRF54L15 | HOLYIOT-26001-A, 10,0 × 12,5 × 2,4 (a altura é reserva: não consta do desenho), antena cerâmica | `pmeter:HOLYIOT_26001A_10x12.5mm` (36 pads meio-furo, gerado das cotas do desenho mecânico) | 1 | a comprar do fabricante (AliExpress) |
 | FB201 | Ferrite do filtro pi do módulo | 600 Ω a 100 MHz (Murata BLM15PX601SN1D) | `Inductor_SMD:L_0603_1608Metric` | 1 | C76909 |
 | C201 | `VDD` do módulo, a 0,5 mm do pad 19 | 100 nF | 0402 | 1 | — |
 | C202, C203 | Reserva dos dois lados do ferrite | 4,7 µF | 0603 | 2 | — |

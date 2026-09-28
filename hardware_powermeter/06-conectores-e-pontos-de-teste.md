@@ -203,5 +203,6 @@ magnético. Cada um fica junto do que mede, pela tabela `JUNTO` de
 - **o conector magnético inteiro**: fornecedor, passo, corrente, altura,
   footprint, e se a peça escolhida aceita a numeração acima;
 - a polaridade do `J102` com o fabricante do pack;
-- o espelhamento da tabela `PADS_ME54BS13` num módulo real, que decide se
-  os pads 5, 6 e 4 (SWD e reset) do módulo são os que o `J201` alcança.
+- a tabela `PADS_HOLYIOT` num módulo real, que decide se os pads 4
+  (`SWDIO`), 5 (`SWDCLK`) e 1 (`NRESET`) do módulo são os que o `J201`
+  alcança. Ela saiu do desenho mecânico do anúncio, não de uma ficha.

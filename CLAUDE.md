@@ -4,7 +4,7 @@ Contexto e regras para assistentes de IA neste repositório. Leia inteiro antes 
 
 ## 1. Missão
 
-Projetar um medidor de potência de bicicleta aberto, em nível de produto: módulo colado no braço esquerdo do pedivela (fase 1), eixo de pedal (fase 2). Ponte de extensômetros de classe transdutor, conversor TI ADS1220, acelerômetro BMA400, TMP117, módulo MinewSemi ME54BS13 (nRF54LM20A), carga por nPM1100, conector magnético de carga, USB e SWD. Firmware em C sobre Zephyr / nRF Connect SDK v3.3.0, BLE Cycling Power e ANT+ Bicycle Power.
+Projetar um medidor de potência de bicicleta aberto, em nível de produto: módulo colado no braço esquerdo do pedivela (fase 1), eixo de pedal (fase 2). Ponte de extensômetros de classe transdutor, conversor TI ADS1220, acelerômetro BMA400, TMP117, módulo HOLYIOT-26001-A (nRF54L15, antena cerâmica), carga por nPM1100, conector magnético de carga, serial e SWD. Firmware em C sobre Zephyr / nRF Connect SDK v3.3.0, BLE Cycling Power e ANT+ Bicycle Power.
 
 | Parte | Pasta | Papel |
 |---|---|---|

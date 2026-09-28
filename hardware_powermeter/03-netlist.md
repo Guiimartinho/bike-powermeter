@@ -15,12 +15,12 @@ das redes do próprio `pmeter.kicad_pcb`.
 ## Como ler
 
 - **Nó**: o nome do sinal como aparece no esquemático e na placa.
-- **Pino do módulo**: o pino do nRF54LM20A como o devicetree o declara
+- **Pino do módulo**: o pino do nRF54L15 como o devicetree o declara
   ([`docs/02`](../docs/02-hardware.md#pinos-do-módulo)); o de-para para o
-  pad do ME54BS13 sai da ficha V1.0.0 (páginas 6 a 9) e está em
-  [`cad/parts.py`](cad/parts.py) (`PADS_ME54BS13`, os 80 pads, a mesma
-  tabela do ciclocomputador). **O espelhamento desse mapa ainda precisa ser
-  conferido num módulo real.**
+  pad do HOLYIOT-26001-A foi lido no desenho mecânico do fabricante e está
+  em [`cad/parts.py`](cad/parts.py) (`PADS_HOLYIOT`, os 36 pads). **Esse
+  mapa ainda precisa ser conferido num módulo real: não existe ficha em
+  PDF, só o desenho do anúncio.**
 - **Tipo**: `alim` (alimentação), `dig` (digital), `ana` (analógico).
 - **Folhas**: `1` energia, `2` MCU e depuração, `3` ponte e conversor,
   `4` sensores ([02](02-esquematico.md)). Um nó que aparece em mais de uma
@@ -39,7 +39,7 @@ das redes do próprio `pmeter.kicad_pcb`.
 | `BUCK_SW` | chaveado | nPM1100 `SW` (22) | `L101` 2,2 µH, pino 1 | alim |
 | `DEC` | interno | nPM1100 `DEC` (21) | C103 1 µF | alim |
 | `3V0` | 3,0 V, 150 mA no máximo | `L101` pino 2 e `VOUTB` (1) do nPM1100 (o sentido do buck) | C102 22 µF; `TP103`; pull-ups R103, R104, R105, R204, R205; `FB201` pino 1 e C203; `VTref` do Tag-Connect; ADS1220 `AVDD` (10) e `DVDD` (11) com C305 e C306; TPS22916 `VIN` (A2) com C308; BMA400 `VDD` (7) e `VDDIO` (3) com C401 e C402; TMP117 `V+` (5) com C403 | alim |
-| `3V0_MOD` | 3,0 V | `FB201` pino 2 (ferrite de 600 Ω a 100 MHz) | pad 19 (`VDD`) do ME54BS13; C201 100 nF a 0,5 mm do pad; C202 4,7 µF | alim |
+| `3V0_MOD` | 3,0 V | `FB201` pino 2 (ferrite de 600 Ω a 100 MHz) | pad 15 (`VDD`) do HOLYIOT-26001-A; C201 100 nF a 0,5 mm do pad; C202 4,7 µF | alim |
 | `3V0_EXC` | 3,0 V, ligado só enquanto o conversor converte | TPS22916 `VOUT` (A1) | C307 100 nF; `E+` da ponte (furo 1 de `J301`); `REFP0` (7) do ADS1220 com C304 100 nF; `TP301` | alim |
 | `GND` | 0 V | — | plano contínuo; `J101` contato 1 e os dois pads dos ímãs; `D101` 3 e 8; nPM1100 `AVSS` (4), `PVSS` (23), pad exposto, `ISET` (5) e `MODE` (7); MAX17048 `GND` (4), pad exposto, `CTG` (1) e `QSTRT` (6); `J102` contato 2; `TP104`; os oito pads de terra do módulo; ADS1220 `AVSS` (3), `DGND` (2), pad exposto, `CLK` (1) e `REFN0` (6); `E−` e a blindagem da ponte (furos 4 e 5 de `J301`); TPS22916 `GND` (B1); BMA400 `GND` (9) e `GNDIO` (8); TMP117 `GND` (2), pad exposto e `ADD0` (4); o segundo pino de todo capacitor de desacoplamento, de R101 e de R102 | alim |
 
@@ -105,7 +105,7 @@ projeto e estão registrados em [`cad/parts.py`](cad/parts.py).
 | ADS1220 `U301` | 4 (`AIN3`), 5 (`AIN2`) | entradas não usadas ficam abertas; a ficha manda deixar `AIN3` em aberto (9.1.5) |
 | BMA400 `U401` | 4, 11 (`NC`), 6 (`INT2`) | `NC` na ficha; a segunda interrupção não é usada |
 | TMP117 `U402` | 3 (`ALERT`) | o alerta de temperatura não é usado: o TMP117 é lido a 1 Hz |
-| ME54BS13 `U201` | pad 2 (`RF`) e os pads não listados em `docs/02` | a antena é a de PCB do módulo; os pads livres ficam abertos, sem cobre por baixo da área da antena |
+| HOLYIOT-26001-A `U201` | os pads não listados em `docs/02` (`P0.00` a `P0.04`, `P1.02`, `P1.03`, `P2.09`, `P2.10`) | a antena é a cerâmica do módulo, na ponta virada para a borda da placa; os pads livres ficam abertos, sem cobre por baixo da área da antena |
 
 ## Contagem
 

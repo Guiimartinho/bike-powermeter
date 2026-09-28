@@ -19,15 +19,29 @@ não venha de um documento ou de uma medida.
 
 | Medida | Alvo de [`docs/02`](../docs/02-hardware.md#requisitos) | O que o desenho dá | Situação |
 |---|---|---|---|
-| Comprimento | 60 mm | **59,4 mm** | dentro: placa de 47 mm ([04](04-placa.md#o-contorno)), mais o canal dos fios da célula, a sala dos dois parafusos e duas paredes de 2,0 |
+| Comprimento | 60 mm | **55,7 mm** | dentro: placa de 47 mm ([04](04-placa.md#o-contorno)), mais o canal dos fios da célula, a sala dos dois parafusos e duas paredes de 2,0 |
 | Largura | 20 mm | **19,0 mm** | dentro: placa de 14 mais 0,5 de folga e 2,0 de parede de cada lado |
-| Altura | 8,5 mm | **8,5 mm** | dentro, e é o número mais caro dos três: só fecha com célula de 2,5 mm de espessura, que só é possível porque os extensômetros de 5 kΩ derrubaram o consumo |
+| Altura | 10 mm | **10,0 mm** | **encostado no alvo**, e é o número mais caro dos três: quem o fixa é a espessura da célula, e a célula real que cabe tem 4,0 mm, não os 2,5 que este documento supunha |
 
 As três medidas cabem, e o caminho até aqui vale mais que o resultado: a
 face de trás passou a carregar o que não precisa ser alcançado, o que levou
 a placa de 60 para 51 mm; a vedação por anel O **custou** 7 mm de
-comprimento e 1,6 de largura; e o módulo menor devolveu quase exatamente
-isso, levando a placa a 47 × 14 e o pod a 59,4 × 19,0.
+comprimento e 1,6 de largura; o módulo menor devolveu quase exatamente
+isso, levando a placa a 47 × 14; e a célula de verdade custou 1,5 mm de
+altura.
+
+> [!IMPORTANT]
+> **A altura subiu de 8,5 para 10,0 porque a premissa de 2,5 mm estava
+> errada, e a conta que a sustentava nunca tinha sido feita.** O documento
+> dizia "célula de 100 mAh com 2,5 mm de espessura"; em 23 × 11 × 2,5 uma
+> LiPo de bolsa vale cerca de **49 mAh**, que a 1,5 mA dão 32 h contra as
+> 50 h do requisito. Não era o pod que estava apertado: era o número. A
+> célula que cabe e atende é de classe **`401123`** — 4,0 × 11 × 23 mm,
+> **≥ 78 mAh**, com dois fios e proteção integrada —, e é ela que está nos
+> desenhos ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)).
+> Com o modo duty-cycle do conversor e a ponte de 5 kΩ o consumo caiu para
+> 0,68 mA, então essas 78 mAh valem **114 h**, e não as 52 h da conta
+> anterior.
 
 ### O pod não cola pela face inteira
 
@@ -49,19 +63,19 @@ largura, porque a placa precisa deles, e a cola só toca metal plano. A regra
 >
 > | Saída do consumo | Efeito no pod |
 > |---|---|
-> | Extensômetros de **5 kΩ** | **nenhum**: a ponte cai de 3,0 para 0,6 mA e o total pedalando de 3,9 para cerca de 1,5 mA sem tocar na célula. A 1,5 mA, 50 h pedem cerca de 75 mAh, então a faixa da célula pode descer de 100 a 150 para 100 mAh, o que **ajuda** o pod. Quanto, ninguém sabe: nenhuma célula foi escolhida e o envelope de 25 × 15 × 4 cobre a faixa inteira |
-> | Modo **duty-cycle** do ADS1220 | nenhum: é firmware |
+> | Extensômetros de **5 kΩ** | **nenhum**: a ponte cai de 3,0 para 0,6 mA e o total pedalando de 3,9 para cerca de 1,5 mA sem tocar na célula |
+> | Modo **duty-cycle** do ADS1220 | nenhum: é firmware. Junto com a ponte de 5 kΩ o total cai para **0,68 mA**, e é essa combinação que fez a célula de 78 mAh valer 114 h |
 > | Célula de **200 mAh** | **piora**: a célula fica sob a placa, então cresce na altura, que é o número que fechou mais apertado, e provavelmente no comprimento |
 >
-> Quem decide o consumo precisa saber disso antes de escolher a célula de
-> 200 mAh.
+> Com 0,68 mA a célula de 200 mAh deixou de ser necessária, e é por isso que
+> ela não está no desenho.
 
 O que ainda governa cada medida:
 
 - **o comprimento** segue a placa, e leva junto a sala dos dois parafusos
   de fechamento: eles custam 5,4 mm porque a placa toma o meio e cada ponta
   tem de abrigar o seu ressalto;
-- **a altura** é a pilha abaixo, e só fecha em 8,5 com a célula de 2,5 mm
+- **a altura** é a pilha abaixo, e fecha em 10,0 com a célula de 4,0 mm
   **sob** a placa. Pôr a célula **ao lado** estouraria o comprimento: uma de
   23 × 11 ao lado de uma placa de 47 × 14 daria 72 mm de comprimento ou
   27 de largura, os dois bem piores;
@@ -76,7 +90,7 @@ O que ainda governa cada medida:
 flowchart TB
     BRACO["braço do pedivela"] --> COLA["cola de fixação 0,5 · fora do pod"]
     COLA --> FUNDO["fundo do pod 1,0"]
-    FUNDO --> CEL["célula 2,5 · envelope 23 × 11"]
+    FUNDO --> CEL["célula 4,0 · envelope 23 × 11"]
     CEL --> AR["ar 0,5"]
     AR --> PCB["placa 0,8"]
     PCB --> TETO["teto 2,7 · o módulo reserva 2,4 e sobra 0,3 de ar"]
@@ -87,12 +101,12 @@ flowchart TB
 |---|---|---|
 | Cola ao braço | 0,5 mm | fora do pod; entra só na folga até o quadro |
 | Fundo | 1,0 mm | escolha deste desenho |
-| Célula | 2,5 mm | envelope de 23 × 11 × 2,5 de uma LiPo de cerca de 100 mAh ([`docs/02`](../docs/02-hardware.md#pod)) |
+| Célula | 4,0 mm | envelope de 23 × 11 × 4,0 de uma LiPo de classe `401123`, **≥ 78 mAh**, com dois fios e proteção integrada ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)). Era 2,5 mm, e 2,5 não existe: naquele volume a célula vale ~49 mAh e não fecha o requisito |
 | Ar sobre a célula | 0,5 mm | a célula incha com a idade |
 | Placa | 0,8 mm | [04](04-placa.md#camadas) |
 | Teto sobre a placa | 2,7 mm | o módulo **reserva** 2,4 (o anúncio do HOLYIOT-26001-A não dá a altura), mais 0,3 de ar (`cad/make_dxf.TETO_TAMPA`). A regra `PD18` mede a peça contra essa reserva |
 | Tampa | 1,0 mm | escolha deste desenho |
-| **Total** | **8,5 mm** | com a cola, 9,0 até o braço |
+| **Total** | **10,0 mm** | com a cola, 10,5 até o braço. A regra `PD17` compara esses 10,5 com a folga do quadro, e é a única que ainda falha: ela pede que o dono meça a bicicleta dele com um paquímetro antes de colar |
 
 O conector magnético é mais alto que o teto **de propósito**: ele
 atravessa a tampa ([abaixo](#o-conector-magnético-na-tampa)), e por isso
@@ -205,7 +219,7 @@ colocada. Uma regra que não acha o que medir **falha dizendo isso**.
 | PD3 | a janela, o poço e a face do conector magnético |
 | PD4 | o ar sob cada peça da face de trás: contra a célula, a nervura, um pilar ou o fundo |
 | PD5 | a célula entre os ressaltos, sob a placa, longe da nervura, dos pilares e do rasgo |
-| PD6 | a célula a 5 mm da área da antena do módulo (ficha ME54BS13, 7.4: nada de metal) |
+| PD6 | a célula a 5 mm da área da antena do módulo (guia de montagem do HOLYIOT-26001-A: a antena cerâmica pede a região livre de metal e sem plano de terra) |
 | PD7 | o rasgo sob os cinco furos da ponte, dentro do fundo |
 | PD8 | nenhum pad da face de trás sob um pilar ou um ressalto (os pilares deslizam em y até sair de cima dos pads) |
 | PD9 | o furo de luz sobre o corpo do LED |
@@ -226,7 +240,7 @@ tais; a página 3 do PDF os repete com linha para preencher:
 
 | O que | O que o desenho supõe |
 |---|---|
-| Largura da face interna do braço esquerdo | o pod tem 19,4 mm |
+| Largura da face interna do braço esquerdo | o pod tem 19,0 mm, e cola por uma base de 15 |
 | Folga entre a face interna do braço e o quadro na pedalada | o pod tem 10,5 mm com a cola |
 | Raio da concordância entre a face e o corpo do braço | o fundo do pod é plano |
 | Distância do eixo do pedivela ao centro do pod | livre; decide onde a ponte é colada ([`docs/06`](../docs/06-medicao-e-calibracao.md)) |

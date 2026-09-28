@@ -14,7 +14,7 @@ O que existe, o que foi verificado e como, e o que falta. Nada rodou em placa: n
 | 2026-09-27 | o esquemático, a placa e o pod gerados por programa, com os dois dry runs |
 | 2026-09-28 | a ponte fechada numa peça só (S5229 de 5 kΩ) e a designação de compra dos braços do dono; o roteador passou a ser julgado pelo DRC do KiCad e não pela própria contabilidade |
 | 2026-09-28 | a case ganhou vedação por anel O, dois parafusos, retenção da célula e da placa e dreno no conector, com uma regra medindo cada uma; o dry run foi de 12 para **16 regras, todas cumpridas** |
-| 2026-09-28 | o módulo passou a ser o **HOLYIOT-26001-A** (nRF54L15): placa de 51 × 16 para **47 × 14**, pod para **59,4 × 19,0 × 8,5**, firmware sem USB, mapa de pinos refeito com os pinos da própria Nordic |
+| 2026-09-28 | o módulo passou a ser o **HOLYIOT-26001-A** (nRF54L15): placa de 51 × 16 para **47 × 14**, pod para **55,7 × 19,0 × 10,0**, firmware sem USB, mapa de pinos refeito com os pinos da própria Nordic |
 
 ```mermaid
 flowchart LR
@@ -56,9 +56,9 @@ Escrito em 2026-09-27, na forma de [04](04-arquitetura-firmware.md), e **compila
 
 | Alvo | FLASH | RAM | MCUboot |
 |---|---|---|---|
-| `pmboard/nrf54l15/cpuapp` (o pod) | 256.852 B de 659.312 (38,96 %) | 108.548 B de 188 KB (**56,39 %**) | 46.996 B de 60 KB |
-| nRF54LM20 DK | 290.308 B (44,03 %) | 119.404 B de 511 KB (22,82 %) | 53.324 B de 60 KB |
-| o mesmo, `ANT=1` | 325.588 B (49,38 %) | 124.068 B | idem |
+| `pmboard/nrf54l15/cpuapp` (o pod) | 256.872 B de 659.312 (38,96 %) | 108.548 B de 188 KB (**56,39 %**) | 46.996 B de 60 KB |
+| nRF54LM20 DK | 290.312 B (44,03 %) | 119.404 B de 511 KB (22,82 %) | 53.324 B de 60 KB |
+| o mesmo, `ANT=1` | 325.592 B (49,38 %) | 124.068 B (23,71 %) | idem |
 
 A RAM do pod é o número a vigiar: no nRF54L15 são 188 KB contra os 511 do
 nRF54LM20A, então a folga caiu de 387 KB para 80. Quem acrescentar função
@@ -86,28 +86,30 @@ são lugares reservados.
 
 | Parte | Estado |
 |---|---|
-| Esquemático | 4 folhas, 57 peças, 45 nós; `check_sch.py` compara a lista de nós do KiCad com a de `nets.py` **pino a pino** e o ERC passa |
-| Placa | 51 × 16 mm, 4 camadas, 56 peças colocadas sem uma sobrando, 44 redes; o roteamento é o item aberto ([`hardware_powermeter/04`](../hardware_powermeter/04-placa.md#roteamento)) |
-| Pod | 56,4 × 19,4 × 8,5 mm dentro do alvo de 60 × 20 × 8,5, 11,9 g estimados contra 20; dois STL |
+| Esquemático | 4 folhas, 58 peças, 43 nós; `check_sch.py` compara a lista de nós do KiCad com a de `nets.py` **pino a pino** e o ERC passa. Duas verificações falham de sempre, as duas de texto no PDF (`TX1`, `TX2`), e duas peças têm a pinagem marcada como **não confirmada na ficha**: o módulo e o conector magnético |
+| Placa | **47 × 14 mm**, 4 camadas, 58 peças colocadas sem uma sobrando mais um furo M1,6, 43 redes ([`hardware_powermeter/04`](../hardware_powermeter/04-placa.md)) |
+| Pod | **55,7 × 19,0 × 10,0 mm** dentro do alvo de 60 × 20 × 10, **13,3 g** estimados contra 20; vedado por anel O e fechado por dois parafusos M1,6; dois STL |
 | Dry run da placa | `dry_run_pcb.py`, regras das fichas e da IPC-2221B medidas no arquivo |
-| Dry run do pod | `dry_run_pod.py`, **12 regras medidas e cumpridas, 0 violadas** |
-| Vistas | 3D da placa (frente, verso, ângulo, montagem), do pod (fechado, aberto, explodido) e do conjunto no braço do pedivela |
+| Dry run do pod | `dry_run_pod.py`, **18 regras: 17 cumpridas, 1 violada**. A violada é a `PD17`, e ela é um requisito sobre a **bicicleta**, não um defeito do pod: a pilha cola + pod é 10,5 mm e a folga de quadro reservada é 10,0. Só sai com um paquímetro na bicicleta do dono |
+| Vistas | **15 renders**: a placa (frente, verso, ângulo, montagem), o pod (fechado, aberto, explodido, tampa por dentro, célula no berço, por baixo) e o conjunto (montado no braço, aberto, extensômetros, produto e produto de lado) |
 
-O que decide o comprimento da placa mudou em 2026-09-28: deixou de ser a
-colocação — todo comprimento de 48 a 54 mm assenta as 56 peças — e passou a
-ser a folga do **roteador**, medida em quantos lugares aceitam uma via
+O tamanho da placa é decidido pelo **módulo de rádio**, e não pelos passivos:
+o módulo antigo era 26 % da área da placa numa peça só, mais que as 37 peças
+pequenas somadas. A largura de 14 mm é a largura do módulo mais as bordas, e
+o comprimento de 47 é o menor em que as peças assentam, a antena cerâmica
+encosta na borda e o roteador ainda acha lugar para via
 ([`hardware_powermeter/04`](../hardware_powermeter/04-placa.md#o-contorno)).
 
 ## Decisões
 
 | Data | Decisão |
 |---|---|
-| 2026-09-27 | fase 1 no braço esquerdo, ADS1220, nPM1100, TPS22916 na excitação, conector magnético de 6 pinos, ME54BS13, repositório par do ciclocomputador |
+| 2026-09-27 | fase 1 no braço esquerdo, ADS1220, nPM1100, TPS22916 na excitação, conector magnético de 6 contatos, ME54BS13 (trocado em 2026-09-28), repositório par do ciclocomputador |
 | 2026-09-27 | o bloco de configuração é binário versionado com CRC-16 (não CBOR); a máquina do sistema mora no modelo (`pm_fsm`), não no SMF, para que cada transição seja um teste de host |
 | 2026-09-27 | o esquemático segue o padrão do ciclocomputador (pedido do dono nesse dia) |
 | 2026-09-28 | a ponte é **uma peça só**: o S5229 de 5 kΩ em ponte completa, `N2K-13-S5229A-50C/DG/E3`, no lugar de quatro colagens |
 | 2026-09-28 | a célula estreita de 15 para 13 mm (13 % de volume) para o rasgo dos fios da ponte passar ao lado dela, em vez de afastar o `J301` do conversor |
-| 2026-09-28 | a placa cresce de 48 para 51 mm: o que faltava ao roteador era lugar para via, e 3 mm dão 36 % mais |
+| 2026-09-28 | a placa cresce de 48 para 51 mm: o que faltava ao roteador era lugar para via, e 3 mm dão 36 % mais. **Revertido no mesmo dia** pela troca do módulo, que levou a placa a 47 × 14 |
 | 2026-09-28 | a case passa a ser **vedada de verdade**: anel O em sulco na parede (27,5 % de compressão), dois parafusos M1,6, berço da célula, placa prensada entre pilares e dedos da tampa, e dreno no lábio do conector |
 | 2026-09-28 | o módulo de rádio vira o **HOLYIOT-26001-A** (nRF54L15). Ele era 26 % da área da placa numa peça só, mais que as 37 peças pequenas somadas, e é a única alavanca de tamanho. Custa o USB, que este SoC não tem: a serial dos comandos e a recuperação do MCUboot vão por UART nos contatos `D+`/`D−` do conector, e um divisor no `VBUS` num GPIO diz que o cabo entrou ([`09`](../hardware_powermeter/09-modulo-de-radio.md)) |
 

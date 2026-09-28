@@ -64,12 +64,34 @@ flowchart LR
 
 </div>
 
+### O produto, peça por peça
+
 | | |
 |---|---|
-| ![O conjunto em vista explodida: a tampa, o pod com a placa dentro, os cinco fios descendo e a ponte colada no braço](docs/img/hardware/conjunto-3d-aberto.png) | ![O pod em vista explodida: concha, placa, tampa com a janela do conector](docs/img/hardware/pod-3d-explodida.png) |
-| *Aberto: a ponte fica no **braço**, não no pod, e cinco fios sobem por um rasgo no fundo* | *O pod: 59,4 × 19,0 × 8,5 mm, 11,9 g estimados, dois STL* |
+| ![O conjunto em vista explodida de produto: tampa, anel O, placa, célula e concha, um sobre o outro](docs/img/hardware/conjunto-3d-produto.png) | ![A mesma pilha vista de lado, mostrando as alturas de cada camada](docs/img/hardware/conjunto-3d-produto-lateral.png) |
+| *A pilha inteira: tampa, anel O, placa, célula e concha* | *De lado: 10,0 mm do fundo ao topo da tampa* |
+| ![O conjunto em vista explodida: a tampa, o pod com a placa dentro, os cinco fios descendo e a ponte colada no braço](docs/img/hardware/conjunto-3d-aberto.png) | ![Os extensômetros no braço, sob o pod](docs/img/hardware/conjunto-3d-extensometros.png) |
+| *Aberto: a ponte fica no **braço**, não no pod, e cinco fios sobem por um rasgo no fundo* | *A ponte S5229 colada na face interna do braço* |
+
+### O pod
+
+| | |
+|---|---|
+| ![O pod fechado, visto em ângulo](docs/img/hardware/pod-3d-fechada.png) | ![O pod em vista explodida: concha, célula, placa, anel O e tampa](docs/img/hardware/pod-3d-explodida.png) |
+| *Fechado: 55,7 × 19,0 × 10,0 mm, 13,3 g estimados* | *Explodido: concha, célula, placa, anel O e tampa* |
+| ![A concha aberta com a placa dentro](docs/img/hardware/pod-3d-aberta.png) | ![A célula no berço da concha, antes da placa](docs/img/hardware/pod-3d-celula-no-berco.png) |
+| *Aberto, com a placa assentada* | *A célula no berço, no passo em que ela entra* |
+| ![A tampa vista por dentro: o sulco do anel O, os dedos que prendem a placa e o lábio da janela](docs/img/hardware/pod-3d-tampa-por-dentro.png) | ![A concha vista por baixo: a base de colagem, o alívio e o rasgo dos fios](docs/img/hardware/pod-3d-por-baixo.png) |
+| *A tampa por dentro: sulco do anel O, dedos da placa, lábio e dreno da janela* | *Por baixo: a base de colagem de 15 mm, o alívio de 1,0 e o rasgo dos fios* |
+
+### A placa
+
+| | |
+|---|---|
 | ![A placa vista pela frente: o módulo de rádio à direita, o conector magnético na borda de cima, o conversor no meio](docs/img/hardware/placa-3d-frente.png) | ![A placa pelo verso: os pontos de teste e os passivos que não precisam ser alcançados](docs/img/hardware/placa-3d-tras.png) |
 | *A placa, 47 × 14 mm em 4 camadas, 58 peças* | *O verso: pads de teste e o que não precisa ser alcançado, sobre o fundo rebaixado do pod* |
+| ![A placa vista em ângulo, com os corpos 3D de cada peça](docs/img/hardware/placa-3d-angulo.png) | ![A placa com os nomes de cada peça, para a montagem](docs/img/hardware/placa-3d-montagem.png) |
+| *Em ângulo, com o corpo real de cada peça* | *O mapa de montagem, peça a peça* |
 
 O envelope de referência veio de **fotogrametria** sobre as fotos de imprensa de um medidor da classe, porque nenhum fabricante publica as medidas: 37 a 39 mm de comprimento, 18 a 22 de largura e 9 a 13 de altura, com a escala aferida por dois caminhos independentes ([docs/01](docs/01-visao-geral.md)). É contra esse número que o pod é medido.
 
@@ -105,6 +127,7 @@ A ponte é **uma peça só**, não quatro colagens: o padrão S5229 do databook 
 | MCU e rádio | **HOLYIOT-26001-A** (nRF54L15), antena cerâmica | 10,0 × 12,5 mm contra 16,5 × 12,0 do ME54BS13: o módulo era **26 % da área da placa**, mais que as 37 peças pequenas somadas, e é a única alavanca de tamanho que move alguma coisa. Custa o USB, que este SoC não tem ([09](hardware_powermeter/09-modulo-de-radio.md)) |
 | Carga e 3,0 V | Nordic nPM1100 | carregador e buck numa peça, 800 nA |
 | Excitação | TI TPS22916 | desliga a ponte entre amostras; é ela que faz os 5 kΩ valerem a pena |
+| Bateria | LiPo de bolsa classe **`401123`** (4,0 × 11 × 23 mm, ≥ 78 mAh, dois fios, proteção integrada) | a 0,68 mA — ponte de 5 kΩ com o conversor em duty-cycle — são **114 h**, contra as 50 h do requisito. A premissa anterior, de 2,5 mm de espessura, não existe: naquele volume a célula vale ~49 mAh. Nenhuma loja foi alcançada: o envelope é **requisito de compra** |
 | Conector | magnético de 6 contatos, **desenhado aqui** | carga, serial e SWD num cabo só, sem tampa de borracha para perder. Contatos chatos de ouro no aparelho e molas no cabo, para o pod poder ser vedado ([06](hardware_powermeter/06-conectores-e-pontos-de-teste.md#j101--conector-magnético)) |
 
 Lista completa, com a ficha e o código de compra de cada peça: [`hardware_powermeter/01-lista-de-componentes.md`](hardware_powermeter/01-lista-de-componentes.md).
@@ -120,7 +143,7 @@ Lista completa, com a ficha e o código de compra de cada peça: [`hardware_powe
 | BLE Cycling Power (Measurement, Feature, Control Point, Vector) | compila; os bytes vêm do modelo testado; nunca visto por um cliente |
 | Serviço de configuração por BLE, com **escrita cifrada obrigatória** | compila; nunca emparelhado |
 | ANT+ Bicycle Power (páginas 1, 16, 18, 80, 81) | compila com `ANT=1`; nenhum canal aberto de verdade |
-| Atualização por BLE (mcumgr + MCUboot) e recuperação serial pelo USB | compila; recusa pedalando ou com bateria fraca |
+| Atualização por BLE (mcumgr + MCUboot) e recuperação serial pela **UART** do conector magnético | compila; recusa pedalando ou com bateria fraca |
 | Placa e pod gerados por programa, com dry run | placa colocada; pod fecha **16 de 16** regras, com vedação por anel O, parafusos, retenção e dreno |
 
 ## Início rápido

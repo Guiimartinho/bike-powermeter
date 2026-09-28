@@ -13,7 +13,7 @@ flowchart LR
     G["Ponte completa<br/>1 kΩ, classe transdutor"] --> A["ADS1220<br/>ganho 128, ratiométrico"]
     SW["TPS22916<br/>excitação chaveada"] --> G
     SW --> A
-    A --> M["ME54BS13<br/>nRF54LM20A"]
+    A --> M["HOLYIOT-26001-A<br/>nRF54L15"]
     I["BMA400<br/>cadência e ângulo"] --> M
     T["TMP117<br/>temperatura da ponte"] --> M
     M --> R["BLE Cycling Power<br/>ANT+ Bicycle Power"]
@@ -40,10 +40,10 @@ flowchart LR
 | Proteção dos sinais do conector | **TI TPD4E05U06** | Datasheet TI | IEC 61000-4-2 ±12 kV contato e ±15 kV ar, 0,42 a 0,5 pF por canal, 6,5 V de ruptura, 10 nA de fuga; quatro canais: D+, D−, SWDIO, SWCLK | Passivo |
 | Diodo ideal no VBUS (opcional) | TI LM66100 | Datasheet TI | 1,5 a 5,5 V, 1,5 A, 79 a 141 mΩ, 150 nA quiescente | Passivo |
 | LDO de 3,0 V (só se o buck sair) | TI TPS7A02 | SBVS277C | 25 nA quiescente, 3 nA desligado, 200 mA, 1,5 %, 1,5 a 6 V, X2SON 1 × 1 mm ou SOT23-5 | Regulador |
-| MCU e rádio | **MinewSemi ME54BS13** (nRF54LM20A, antena de PCB) | Datasheet v1.0.0 | 16,5 × 12,0 × 2,4 mm; BLE, ANT+ (add-on `sdk-ant`), USB | Sim, mais o add-on ANT |
+| MCU e rádio | **HOLYIOT-26001-A** (nRF54L15, antena cerâmica) | não há ficha em PDF: o desenho mecânico do anúncio do fabricante | 10,0 × 12,5 mm, 36 pads, 30 GPIO; BLE, ANT+ (add-on `sdk-ant`); **sem USB** (o SoC não tem `usbhs`), a porta serial passa para a UART do conector magnético ([09](09-modulo-de-radio.md)). A altura do corpo não consta em lugar nenhum: o projeto reserva 2,4 mm, o mesmo do módulo que saiu | Sim, mais o add-on ANT |
 | Versão I2C do conversor | TI ADS122C04, WQFN-16 | SBAS751B | Os mesmos 20 bits efetivos, 315 µA, I2C, 3 × 3 mm | Não |
-| Bateria | LiPo de 100 a 150 mAh com proteção embutida | Listagem do fornecedor | Cerca de 100 h a 1 mA média; tamanho pelo pod | |
-| Conector | Magnético de 6 pinos pogo, ímã com polaridade | Desenho do fornecedor | 5 V, GND, D+, D−, SWDIO, SWCLK; cabo com USB-A e saída SWD de 10 vias; 4 pinos se a gravação de fábrica ficar no Tag-Connect | |
+| Bateria | LiPo de bolsa classe **`401123`**: 4,0 × 11 × 23 mm, **≥ 78 mAh**, dois fios já soldados e proteção (PCM) integrada | **nenhuma listagem foi alcançada**: as nove lojas tentadas em 2026-09-28 (DigiKey, Mouser, AliExpress e seis brasileiras) recusaram a conexão desta máquina. O envelope e a capacidade são **requisito de compra**, não uma peça escolhida | A 0,68 mA (ponte de 5 kΩ com o conversor em duty-cycle), 78 mAh valem **114 h** contra as 50 h do requisito. O nome `401123` é o código de tamanho usual do ramo: 4,0 mm de espessura, 11 mm de largura, 23 de comprimento | |
+| Conector | Magnético de 6 contatos em 2 × 3, ímã com polaridade | **não existe**: nenhum fornecedor foi alcançado, o desenho é deste projeto | 5 V, GND, D+, D−, SWDIO, SWCLK; as molas ficam no **cabo** e os alvos chatos no aparelho, que é o que a vedação exige; cabo com USB-serial e saída SWD de 10 vias ([06](06-conectores-e-pontos-de-teste.md#j101--conector-magnético)) | |
 | Indicação | LED RGB de baixa corrente | | Pareamento, calibração, carga (o nPM1100 tem saídas de LED) | |
 
 Topologia dos trilhos: o buck do nPM1100 dá 3,0 V para o módulo, o ADS1220 e os sensores; a excitação da ponte sai desse trilho pela TPS22916 e vai também aos pinos REFP0 e REFN0 do ADS1220, então o ruído do buck cancela na medição ratiométrica. A ponte de 1 kΩ a 3,0 V drena 3 mA só enquanto a chave está ligada.
@@ -74,7 +74,7 @@ O databook de classe transdutor (2622-EN, rev. 12-ago-2019, 116 páginas, em `da
 | S5067 | `N2K-13-S5067P-10C/DG/E5` | 1000 ±3 % | 4,3 × 4,3 mm | ponte completa pequena **para vigas em flexão** |
 | S5062 | `N2K-13-S5062N-10C/DG/E5` | 1000 ±3 % | 4,2 × 4,8 mm | idem |
 
-**Recomendação: S5229.** É a menor das cinco, cabe folgado no braço, é de 5 kΩ, o que mantém o consumo em 1,5 mA e o pod em 8,5 mm, e vem com a ponte balanceada a ±0,5 mV/V, o que reduz o zero a calibrar. O desenho do padrão mostra quatro grades, **duas longitudinais e duas transversais**: é ponte de Poisson, que num campo de flexão entrega cerca de dois terços da saída de uma ponte de flexão pura, e ainda assim cerca de seis vezes o que o cisalhamento daria.
+**Recomendação: S5229.** É a menor das cinco, cabe folgado no braço, é de 5 kΩ, o que mantém o consumo em 1,5 mA — 0,68 mA com o conversor em duty-cycle — e o pod em 10,0 mm, e vem com a ponte balanceada a ±0,5 mV/V, o que reduz o zero a calibrar. O desenho do padrão mostra quatro grades, **duas longitudinais e duas transversais**: é ponte de Poisson, que num campo de flexão entrega cerca de dois terços da saída de uma ponte de flexão pura, e ainda assim cerca de seis vezes o que o cisalhamento daria.
 
 **Como se lê a designação:** `N2K` é a série, padrões de liga Karma modificada sobre filme de poliimida, com ilhas de solda douradas (`DG`) e encapsulamento epóxi; `13` é o número de autocompensação térmica, que o databook diz ser o de estoque para **ligas de alumínio** (`06` é o de aços), e é ele que casa o extensômetro com o material do braço.
 

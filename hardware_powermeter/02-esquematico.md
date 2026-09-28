@@ -49,7 +49,7 @@ flowchart LR
         J102 --> U102["U102 MAX17048"]
     end
     subgraph F2["2 MCU e depuração"]
-        U201["U201 ME54BS13"]
+        U201["U201 HOLYIOT-26001-A"]
         J201["J201 Tag-Connect"] --> U201
         U201 --> D201["D201 LED RGB"]
     end
@@ -148,7 +148,7 @@ plana porque a célula encosta nela ([07](07-pod.md)).
 
 ```mermaid
 flowchart LR
-    MOD["U201 ME54BS13<br/>nRF54LM20A"]
+    MOD["U201 HOLYIOT-26001-A<br/>nRF54L15"]
     FB["FB201 600 Ω<br/>C203 · C201 · C202"] -->|"3V0_MOD"| MOD
     R3V0(("3V0")) --> FB
     TC["J201 Tag-Connect<br/>TC2030-NL"] -->|"SWDIO, SWDCLK, RESET"| MOD
@@ -159,21 +159,27 @@ flowchart LR
 
 ### As decisões desta folha
 
-**O filtro pi do módulo existe.** A ficha do ME54BS13 (7.2, Power Supply
-Design) pede o footprint de um filtro pi junto do pino de alimentação
-quando a fonte é chaveada, e o `3V0` vem do buck do nPM1100: `C203` de
-4,7 µF antes do ferrite `FB201`, `C201` de 100 nF a 0,5 mm do pad 19 e
-`C202` de 4,7 µF do lado do módulo. O ferrite pode virar 0 Ω na montagem;
-o footprint é o que a ficha pede reservado.
+**O filtro pi do módulo continua, agora por decisão do projeto.** Quem
+pedia o footprint era a ficha do ME54BS13 (7.2, Power Supply Design), e o
+HOLYIOT-26001-A **não tem ficha**: o fabricante publica só o desenho
+mecânico. O filtro fica porque a razão dele não mudou — o `3V0` vem de um
+buck chaveado e a peça é um rádio —, e porque tirá-lo depois custa uma
+revisão de placa enquanto deixá-lo custa dois 0402: `C203` de 4,7 µF antes
+do ferrite `FB201`, `C201` de 100 nF a 0,5 mm do pad 15 (`VDD`) e `C202` de
+4,7 µF do lado do módulo. O ferrite pode virar 0 Ω na montagem.
 
 **Os pinos são os de [`docs/02`](../docs/02-hardware.md#pinos-do-módulo).**
 `SPI00` em P2.01 (clock), P2.02, P2.04, com `ADC_CS` P2.05, `ADC_DRDY`
-P2.03, `IMU_CS` P2.07 e `IMU_INT1` P2.08; `I2C23` em P1.29 e P1.03
-(clock); `EXC_EN` P1.10; `CHG_N` P1.11; `ERR_N` P1.12; `SHPACT` P1.25;
-`GAUGE_ALRT` P1.22; LED em P1.06, P1.08 e P1.09; UART em P1.00 e P1.31.
-O de-para para o pad do módulo é a tabela `PADS_ME54BS13` de
-[`cad/parts.py`](cad/parts.py), a mesma do ciclocomputador, e o
-espelhamento dela ainda precisa ser conferido num módulo real.
+P2.03, `IMU_CS` P2.07 e `IMU_INT1` P2.08; `I2C22` em P1.11 (clock) e
+P1.12; `EXC_EN` P2.06; `CHG_N` P1.09; `ERR_N` P1.08; `SHPACT` P1.15;
+`GAUGE_ALRT` P1.07; `VBUS_SENSE` P1.06; LED em P1.10, P1.13 e P1.14;
+`UART20` em P1.04 e P1.05. Nenhum deles é escolha de gosto: o `SCL` de um
+TWIM e o `SCK` de um SPIM precisam de pino com clock, e a lista usada é a
+dos pinos que a **própria Nordic** usa no NCS para cada periférico
+([09](09-modulo-de-radio.md#o-mapa-de-pinos-do-projeto)). O de-para para o
+pad do módulo é a tabela `PADS_HOLYIOT` de [`cad/parts.py`](cad/parts.py),
+os 36 pads lidos no desenho do fabricante, e ela ainda precisa ser
+conferida num módulo real.
 
 **O LED é de anodo comum no `VSYS`** e os catodos descem por 1,5 kΩ a
 pinos do módulo em nível baixo: com 5 V do cabo são 2 mA por cor; na

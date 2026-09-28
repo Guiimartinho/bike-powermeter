@@ -1,6 +1,6 @@
 # Visão geral
 
-O Bike Power Meter é um medidor de potência para bicicleta de código aberto, par do [GNSS Bike Computer](https://github.com/Guiimartinho/gnss-bike-computer): mesma base de firmware (Zephyr, nRF Connect SDK v3.3.0, nRF54LM20A, BLE e ANT+), mesma cadeia de CAD gerada por script e conferida por dry run, e o ciclocomputador como banco de teste e como configurador.
+O Bike Power Meter é um medidor de potência para bicicleta de código aberto, par do [GNSS Bike Computer](https://github.com/Guiimartinho/gnss-bike-computer): mesma base de firmware (Zephyr, nRF Connect SDK v3.3.0, BLE e ANT+; o ciclocomputador no nRF54LM20A, o medidor no nRF54L15), mesma cadeia de CAD gerada por script e conferida por dry run, e o ciclocomputador como banco de teste e como configurador.
 
 **Nesta página:** [O que mede](#o-que-mede) · [Decisão](#decisão) · [Fases](#fases) · [A classe de produto](#a-classe-de-produto) · [Estado](#estado)
 
@@ -32,9 +32,9 @@ A lista fechada de componentes, com o datasheet de cada peça, está em [`../har
 ## Fases
 
 1. Braço usado, extensômetros, ADS1220 em placa de avaliação e o nRF54LM20 DK: bancada com massas de 5 a 20 kg, linearidade, histerese e deriva.
-2. Firmware em Zephyr com a estrutura do ciclocomputador: serviços de amostragem, cadência, cálculo, rádio, energia e USB; servidor BLE Cycling Power escrito no projeto; ANT+ pelo perfil `ant_bpwr` do add-on, fora do repositório.
+2. Firmware em Zephyr com a estrutura do ciclocomputador: serviços de amostragem, cadência, cálculo, rádio, energia e porta serial; servidor BLE Cycling Power escrito no projeto; ANT+ pelo perfil `ant_bpwr` do add-on, fora do repositório.
 3. Prova no rolo e na rua contra um medidor de referência, por semanas, até ±2 %.
-4. Placa própria, pod impresso e envasado, conector magnético de carga, USB e SWD.
+4. Placa própria, pod impresso e envasado, conector magnético de carga, porta serial e SWD.
 5. Fase 2: eixo de pedal.
 
 ## A classe de produto

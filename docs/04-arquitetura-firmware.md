@@ -108,7 +108,7 @@ MCUboot pelo sysbuild, como no ciclocomputador: mcumgr SMP sobre BLE (`src/rf/df
 
 ## Pilhas e prioridades
 
-Medidas com `CONFIG_STACK_USAGE` em 2026-09-27 (os quadros das funções do projeto; as chamadas ao Zephyr, o `snprintf` com float do picolibc, cerca de 500 B, e o empilhamento de exceção com FPU, 200 B, somados por cima):
+Medidas com `CONFIG_STACK_USAGE` em 2026-09-27, e a da thread `serial` do pod refeita em 2026-09-28 quando ela passou a existir (os quadros das funções do projeto; as chamadas ao Zephyr, o `snprintf` com float do picolibc, cerca de 500 B, e o empilhamento de exceção com FPU, 200 B, somados por cima):
 
 | Thread | Maiores quadros medidos | Cadeia estimada | Pilha |
 |---|---|---|---|
@@ -117,7 +117,8 @@ Medidas com `CONFIG_STACK_USAGE` em 2026-09-27 (os quadros das funções do proj
 | `compute` | `compute_thread` 336 B (calibrações inclusas), `rev_power_close` 72 | ≈ 1,4 KB (respostas com float) | 3072 B |
 | `radio` | `radio_thread` 264 B, `cp_request` 104, `ble_cps_notify_vector` 104 | ≈ 2 KB (`bt_enable` e a carga dos bonds) | 3072 B |
 | `power` | `power_thread` 112 B, `publish_state` 56 | ≈ 1,5 KB (fuel gauge, `LOG_PANIC` do desligamento) | 3072 B |
-| `serial` / `usb` | `thread` 184 B, `app_cmd_handle` 248, `pm_cmd_parse` 360 | ≈ 1,8 KB (respostas com float) | 3072 B |
+| `serial` (pod, UART) | `serial_thread` 176 B, `serial_process` 40, `app_cmd_handle` 248, `pm_cmd_parse` 360, `parse_ulong` 32 — **856 B de quadros do projeto, medidos em 2026-09-28** no alvo `pmboard/nrf54l15/cpuapp` | ≈ 1,6 KB (mais ~500 B do `snprintf` com float e 200 do empilhamento com FPU) | 3072 B, **1,5 KB de folga** |
+| `usb` (DK, CDC ACM) | `thread` 184 B, `app_cmd_handle` 248, `pm_cmd_parse` 360 | ≈ 1,8 KB (respostas com float) | 3072 B |
 | thread RX do BT | `write_cmd` → `app_cmd_handle` 248 → `pm_cmd_parse` 360, `read_cfg` 168 | ≈ 1,5 KB sobre o uso do stack | `CONFIG_BT_RX_STACK_SIZE` 4096 |
 | thread do driver BMA400 | `bma400_thread` (leitura de estado pelo SPI) | ≈ 0,5 KB | 1536 B |
 
