@@ -433,6 +433,48 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
         r.ok("PD16", f"labio de {f2(C.POCO_LABIO)} de altura em {len(barras)} trechos em volta da "
                      f"janela, com um dreno de {f2(C.DRENO_L)} para a borda mais proxima")
 
+    # -- PD17: the pod fits the crank arm it is bonded to ---------------------
+    # Nobody has measured the owner's crank, so these are the numbers of the
+    # class (make_pod: Shimano 105 / Ultegra, the NARROW end of the arm's
+    # taper, the TIGHT end of road frame clearance). Treating them as a
+    # requirement the pod must meet is the only way a reserved number means
+    # anything: the alternative is a comment that never fails.
+    util = C.BRACO_LARG - 2.0 * C.RAIO_CONC
+    pilha = C.COLA + C.T_P
+    problemas = []
+    if C.H_P > C.BRACO_LARG:
+        problemas.append(f"o pod tem {f2(C.H_P)} de largura e a face interna do braco da classe "
+                         f"tem {f2(C.BRACO_LARG)}: ele sobra pelos lados")
+    if C.BASE_COLA > util + 1e-9:
+        problemas.append(f"a base de colagem tem {f2(C.BASE_COLA)} e so {f2(util)} da face sao "
+                         f"planos (a concordancia come {f2(C.RAIO_CONC)} de cada lado): a cola "
+                         "apoiaria no raio")
+    if C.RELEVO < 0.5:
+        problemas.append(f"o relevo fora da base tem {f2(C.RELEVO)} e nao livra a concordancia")
+    if pilha > C.QUADRO:
+        problemas.append(f"a pilha cola + pod e {f2(pilha)} e o quadro da classe deixa "
+                         f"{f2(C.QUADRO)}: bate na corrente ou no quadro")
+    if problemas:
+        r.falha("PD17", "; ".join(problemas))
+    else:
+        r.ok("PD17", f"o pod tem {f2(C.H_P)} de largura mas cola so pela base de {f2(C.BASE_COLA)}, "
+                     f"que cabe nos {f2(util)} planos da face interna de um braco da classe; fora "
+                     f"dela o fundo sobe {f2(C.RELEVO)} e livra a concordancia de {f2(C.RAIO_CONC)}. "
+                     f"A pilha cola + pod de {f2(pilha)} cabe nos {f2(C.QUADRO)} do quadro. "
+                     "NUMEROS DA CLASSE, nao do braco do dono")
+
+    # -- PD18: the module is no taller than the lid was built for -------------
+    mod = pecas.get("U201")
+    if not mod:
+        r.falha("PD18", "nao mede nada: nao ha U201 na placa")
+    elif mod["altura"] > C.MODULO_ALT_MAX + 1e-9:
+        r.falha("PD18", f"o modulo tem {f2(mod['altura'])} e o teto da tampa foi construido sobre "
+                        f"{f2(C.MODULO_ALT_MAX)}: a tampa nao fecha")
+    else:
+        r.ok("PD18", f"o modulo mede {f2(mod['altura'])} contra os {f2(C.MODULO_ALT_MAX)} que o teto "
+                     "da tampa reserva. O anuncio NAO da a altura: 2,40 e requisito de compra, e a "
+                     "peca que chegar tem de ser medida contra ele")
+
 
 def main() -> int:
     pecas = C.ler_placa()

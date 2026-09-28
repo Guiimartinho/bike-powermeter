@@ -223,12 +223,30 @@ def main() -> int:
                      PD.deslocar(PD.juntar(tampa, pod.junta_3d()), dz + 16.0))
     PD.renderizar(t, c, "conjunto-3d-aberto.png", 1900, 1200, 205.0, 26.0)
 
-    # close up on the arm alone: the four gauges and the five wires standing
-    # where they enter the pod, which is the part nobody had seen
+    # close up on the arm alone: the bridge and the five wires standing where
+    # they enter the pod, which is the part nobody had seen
     m_fios3 = PD.Malha()
     fios(m_fios3, centros, ilhas, FACE_Z + 5.0)
     t, c = PD.juntar(base, m_fios3)
     PD.renderizar(t, c, "conjunto-3d-extensometros.png", 1700, 900, 210.0, 46.0)
+
+    # The whole product, one layer at a time, from the arm up: the bridge
+    # bonded to it, the wires, the shell with the cell in its cradle, the
+    # board, the O-ring and the lid. Every piece someone has to hold during
+    # assembly is in this one picture, in the order they are held.
+    m_fios4 = PD.Malha()
+    fios(m_fios4, centros, ilhas, PD.PLACA_Z0 + 30.0)
+    t, c = PD.juntar(
+        base, m_fios4,
+        PD.deslocar(PD.juntar(concha, celula), 22.0),
+        PD.deslocar(placa, 40.0),
+        PD.deslocar(pod.anel_oring(), 52.0),
+        PD.deslocar(PD.juntar(tampa, pod.junta_3d()), 60.0))
+    PD.renderizar(t, c, "conjunto-3d-produto.png", 1900, 1500, 205.0, 22.0)
+
+    # And the same stack from almost straight on, which is the view that
+    # reads as a drawing rather than as a photograph.
+    PD.renderizar(t, c, "conjunto-3d-produto-lateral.png", 1500, 1600, 200.0, 8.0)
     return 0
 
 

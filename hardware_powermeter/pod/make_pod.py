@@ -39,7 +39,9 @@ Run:  python hardware_powermeter/pod/make_pod.py (after the board's chain:
 Out:  here, pmeter-pod.pdf (3 pages) and the STL files pod-concha.stl and
       pod-tampa.stl (triangle soups of overlapping boxes, for a slicer, not
       a CAD solid); in docs/img/hardware/, pod-3d-aberta.png,
-      pod-3d-fechada.png and pod-3d-explodida.png.
+      pod-3d-fechada.png, pod-3d-explodida.png, pod-3d-tampa-por-dentro.png
+      (the lid from below, where the seal, the clamping fingers and the
+      window's rim are) and pod-3d-celula-no-berco.png.
 """
 
 from __future__ import annotations
@@ -124,6 +126,55 @@ PILAR_D = 2.0
 PILAR_FOLGA = 0.15          # a post must not touch a pad: the solder sits proud
 NERVURA = 0.6
 COLA = 0.5                    # glue between the arm and the floor (not drawn)
+
+# ------------------------------------------------- the crank arm (2026-09-28)
+# Nobody has measured the owner's crank, and waiting for that measurement was
+# holding the whole design, so these are the numbers of the CLASS - Shimano
+# 105 FC-R7000 and Ultegra FC-R8000, hollow-forged aluminium road cranks -
+# and they are treated as a REQUIREMENT the pod has to satisfy, not as a
+# measurement of his part. The rule that uses them (PD17) fails if the pod
+# does not fit, which is the point: a reserved number that nothing checks is
+# just a comment.
+#
+# What each one is, and how conservative it is:
+#
+#   BRACO_LARG   the inner face of the arm, across, at the middle where the
+#                pod is bonded. A 105/Ultegra arm tapers from the spindle
+#                boss to the pedal boss; the narrow END of that taper is
+#                what matters and it is about 20 mm. Taking 20,0 is the
+#                worst case, not the average.
+#   BRACO_ESP    the arm's own thickness there, about 13 mm.
+#   QUADRO       how much room there is between the arm's inner face and the
+#                chainstay on a road frame. 10 mm is the tight end of what
+#                road bikes give; some give 14 or more.
+#   RAIO_CONC    the fillet where the inner face meets the sides, about 2,5:
+#                the pod's floor cannot use the last RAIO_CONC of the face.
+BRACO_LARG = 20.0
+# And what follows from it: the pod is 19,0 wide and only BRACO_LARG minus
+# two fillets - 15,0 - of the arm's face is FLAT. A pod bonded across its
+# whole underside would sit on the fillet radius on both sides, which is the
+# worst thing you can do to a bond line: the adhesive is thick at the edges,
+# thin in the middle, and the joint peels from the outside in. PD17 caught
+# it on 2026-09-28.
+#
+# So the underside is not flat either. It carries a BONDING LAND as wide as
+# the flat part of the face, and outside that land the floor is relieved by
+# RELEVO so it clears the fillet with air. The pod stays 19,0 mm wide - the
+# board needs that - and the glue only ever touches flat metal.
+BASE_COLA = BRACO_LARG - 2.0 * 2.5   # 15,0 (RAIO_CONC is 2,5, defined below)
+RELEVO = 1.0                          # how far the floor lifts outside it
+BRACO_ESP_CLASSE = 13.0
+QUADRO = 10.0
+RAIO_CONC = 2.5
+
+# And the module's height, which the advert does not give either. The same
+# treatment: 2,40 mm is the ME54BS13's, and it is written here as the
+# MAXIMUM this design accepts, because the lid's ceiling is built on it
+# (make_dxf.TETO_TAMPA = 2,40 + 0,3 of air). A module with a metal can over
+# a 0,8 mm PCB is 1,8 to 2,2 mm in this class, so 2,40 has margin - but the
+# part that gets bought has to be measured against it, and PD2 is what
+# measures it (09-modulo-de-radio.md).
+MODULO_ALT_MAX = 2.40
 ALVO = (60.0, 20.0, 8.5)      # docs/02, Requisitos: the envelope target
 MASSA_ALVO = 20.0             # docs/02: module with cell, in grams
 # densities, g/cm3, for the mass ESTIMATE (page 3 says they are estimates):
@@ -569,6 +620,12 @@ class Pod:
             m.caixa(r[0], r[1], FUNDO, r[2], r[3], CELULA_Z1, COR_POD)
         furos = [self.rasgo] if self.rasgo else []
         m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, 0.0, FUNDO, furos, COR_POD)
+        # The bonding land: the only part of the underside that touches the
+        # arm. Outside it the floor is RELEVO higher, so the pod clears the
+        # fillet of the arm's face instead of resting on it (PD17).
+        by0 = (H_P - BASE_COLA) / 2.0
+        m.caixa(0.0, 0.0, 0.0, W_P, by0, RELEVO, COR_POD)
+        m.caixa(0.0, H_P - by0, 0.0, W_P, H_P, RELEVO, COR_POD)
         # the ledges under the board's long edges and its right end
         m.caixa(PAREDE, PAREDE, FUNDO, W_P - PAREDE, PAREDE + RESSALTO, PLACA_Z0, COR_POD)
         m.caixa(PAREDE, H_P - PAREDE - RESSALTO, FUNDO, W_P - PAREDE, H_P - PAREDE, PLACA_Z0, COR_POD)
@@ -1093,8 +1150,22 @@ def main() -> int:
     t, c = juntar(concha, celula, placa, tampa, pod.junta_3d())
     renderizar(t, c, "pod-3d-fechada.png", 1800, 900, 200.0, 62.0)
     dz_t, dz_p, dz_c = 22.0, 11.0, 0.0
-    t, c = juntar(concha, pod.celula_3d(dz_c), deslocar(placa, dz_p), pod.tampa(dz_t), pod.junta_3d(dz_t))
+    t, c = juntar(concha, pod.celula_3d(dz_c), deslocar(placa, dz_p), pod.tampa(dz_t),
+                  pod.junta_3d(dz_t), pod.anel_oring(dz_t - 6.0))
     renderizar(t, c, "pod-3d-explodida.png", 1800, 1100, 200.0, 30.0)
+
+    # The lid seen from BELOW, which is the face nobody ever draws and the
+    # one that carries the work: the seat that squeezes the O-ring, the two
+    # fingers that clamp the board down on its posts, the lip that drops
+    # inside the walls and the window's rim. Rendered from under the part,
+    # so the elevation is negative.
+    t, c = juntar(pod.tampa())
+    renderizar(t, c, "pod-3d-tampa-por-dentro.png", 1600, 1000, 200.0, -35.0)
+
+    # The shell with the cell in its cradle, no board on top: what the
+    # assembly looks like at the step where the cell goes in.
+    t, c = juntar(concha, celula)
+    renderizar(t, c, "pod-3d-celula-no-berco.png", 1800, 900, 200.0, 45.0)
     return 0
 
 

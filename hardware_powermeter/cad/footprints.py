@@ -611,12 +611,104 @@ def wrl_me54bs13(caminho) -> None:
         + pcb + lata + trilha, encoding="utf-8", newline="\n")
 
 
+def wrl_holyiot_26001a(caminho) -> None:
+    """The HOLYIOT-26001-A as its mechanical drawing and its photo give it.
+
+    Every DIMENSION here is off the maker's drawing, the same one the
+    footprint is generated from (09-modulo-de-radio.md). Every COLOUR is
+    read off the product photo of the advert, and that difference is
+    recorded rather than smoothed over: a dimension that closes three ways
+    is evidence, a colour from a photograph is a reading.
+
+    The part is not one box, and drawing it as one hides the thing that
+    decides the layout:
+
+      - the printed circuit, 10,00 x 12,50 x 0,80, with BLACK solder mask.
+        Holyiot's photo shows a black board, not the green of the ME54BS13;
+      - a shield can over the components, from the antenna band down to the
+        bottom edge, 1,00 mm proud of the board. In the photo it reads dark,
+        not as bright tin, so it is drawn as a dark grey coated can and NOT
+        as the bright plate the ME54BS13 has;
+      - the CERAMIC ANTENNA at the top, in the 3,80 mm band the drawing
+        keeps clear of pads: a small ivory block, metallised on the ends,
+        sitting on the board outside the can. It is the reason the module
+        has to hang off the host board's edge, and seeing it is the point of
+        drawing the part at all;
+      - the gold pads: seven per side on each of the two columns, eight
+        along the bottom, on the underside where they are soldered.
+
+    Total height 2,40 mm, and that is a RESERVATION, not a measurement: the
+    advert gives no height. A module of this class - a shield can over a
+    0,80 mm board - runs 1,8 to 2,2, so 2,40 has margin. It is drawn at the
+    reservation so that the body, the lid's ceiling (make_dxf.TETO_TAMPA)
+    and the rule (PD18, make_pod.MODULO_ALT_MAX) all carry the same number,
+    and a part that arrives taller is caught by the rule and not by a lid
+    that will not close.
+    """
+    W, H = HOLY_W, HOLY_H
+    # 0,80 of board and 1,60 of can: 2,40 in all, which is the RESERVED
+    # height and not a measured one. The advert gives no height at all, and a
+    # module of this class - a can over a 0,80 mm board - runs 1,8 to 2,2. It
+    # is drawn at the reservation on purpose: the body, the lid's ceiling and
+    # PD18 then all carry the same number, and a part that arrives taller
+    # than what is drawn is caught by the rule instead of by the lid.
+    ESP, LATA = 0.80, 1.60
+    PRETO_PCB = (0.07, 0.07, 0.08)        # black solder mask, from the photo
+    LATA_COR = (0.30, 0.31, 0.33)         # the can reads dark in the photo
+    CERAMICA = (0.90, 0.88, 0.82)         # ivory ceramic
+    METAL = (0.72, 0.73, 0.75)            # the antenna's metallised ends
+    OURO = (0.80, 0.68, 0.32)
+
+    def fy(y):
+        return y - H / 2.0
+
+    def fx(x):
+        return x - W / 2.0
+
+    partes = [_bloco(-W / 2, -H / 2, 0.0, W / 2, H / 2, ESP, PRETO_PCB)]
+    # the can: from the antenna band down, inside the pad columns
+    partes.append(_bloco(fx(HOLY_X_LGA - 1.2), fy(HOLY_ANT + 0.2), ESP,
+                         fx(W - HOLY_X_LGA + 1.2), fy(H - 0.6), ESP + LATA,
+                         LATA_COR))
+    # the ceramic antenna, centred in the band the drawing keeps clear
+    ax0, ax1 = fx(1.7), fx(8.3)
+    ay0, ay1 = fy(0.7), fy(2.0)
+    partes.append(_bloco(ax0, ay0, ESP, ax1, ay1, ESP + 0.60, CERAMICA))
+    for sx in (0, 1):
+        x = ax0 if sx == 0 else ax1 - 0.5
+        partes.append(_bloco(x, ay0, ESP, x + 0.5, ay1, ESP + 0.62, METAL))
+    # the pads, on the underside
+    ys = [HOLY_Y0 + i * HOLY_PASSO for i in range(7)]
+    xs_baixo = [(W - 8.40) / 2.0 + i * HOLY_PASSO for i in range(8)]
+    cw, ch = HOLY_PAD_CAST
+    lw, lh = HOLY_PAD_LGA
+    bw, bh = HOLY_PAD_BAIXO
+    for y in ys:
+        for x in (HOLY_X_CAST, W - HOLY_X_CAST):
+            partes.append(_bloco(fx(x) - cw / 2, fy(y) - ch / 2, -0.03,
+                                 fx(x) + cw / 2, fy(y) + ch / 2, 0.0, OURO))
+        for x in (HOLY_X_LGA, W - HOLY_X_LGA):
+            partes.append(_bloco(fx(x) - lw / 2, fy(y) - lh / 2, -0.03,
+                                 fx(x) + lw / 2, fy(y) + lh / 2, 0.0, OURO))
+    for x in xs_baixo:
+        partes.append(_bloco(fx(x) - bw / 2, fy(H - bh / 2) - bh / 2, -0.03,
+                             fx(x) + bw / 2, fy(H - bh / 2) + bh / 2, 0.0, OURO))
+    caminho.write_text(
+        "#VRML V2.0 utf8" + NL +
+        "# HOLYIOT-26001-A, nRF54L15: 10,00 x 12,50 x 1,80 mm." + NL +
+        "# Cotas do desenho mecanico do anuncio; CORES lidas da foto do" + NL +
+        "# produto (placa preta, blindagem escura, antena ceramica no topo)." + NL +
+        "# Corpo desenhado aqui: a Holyiot nao publica STEP." + NL +
+        "".join(partes), encoding="utf-8", newline=NL)
+
+
 # What each package actually looks like. A board where every drawn part is
 # the same grey box tells you nothing; these are the colours of the real
 # materials, so a moulded plastic IC reads as black epoxy, a shield can as
 # tin plate and a ceramic capacitor as the pale tan it is. The key is matched
 # against the footprint name, first hit wins.
 COR_PACOTE = (
+    ("HOLYIOT", (0.07, 0.07, 0.08)),       # black board, dark can
     ("MinewSemi", (0.62, 0.63, 0.66)),     # shield can
     ("u-blox", (0.62, 0.63, 0.66)),        # shield can
     ("USB_C", (0.78, 0.79, 0.80)),         # stainless shell
@@ -775,6 +867,7 @@ DESENHADOS = {
         lambda c, w, h, a: wrl_me54bs13(c),
     "pmeter:LED_RGB_3528_3.5x2.8mm": wrl_led_3528,
     "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm": wrl_pogo_magnetico,
+    "pmeter:HOLYIOT_26001A_10x12.5mm": lambda c, w, h, a: wrl_holyiot_26001a(c),
 }
 
 

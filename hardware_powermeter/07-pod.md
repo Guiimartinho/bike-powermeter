@@ -19,15 +19,26 @@ não venha de um documento ou de uma medida.
 
 | Medida | Alvo de [`docs/02`](../docs/02-hardware.md#requisitos) | O que o desenho dá | Situação |
 |---|---|---|---|
-| Comprimento | 60 mm | **56,4 mm** | dentro: placa de 51 mm ([04](04-placa.md#o-contorno)), mais o canal dos fios da célula (2,5), a folga da ponta direita (0,5) e duas paredes (2,4) |
-| Largura | 20 mm | **19,4 mm** | dentro: placa de 16 mais 0,5 de folga e 1,2 de parede de cada lado |
+| Comprimento | 60 mm | **59,4 mm** | dentro: placa de 47 mm ([04](04-placa.md#o-contorno)), mais o canal dos fios da célula, a sala dos dois parafusos e duas paredes de 2,0 |
+| Largura | 20 mm | **19,0 mm** | dentro: placa de 14 mais 0,5 de folga e 2,0 de parede de cada lado |
 | Altura | 8,5 mm | **8,5 mm** | dentro, e é o número mais caro dos três: só fecha com célula de 2,5 mm de espessura, que só é possível porque os extensômetros de 5 kΩ derrubaram o consumo |
 
-As três medidas passaram a caber em 2026-09-28, e não por desenho novo: a
-face de trás da placa passou a carregar o que não precisa ser alcançado
-(pontos de teste, o desacoplamento do módulo e o dos dois chips do verso), o
-que encolheu a placa de 60 para 51 mm; a célula de 2,5 mm fechou a altura; e
-a largura nunca esteve acima.
+As três medidas cabem, e o caminho até aqui vale mais que o resultado: a
+face de trás passou a carregar o que não precisa ser alcançado, o que levou
+a placa de 60 para 51 mm; a vedação por anel O **custou** 7 mm de
+comprimento e 1,6 de largura; e o módulo menor devolveu quase exatamente
+isso, levando a placa a 47 × 14 e o pod a 59,4 × 19,0.
+
+### O pod não cola pela face inteira
+
+A face interna do braço não é plana de ponta a ponta: ela tem uma
+concordância de cerca de 2,5 mm de cada lado, então dos 20 mm de largura da
+classe só **15** são planos. Um pod de 19,0 colado por baixo inteiro
+apoiaria nesses raios dos dois lados — cola grossa nas bordas, fina no meio,
+e a junta descola de fora para dentro. Por isso o fundo tem uma **base de
+colagem de 15 mm** e sobe 1,0 mm fora dela: o pod continua com 19,0 de
+largura, porque a placa precisa deles, e a cola só toca metal plano. A regra
+`PD17` mede isso.
 
 > [!IMPORTANT]
 > **O tamanho do pod e o orçamento de consumo são a mesma decisão, e a
@@ -47,19 +58,17 @@ a largura nunca esteve acima.
 
 O que ainda governa cada medida:
 
-- **o comprimento** segue a placa, e a placa segue o **roteador**, não o
-  colocador: de 48 a 54 mm todas as 56 peças assentam, e o que muda é
-  quantos lugares aceitam uma via. Em 48 mm o roteamento parava com 13
-  ligações abertas; 51 dá 36 % mais sítios de via
-  ([04](04-placa.md#o-contorno) tem a tabela remedida). Encurtar mais quer
-  dizer montar peça nos dois lados, e o lado de baixo é onde a célula
-  encosta;
+- **o comprimento** segue a placa, e leva junto a sala dos dois parafusos
+  de fechamento: eles custam 5,4 mm porque a placa toma o meio e cada ponta
+  tem de abrigar o seu ressalto;
 - **a altura** é a pilha abaixo, e só fecha em 8,5 com a célula de 2,5 mm
-  **sob** a placa. Pôr a célula **ao lado** estouraria o comprimento: uma
-  de 25 × 15 ao lado de uma placa de 51 × 16 dá 78 mm de comprimento ou
-  35 mm de largura, os dois bem piores;
-- **a largura** é o limite do pod, não uma escolha: a face interna do braço
-  dá 20 mm, menos duas paredes de 1,2 e duas folgas de 0,5.
+  **sob** a placa. Pôr a célula **ao lado** estouraria o comprimento: uma de
+  23 × 11 ao lado de uma placa de 47 × 14 daria 72 mm de comprimento ou
+  27 de largura, os dois bem piores;
+- **a largura** é o módulo de rádio mais as paredes. O módulo põe o piso da
+  largura da placa, e foi por isso que trocá-lo (12,0 → 10,0 mm de largura)
+  levou o pod de 19,4 para 19,0 **mesmo com a parede engordando de 1,2 para
+  2,0** por causa do sulco do anel O.
 
 ## A pilha de alturas
 
@@ -67,10 +76,10 @@ O que ainda governa cada medida:
 flowchart TB
     BRACO["braço do pedivela"] --> COLA["cola de fixação 0,5 · fora do pod"]
     COLA --> FUNDO["fundo do pod 1,0"]
-    FUNDO --> CEL["célula 4,0 · envelope 25 × 15"]
+    FUNDO --> CEL["célula 2,5 · envelope 23 × 11"]
     CEL --> AR["ar 0,5"]
     AR --> PCB["placa 0,8"]
-    PCB --> TETO["teto 2,7 · o módulo tem 2,4 e sobra 0,3 de ar"]
+    PCB --> TETO["teto 2,7 · o módulo reserva 2,4 e sobra 0,3 de ar"]
     TETO --> TAMPA["tampa 1,0"]
 ```
 
@@ -78,12 +87,12 @@ flowchart TB
 |---|---|---|
 | Cola ao braço | 0,5 mm | fora do pod; entra só na folga até o quadro |
 | Fundo | 1,0 mm | escolha deste desenho |
-| Célula | 4,0 mm | envelope de uma LiPo de 100 a 150 mAh ([`docs/02`](../docs/02-hardware.md#pod)) |
+| Célula | 2,5 mm | envelope de 23 × 11 × 2,5 de uma LiPo de cerca de 100 mAh ([`docs/02`](../docs/02-hardware.md#pod)) |
 | Ar sobre a célula | 0,5 mm | a célula incha com a idade |
 | Placa | 0,8 mm | [04](04-placa.md#camadas) |
-| Teto sobre a placa | 2,7 mm | o módulo ME54BS13 tem 2,4 de altura, mais 0,3 de ar (`cad/make_dxf.TETO_TAMPA`) |
+| Teto sobre a placa | 2,7 mm | o módulo **reserva** 2,4 (o anúncio do HOLYIOT-26001-A não dá a altura), mais 0,3 de ar (`cad/make_dxf.TETO_TAMPA`). A regra `PD18` mede a peça contra essa reserva |
 | Tampa | 1,0 mm | escolha deste desenho |
-| **Total** | **10,0 mm** | com a cola, 10,5 até o braço |
+| **Total** | **8,5 mm** | com a cola, 9,0 até o braço |
 
 O conector magnético é mais alto que o teto **de propósito**: ele
 atravessa a tampa ([abaixo](#o-conector-magnético-na-tampa)), e por isso
@@ -105,7 +114,10 @@ flowchart LR
 
 - **a placa** assenta em dois ressaltos de 0,6 mm ao longo das bordas
   longas e num terceiro na ponta direita, mais dois pilares de 2,0 mm de
-  diâmetro na ponta esquerda. Não há parafuso: a placa é envasada;
+  diâmetro na ponta esquerda — e é **prensada** contra eles por dois dedos
+  que descem da tampa, através de uma pastilha de 0,3 mm. Não é só apoio: uma
+  cadeia de medida que começa num extensômetro não pode ter a placa se
+  mexendo em relação ao braço (`PD15`);
 - **a célula** deita no fundo, entre os ressaltos, com 0,5 mm de ar até a
   face de trás da placa, presa por uma nervura logo depois dela e pelo
   envase. A nervura fica **depois do rasgo dos fios da ponte** quando o
@@ -117,7 +129,7 @@ flowchart LR
   dobram sobre a ponta da placa e entram no `J102`, cuja boca olha para
   essa ponta ([06](06-conectores-e-pontos-de-teste.md#j102--célula));
 - **a face de trás da placa é plana sob a célula**, e só sob ela. A célula
-  cobre 23 dos 48 mm da placa; passados eles o fundo do pod desce — primeiro
+  cobre 23 dos 47 mm da placa; passados eles o fundo do pod desce — primeiro
   a nervura, com 1,0 mm de ar até a placa, depois o fundo raso, com 2,0. É
   nessa parte que ficam os pontos de teste, o desacoplamento do módulo e o
   dos dois chips do verso (`U302` e `U402`). A regra `PD4` **mede o ar sob
@@ -200,6 +212,12 @@ colocada. Uma regra que não acha o que medir **falha dizendo isso**.
 | PD10 | o envelope contra o alvo de `docs/02` |
 | PD11 | a massa estimada contra os 20 g |
 | PD12 | a aba da tampa sem bater em peça da borda |
+| PD13 | o sulco do anel O: parede de cada lado, compressão entre 20 e 30 %, seção que aceita o cordão esmagado |
+| PD14 | os parafusos: ressaltos livres da placa e da célula, dentro da cavidade, com parede suficiente para um M1,6 autoatarraxante |
+| PD15 | retenção: a célula com nervura ou ressalto nos quatro lados, e a placa entre pilares e dedos da tampa |
+| PD16 | o poço do conector drena: há lábio, ele **não** é fechado, e o dreno não entope |
+| PD17 | o pod cabe no braço: a base de colagem dentro da parte plana da face, e a pilha cola + pod dentro da folga do quadro |
+| PD18 | o módulo não é mais alto que o teto reservado para ele |
 
 ## Lugares reservados
 
