@@ -74,10 +74,8 @@ _fp("U402", "Package_SON:WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "ENCAPSULAMENTO",
     "DRV0006B); o pad termico e o pino 7")
 
 # ---------------------------------------------------------------- conectores
-_fp("J102", "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal",
-    "EXATO", "JST SH de 2 vias, entrada lateral, 2,9 mm de altura")
-_fp("J201", "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical", "EXATO",
-    "TC2030-NL, so furos e pads")
+_fp("J102", "pmeter:Furos_Celula_2x1.5mm_P2.5mm", "GERADO",
+    "dois furos metalizados para os fios da celula, soldados a mao")
 import parts as _P  # noqa: E402
 
 _fp([t[0] for t in _P.TESTE], "TestPoint:TestPoint_Pad_D1.0mm", "EXATO", "")
@@ -123,7 +121,7 @@ CORPO: dict[str, tuple[float, float, float]] = {
     # cell connector's 2,9) and this one has to reach it to be met by the
     # cable's magnetic head. The part chosen has to be at least this tall
     # (06-conectores-e-pontos-de-teste.md).
-    "pmeter:Pogo_Magnetico_6P_P2.5mm": (18.00, 5.00, 3.20),
+    "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm": (9.00, 5.00, 3.20),
 }
 
 
@@ -261,19 +259,50 @@ GERADOS: dict[str, str] = {}
 
 def pogo_magnetico() -> str:
     """The 6-way magnetic pogo receptacle, GENERIC: six 1,5 mm round pads
-    at 2,5 mm of pitch on the board's top face (the plunger side is what
-    the cable's plug meets), and two 2,5 x 1,5 pads at the ends for the
-    magnet frame's tabs. Nothing here comes from a maker's drawing - none
-    could be reached on 2026-09-27 - and the courtyard is the 18 x 5 of
-    the generic body plus the usual 0,25. Replace it by the chosen part's
-    land pattern before ordering (06-conectores-e-pontos-de-teste.md)."""
-    pads = [_pad(str(i + 1), -6.25 + i * 2.5, 0.0, 1.5, 1.5, forma="circle")
-            for i in range(6)]
-    pads.append(_pad("MP1", -8.0, 0.0, 1.0, 3.0, forma="rect"))
-    pads.append(_pad("MP2", 8.0, 0.0, 1.0, 3.0, forma="rect"))
-    return _corpo("pmeter:Pogo_Magnetico_6P_P2.5mm", 18.0, 5.0, pads,
-                  "conector magnetico de 6 pinos pogo, GENERICO, a trocar pelo "
-                  "desenho do fornecedor")
+    at 2,5 mm of pitch in TWO ROWS OF THREE, and two pads at the ends for
+    the magnet frame's tabs.
+
+    Two rows and not one line (2026-09-27): six contacts at 2,5 mm in a
+    row are 12,5 mm of contacts alone, and on a board whose whole length
+    is about 33 mm that is a third of it. In two rows the same six
+    contacts take 5,0 x 2,5 mm, and the part about 7,5 x 5,0 - some 7 mm
+    of length given back, with the six ways kept.
+
+    Nothing here comes from a maker's drawing: no supplier page could be
+    reached, so the arrangement, like the numbering, is this project's and
+    becomes a purchase requirement alongside the minimum height of 3,2 mm
+    (06-conectores-e-pontos-de-teste.md)."""
+    pads = []
+    for i in range(6):
+        col, lin = i % 3, i // 3
+        pads.append(_pad(str(i + 1), -2.5 + col * 2.5, -1.25 + lin * 2.5,
+                         1.5, 1.5, forma="circle"))
+    # The magnet frame's tabs, clear of the contacts: a 1,5 mm contact at
+    # 2,5 reaches 3,25, so the tab starts at 3,25 + 0,127 of clearance.
+    # At 3,5 the two coppers overlapped and the DRC called it a short.
+    pads.append(_pad("MP1", -3.9, 0.0, 0.8, 4.4, forma="rect"))
+    pads.append(_pad("MP2", 3.9, 0.0, 0.8, 4.4, forma="rect"))
+    return _corpo("pmeter:Pogo_Magnetico_6P_2x3_P2.5mm", 9.0, 5.0, pads,
+                  "conector magnetico de 6 pinos pogo em duas fileiras de "
+                  "tres, GENERICO, a trocar pelo desenho do fornecedor")
+
+
+def furos_celula() -> str:
+    """Two plated holes for the cell's wires, soldered by hand.
+
+    There is no connector: the pod is potted and sealed to IPX7, and in
+    that a soldered wire holds better than a latch. It also takes the
+    tallest part off the board - the JST SH was 2,90 mm and set the lid's
+    height all by itself - so the ceiling goes back to the module's 2,4
+    plus air (make_dxf.TETO_TAMPA). The wires come up from the cell, which
+    lies under the board, through the recess in the pod's floor.
+    """
+    pads = [_pad(str(i + 1), -1.25 + i * 2.5, 0.0, 1.5, 1.5, tipo="thru_hole",
+                 forma="circle", drill=0.9, camadas='"*.Cu" "*.Mask"')
+            for i in range(2)]
+    return _corpo("pmeter:Furos_Celula_2x1.5mm_P2.5mm", 5.0, 1.6, pads,
+                  "VBAT+ e GND da celula, furos metalizados; o fio sobe pelo "
+                  "rebaixo do fundo do pod")
 
 
 def furos_ponte() -> str:
@@ -304,8 +333,9 @@ def _gerar():
         "TI TPS22916 em YFP, 4 bolas; land pattern da ficha SLVSDO5F, pagina 25")
     GERADOS["pmeter:LED_RGB_3528_3.5x2.8mm"] = led_rgb_3528(
         "pmeter:LED_RGB_3528_3.5x2.8mm")
-    GERADOS["pmeter:Pogo_Magnetico_6P_P2.5mm"] = pogo_magnetico()
+    GERADOS["pmeter:Pogo_Magnetico_6P_2x3_P2.5mm"] = pogo_magnetico()
     GERADOS["pmeter:Furos_Ponte_5x1.5mm_P2mm"] = furos_ponte()
+    GERADOS["pmeter:Furos_Celula_2x1.5mm_P2.5mm"] = furos_celula()
 
 
 _gerar()
@@ -346,7 +376,8 @@ def altura_de(nome: str) -> tuple[float, str] | None:
 # Tag-Connect is only pads and holes; the bridge pads are pads.
 SEM_CORPO = {"TestPoint:TestPoint_Pad_D1.0mm",
              "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical",
-             "pmeter:Furos_Ponte_5x1.5mm_P2mm"}
+             "pmeter:Furos_Ponte_5x1.5mm_P2mm",
+             "pmeter:Furos_Celula_2x1.5mm_P2.5mm"}
 
 
 def fab_do_footprint(nome: str) -> tuple[float, float] | None:
@@ -949,7 +980,7 @@ _fp("D201", "pmeter:LED_RGB_3528_3.5x2.8mm", "GERADO",
     "TUOZHAN S4-3528RGBTA-A, anodo comum, a mesma peca do ciclocomputador")
 _fp("U302", "pmeter:TPS22916_DSBGA-4_0.78x0.78mm_P0.4mm", "GERADO",
     "TPS22916B em YFP; land pattern da propria ficha")
-_fp("J101", "pmeter:Pogo_Magnetico_6P_P2.5mm", "GERADO",
+_fp("J101", "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm", "GERADO",
     "GENERICO: nenhuma peca escolhida; a trocar pelo desenho do fornecedor")
 _fp("J301", "pmeter:Furos_Ponte_5x1.5mm_P2mm", "GERADO",
     "cinco pads de solda a mao, sem pasta")

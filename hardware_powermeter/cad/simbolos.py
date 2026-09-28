@@ -31,4 +31,6 @@ def _p(refs, simbolo: str) -> None:
 # ------------------------------------------------------------ conectores
 # O conector da celula: duas vias, e o corpo com os quadradinhos de contato
 # diz isso melhor que um retangulo vazio.
-_p("J102", "Connector:Conn_01x02_Socket")
+# Nenhum: a celula entra por dois furos de solda, que sao cobre e nao
+# peca, e um retangulo com os dois pinos nomeados diz isso melhor que
+# um simbolo de conector que nao existe na placa.

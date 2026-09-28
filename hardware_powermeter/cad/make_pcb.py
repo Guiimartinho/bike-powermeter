@@ -54,7 +54,7 @@ RAIO_COURTYARD_FURO = 2.45     # F.CrtYd of MountingHole_2.2mm_M2.kicad_mod
 # decouples and twelve of nineteen capacitors broke rule AL1. A courtyard
 # already carries 0,25 mm of the maker's clearance on each side, so 0,05
 # between two of them is 0,55 mm of bare board between the bodies.
-FOLGA = 0.05                   # between two courtyards: the courtyard
+FOLGA = 0.25                   # between two courtyards: the courtyard
                                # already carries the maker's clearance
 PASSO = 0.5                    # placement grid
 
@@ -63,18 +63,17 @@ ANCORAS: dict[str, str] = {
     "U101": "ZONA_ENERGIA",
     "U301": "ZONA_CONVERSOR_ADS1220",
     "U401": "ZONA_SENSORES",
-    "J201": "ZONA_TAG_CONNECT",
     "D201": "ZONA_TAG_CONNECT",
     "U201": "ZONA_MODULO_ME54BS13",
 }
 # Parts that follow an anchor instead of a zone of their own.
 JUNTO: dict[str, str] = {
     "U102": "U101", "L101": "U101", "J102": "U102",
+    "U302": "U301", "U402": "J301", "D101": "J101",
     "R101": "U101", "R102": "U101", "R106": "U101",
     "R103": "U101", "R104": "U101", "R105": "U102",
     "R204": "U201", "R205": "U201",
-    "D101": "J101", "R107": "J101", "R108": "J101",
-    "U302": "U301", "U402": "J301",
+    "R107": "J101", "R108": "J101",
     "R201": "D201", "R202": "D201", "R203": "D201",
     "TP201": "U201", "TP202": "U201",
     # Each power test point goes beside what it measures, which is what
@@ -92,7 +91,29 @@ JUNTO: dict[str, str] = {
 # shallow because the cell lies under the board (docs/02, Pod), so the back
 # has to stay flat, and a test point is a pad. They are for the bare board
 # on the bench; in the pod the magnetic connector is the only access.
-ATRAS: set[str] = {"TP101", "TP102", "TP103", "TP104", "TP201", "TP202", "TP301"}
+# The back face carries the test points, which are pads, and the passives
+# that could not fit beside the module on the front. The module is 12 mm
+# wide on a 16 mm board and its power pads sit on the castellated rows
+# along the two 1,75 mm strips: no 0402 fits there, so its own decoupling
+# had nowhere to stand and the placer was carrying it 11 to 14 mm away.
+# They go underneath instead, outside the cell's shadow (make_dxf), where
+# the pod's floor is recessed.
+ATRAS: set[str] = {"TP101", "TP102", "TP103", "TP104", "TP201", "TP202", "TP301",
+                   # The module's own decoupling and its bus pull-ups. The
+                   # module is 12 mm wide on a 16 mm board and its power
+                   # pads sit on the castellated rows along the two 1,75 mm
+                   # strips: no 0402 fits there, so on the front the placer
+                   # was carrying them 11 to 14 mm away from the pin they
+                   # serve. Underneath there is room, and the cell does not
+                   # reach that end of the board.
+                   "C201", "C202", "C203", "FB201", "R204", "R205",
+                   # and the two low packages that live at the same end
+                   "U302", "U402"}
+# Everything else stays on the front, and the reason is the cell: it lies
+# against the back over the first 25 mm, so a part whose chip is at that
+# end has nowhere underneath to go. The charger's resistors and the fuel
+# gauge were tried on the back and the placer had to carry them 17 to
+# 21 mm, which is the same failure in a new place.
 # LS601 is on the back because of arithmetic, not taste: it is 10,5 x 9,5 mm,
 # the largest part on the board after the two modules, and on the front the
 # only band left between the key row and the module is 9,25 mm tall. Pushed
@@ -123,6 +144,37 @@ def passantes() -> set[str]:
 
 
 PASSANTE = passantes()
+
+
+def LIMITE_DESLOCA(ref: str) -> float:
+    """How far por() may carry a part from the point it was asked for.
+
+    A decoupling capacitor answers to its datasheet: the module's own wants
+    0,5 mm from the pin and the others 2 mm for the fast ones and 5 for the
+    bulk, which is what dry_run_pcb.AL1 measures pad to pad. Centres sit
+    further apart than pads, so the cap here is that limit plus the half
+    diagonal of a small part, rounded to something a person would accept.
+    Everything else gets one number: a part that has to travel more than a
+    centimetre from where it belongs is not where it belongs.
+    """
+    if ref.startswith("TP"):
+        # A test point is a place to put a probe on. It has no loop, no
+        # signal integrity and no datasheet asking for anything: it goes
+        # wherever the parts that matter left room, and JUNTO only says
+        # which one it would rather be near. On the back face it often
+        # cannot be near at all, because the cell's shadow covers most of
+        # that face and its owner sits inside it.
+        return float("inf")
+    if ref in DECOPLA and ref.startswith("C"):
+        dono = DECOPLA[ref]
+        if dono == MODULO_DE_RADIO:
+            return 4.0
+        return 6.0
+    if ref in DECOPLA or ref in JUNTO:
+        # a pull-up, a configuration resistor or an ESD array: near, but
+        # nothing in a datasheet holds them to a millimetre
+        return 10.0
+    return 12.0
 
 # Parts whose position AND rotation the case decides, not the placer: x, y,
 # angle. These are not the numbers of 04-pcb-e-caixa.md, and the difference is
@@ -160,12 +212,10 @@ BORDA_FIXA: dict[str, tuple[float, float, int]] = {
     # converter: the wires come up from the crank arm through the pod's
     # floor and reach the board at its edge.
     "J301": (round((M.XE + 4.0 + M.XM - 6.0) / 2.0 / PASSO) * PASSO, _H - 1.3, 0),
-    # The cell connector at the left end, its mouth on the end of the board
-    # (orientacao.py: the footprint's mouth is +Y, and 270 turns it to -X).
-    # The cell lies under the board with its tabs at this end, and the wire
-    # folds up round the end of the board into the connector. 6,56 along x
-    # once turned, so x 3,5 puts the courtyard from 0,22 to 6,78.
-    "J102": (3.5, _H - 3.7, 270),
+    # The cell's two solder holes at the left end: the wires come up from
+    # the cell through the recess in the pod's floor, so they enter from
+    # below and the holes only have to be clear of the cell's own shadow.
+    "J102": (4.0, 2.0, 0),
 }
 
 
@@ -343,6 +393,14 @@ def livre(x: float, y: float, bx: tuple[float, float, float, float],
         dy = max(my + m[1] - y1, y0 - (my + m[3]), 0.0)
         if math.hypot(dx, dy) < LONGE_DO_MODULO:
             return False
+    # The cell lies against the back face: a part with a body may stand on
+    # the back anywhere the cell does not reach, and nowhere it does.
+    if ref in ATRAS:
+        for nome, (kx0, ky0, kx1, ky1), _c, _s in M.ZONES:
+            if nome != M.SOMBRA_CELULA:
+                continue
+            if x1 > kx0 and kx1 > x0 and y1 > ky0 and ky1 > y0:
+                return False
     for nome, (kx0, ky0, kx1, ky1), _c, _s in M.ZONES:
         if nome == ANTENA_DO_RADIO and DONO_DO_KEEPOUT.get(ref) != nome                 and ref not in DO_MODULO:
             dx = max(kx0 - x1, x0 - kx1, 0.0)
@@ -638,6 +696,22 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
         if p is None:
             falhas.append(f"{ref}: nao coube perto de ({cx:.1f}; {cy:.1f})")
             return
+        # How far the spiral was allowed to carry the part from where it was
+        # asked to go. Without this the search just widens until something is
+        # free, and a part with nowhere to stand lands anywhere on the board
+        # without a word: on 2026-09-27 the module's own decoupling ended
+        # 11 to 14 mm away, its bus pull-ups 29 mm, and the load switch's
+        # capacitors 17 and 19 mm. Ten capacitors broke rule AL1 and nobody
+        # was told. It is the same failure the project already knows in
+        # another form - a check that cannot measure has to say so - so the
+        # placer now says which part did not fit and how far it had to go.
+        d = math.hypot(p[0] - cx, p[1] - cy)
+        if d > LIMITE_DESLOCA(ref) + 1e-9:
+            dono = DECOPLA.get(ref) or JUNTO.get(ref) or "a sua zona"
+            falhas.append(
+                f"{ref}: nao coube junto de {dono}; o colocador teve de "
+                f"leva-la {d:.1f} mm de ({cx:.1f}; {cy:.1f}), e o limite e "
+                f"{LIMITE_DESLOCA(ref):.1f} mm")
         lugar[ref] = (p[0], p[1], ang, ref in ATRAS)
         caixa_posta = (p[0] + bx[0], p[1] + bx[1], p[0] + bx[2], p[1] + bx[3])
         postos_face[atras].append(caixa_posta)

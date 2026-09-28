@@ -47,7 +47,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 # placer at one length after another (04-placa.md has the table). PMETER_W
 # and PMETER_H override both, so the size can be searched again without
 # editing the file, and the placer says what does not fit.
-W = float(os.environ.get("PMETER_W", 60.0))
+W = float(os.environ.get("PMETER_W", 48.0))
 H = float(os.environ.get("PMETER_H", 16.0))
 THICKNESS = 0.8
 
@@ -70,16 +70,18 @@ MOD_Y0 = H / 2.0 - _MOD_ALT / 2.0
 MOD_Y1 = H / 2.0 + _MOD_ALT / 2.0
 
 # The lid of the pod over the whole board: the ceiling for the parts on the
-# front face. 3,2 mm, and the part that sets it is NOT the module: the
-# cell's JST SH connector is 2,90 mm tall against the module's 2,40, and
-# 2,9 + 0,3 of air is 3,2. Measured by the pod's dry run on 2026-09-27,
-# which failed PD2 on J102 while this said 2,7. The magnetic connector
-# goes THROUGH the lid's window, so it is exempt here and PD3 measures it
-# against the lid instead - and a 3,2 mm ceiling is now a REQUIREMENT on
-# the connector that gets chosen (06-conectores-e-pontos-de-teste.md).
-TETO_TAMPA = 3.2
+# front face. 2,7 mm - the module's 2,40 plus 0,3 of air - and it is 2,7
+# again because the cell lost its connector: the JST SH was 2,90 mm and
+# was the only part that pushed this to 3,2. The magnetic connector goes
+# THROUGH the lid's window, so it is exempt here and PD3 measures it
+# against the lid instead; 2,7 mm is the minimum height of the connector
+# that gets chosen (06-conectores-e-pontos-de-teste.md).
+TETO_TAMPA = 2.7
 ATRAVESSA_TAMPA = {"J101"}
 SOMBRA_TAMPA = f"SOMBRA_TAMPA_MAX_{TETO_TAMPA:.1f}MM".replace(".", "-")
+SOMBRA_CELULA = "SOMBRA_CELULA_MAX_0-0MM"
+SOMBRA_VERSO = "SOMBRA_VERSO_MAX_1-0MM"
+TETO_VERSO = 1.0
 
 
 def _f(x0: float, y0: float, x1: float, y1: float) -> tuple:
@@ -122,7 +124,7 @@ ZONES = [
      "nPM1100, indutor, MAX17048 e o conector da celula. O limite direito nao "
      "e estetico: 7.2 pede 20 mm entre o modulo e uma fonte chaveada ou um "
      "indutor de potencia, e o modulo comeca em XM"),
-    ("ZONA_CONECTOR_MAGNETICO", _f(XE + 0.5, 0.55, XM - 0.5, 6.05), 3,
+    ("ZONA_CONECTOR_MAGNETICO", _f(XE + 0.5, 0.55, XM - 0.5, 6.3), 3,
      "conector magnetico de 6 pinos, 18 x 5, deitado na borda de cima com os "
      "pinos para a tampa do pod (docs/02, Conector magnetico)"),
     ("ZONA_CONVERSOR_ADS1220", _f(XE + 4.0, 6.05, XM - 6.0, H - 2.8), 3,
@@ -138,6 +140,20 @@ ZONES = [
     ("ZONA_TAG_CONNECT", _f(XE + 0.5, 6.05, XE + 8.0, H - 0.8), 3,
      "Tag-Connect TC2030-NL e o LED RGB, entre o bloco de energia e o "
      "conversor, sob o conector magnetico"),
+    # The CELL's shadow on the back face. It is the one place on the back
+    # where nothing with a body may stand, because the cell lies against
+    # it; everywhere else the back has the floor recess under it and takes
+    # a low passive. 25 x 15 mm is the 100 mAh cell of docs/02 at 2,5 mm
+    # of thickness (07-pod.md has the arithmetic and what has to be
+    # confirmed against a real cell).
+    ("SOMBRA_CELULA_MAX_0-0MM", _f(1.0, 0.5, 26.0, 15.5), 5,
+     "docs/02, Pod: a celula deitada sob a placa; nada com corpo na face de "
+     "tras dentro desta area"),
+    # and the ceiling the back face has OUTSIDE that shadow: the pod's
+    # floor is recessed there, and a 0402 is 0,5 mm tall
+    ("SOMBRA_VERSO_MAX_1-0MM", _f(0.0, 0.0, W, H), 6,
+     "pod/make_pod.py: o rebaixo do fundo deixa 1,0 mm para peca baixa na "
+     "face de tras, fora da sombra da celula"),
     # The lid's shadow, which the ME2 rule of the board's dry run measures:
     # every part of the front face is under it.
     (SOMBRA_TAMPA, _f(0.0, 0.0, W, H), 4,

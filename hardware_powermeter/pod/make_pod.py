@@ -70,11 +70,13 @@ FOLGA_PLACA = 0.5             # board to wall, right end and both long sides
 CANAL_FIO = 2.5               # left end: the cell's leads rise here to the JST
 RESSALTO = 0.6                # the ledge under the board's edges
 PLACA_W, PLACA_H, PLACA_ESP = MD.W, MD.H, MD.THICKNESS
-# the envelope reserved for the cell (docs/02, Pod: 100 to 150 mAh, with
-# its own protection): 25 x 15 x 4,0 is what fits between the ledges and
-# short of the bridge's holes; the chosen cell has to fit it, not the other
-# way round, and 07-pod.md says which classes do
-CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 15.0, 4.0, 0.5
+# the envelope reserved for the cell. It shrank on 2026-09-27 with the
+# owner's 5 kOhm decision: the meter draws 1,5 mA pedalling instead of 3,9,
+# so 50 hours ask for about 75 mAh and a 100 mAh cell is enough. A 100 mAh
+# pouch is 2,5 mm thick where a 150 mAh one is 4,0, and those 1,5 mm are
+# what takes the pod's height from 10,0 to 8,5, the target of docs/02. The
+# chosen cell has to fit this envelope, not the other way round.
+CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 15.0, 2.5, 0.5
 # From the board's left end, and the number is set by the SLOT: the
 # bridge's five holes are at the middle of the board and the floor is cut
 # under them (pod x 30,45 to 40,95, measured on 2026-09-27), so the cell

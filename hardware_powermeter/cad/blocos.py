@@ -52,7 +52,7 @@ BLOCOS: dict[str, list[tuple[str, list[str]]]] = {
     ],
     "2 MCU e depuracao": [
         ("Modulo ME54BS13 (nRF54LM20A)", ["U201"]),
-        ("Depuracao SWD, console e LED", ["J201", "D201"]),
+        ("Depuracao SWD, console e LED", ["D201"]),
     ],
     "3 Ponte e conversor": [
         ("Ponte de extensometros", ["J301"]),

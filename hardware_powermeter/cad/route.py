@@ -61,6 +61,7 @@ from __future__ import annotations
 
 import heapq
 import math
+import os
 import pathlib
 import sys
 
@@ -250,6 +251,38 @@ def largura_par(z_alvo: float = 90.0) -> float:
 LARGURA_USB_CALC = largura_par(90.0)
 
 
+_LARG_CACHE: dict = {}
+
+
+def largura_de_corrente(rede: str) -> float:
+    """The width a rail needs for the current it actually carries.
+
+    One number for every power net wastes copper on a board this tight:
+    0,4 mm is right for the 500 mA that come in from the cable and four
+    times what the 3,0 V rail needs, and the extra is exactly the channel
+    some signal could not find. The current per rail is already written
+    down, with its source, in dry_run_pcb.CORRENTE - the table the AL2 rule
+    measures the finished board against - so the width comes from the same
+    place by the same IPC-2221 curve, and whatever comes out passes AL2 by
+    construction. Measured on 2026-09-27: eleven more connections closed,
+    and no rail came out under what the standard asks.
+    """
+    if rede in _LARG_CACHE:
+        return _LARG_CACHE[rede]
+    larg = LARGURA_ALIM
+    try:
+        import dry_run_pcb as _DR
+        if rede in _DR.CORRENTE:
+            i, _fonte = _DR.CORRENTE[rede]
+            pedida = max(_DR.largura_ipc(i, interna=False),
+                         _DR.largura_ipc(i, interna=True))
+            larg = max(LARGURA, min(LARGURA_ALIM, round(pedida + 0.02, 3)))
+    except Exception:
+        larg = LARGURA_ALIM
+    _LARG_CACHE[rede] = larg
+    return larg
+
+
 def largura(rede: str) -> float:
     if rede in NAO_ROTEAR:
         return LARGURA_RF
@@ -267,7 +300,7 @@ def largura(rede: str) -> float:
         # que simplesmente nao existe: 0,207 sai.
         return LARGURA_USB_CALC
     if e_alimentacao(rede):
-        return LARGURA_ALIM
+        return largura_de_corrente(rede)
     return LARGURA
 
 
@@ -299,7 +332,11 @@ def _disco_off(raio: float) -> tuple[tuple[int, int], ...]:
         # nothing to make up: a cell that is not marked is already far
         # enough, because that is exactly what the marking means
         return ((0, 0),)
-    lim = raio + PASSO
+    # One and a half grid steps of slack, not one. The marked cells are a
+    # discrete set and the disc is round: at one step the DRC still found 13
+    # pairs at 0,049 mm, and at one and a half it found none - and unlike
+    # widening the mark, this costs nothing at a fine-pitch escape.
+    lim = raio + 1.5 * PASSO
     n = int(math.ceil(lim / PASSO))
     return tuple((dx, dy)
                  for dx in range(-n, n + 1) for dy in range(-n, n + 1)
@@ -451,14 +488,15 @@ class Grade:
         with its 0.45 mm pad, AND 0.2 mm from the copper with its 0.25 mm
         hole; the first is the larger, so it decides.
         """
-        # LARGURA_ALIM and not LARGURA (2026-09-27, measured): the ring a
-        # pad reserves has to hold the WIDEST track that may pass it, and
-        # a power track is 0,4 mm. Reserving the 0,15 mm of a signal and
-        # trusting the caller's own disc to make up the rest left 34
-        # clearance errors in the DRC, the worst at 0,056 mm.
+        # The ring is the NARROWEST track's, and a wider one makes up the
+        # difference when it looks (extra_de / _disco_off). Reserving the
+        # widest track here instead was tried on 2026-09-27 and it shuts
+        # every escape out of a 0,5 mm pitch package: 88 connections fell
+        # to 67. What the DRC needed was margin in the LOOK, not in the
+        # mark, and _disco_off carries it.
         for c in camadas:
-            self._ret(self.t, c, x, y, hw + folga + LARGURA_ALIM / 2,
-                      hh + folga + LARGURA_ALIM / 2, rede)
+            self._ret(self.t, c, x, y, hw + folga + LARGURA / 2,
+                      hh + folga + LARGURA / 2, rede)
         # a via goes through: a pad on any layer blocks it on all of them
         # respeitar_fixo=False on purpose. In the track map that exemption
         # is what lets a net reach its own pad; in the VIA map there is no
@@ -480,10 +518,7 @@ class Grade:
         sensor line 0.11 mm from a USB via and the DRC found it afterwards.
         """
         n = max(1, int(math.ceil(math.hypot(p1[0] - p0[0], p1[1] - p0[1]) / (PASSO / 2))))
-        # LARGURA_ALIM for the same reason pad() uses it: what has to fit
-        # beside this track is the widest track on the board, not the
-        # narrowest
-        rt = larg / 2 + folga + LARGURA_ALIM / 2
+        rt = larg / 2 + folga + LARGURA / 2
         rv = larg / 2 + folga + VIA_D / 2
         for i in range(n + 1):
             f = i / n
@@ -504,7 +539,7 @@ class Grade:
         """
         self.postas.add(self.cel(x, y))
         for c in range(NC):
-            self._disco(self.t, c, x, y, VIA_D / 2 + folga + LARGURA_ALIM / 2, rede)
+            self._disco(self.t, c, x, y, VIA_D / 2 + folga + LARGURA / 2, rede)
             self._disco(self.v, c, x, y, VIA_D + folga, rede,
                         respeitar_fixo=False)
 
@@ -811,14 +846,23 @@ def base(arv, todos):
                 y - MP.ORIGEM[1], hw, hh, nome or BLOQUEADO)
     # and only then the clearance around it
     for nome, idx, x, y, hw, hh in todos:
-        # A pad with no net is a hole with nothing around it - the pegs of
-        # the receptacle, the three of the Tag-Connect - and the rule for
-        # copper next to a HOLE is 0.2 mm, not the 0.127 of copper to
+        # A pad with no net and no copper on either face is a HOLE - the
+        # three locating holes of the Tag-Connect - and the rule for
+        # copper next to a hole is 0.2 mm, not the 0.127 of copper to
         # copper. Reserving the smaller one put SWDIO 0.175 mm from a
-        # Tag-Connect hole, which the DRC reports as a hole clearance error.
+        # Tag-Connect hole, which the DRC reports as a hole clearance
+        # error.
+        #
+        # A SURFACE pad with no net is not a hole, though: it is a
+        # no-connect ball, and it is copper like any other pad. Measured
+        # on 2026-09-27: giving the BMA400's two no-connects the hole
+        # distance walled in the pad between them, which carries INT1, and
+        # the router reported that pin as the one connection on the board
+        # with no path at all.
+        e_furo = idx < 0 and not nome
         g.pad(range(NC) if idx < 0 else (idx,), x - MP.ORIGEM[0],
               y - MP.ORIGEM[1], hw, hh, nome or BLOQUEADO,
-              folga=FOLGA if nome else FOLGA_FURO)
+              folga=FOLGA_FURO if e_furo else FOLGA)
         if idx < 0:
             # it pierces the board: keep every via out of the hole itself
             # and out of the hole-to-hole distance around it
@@ -1176,13 +1220,25 @@ def podar_soltas(segmentos: list, vias: list, todos: list) -> int:
         removidos += 1
 
 
-def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade):
+def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
+                 mantidos=None, so_estas=None):
     """One routing attempt with a given order. Returns what came out."""
     g = base(arv, todos)
     segmentos: list[tuple] = []
     vias: list[tuple] = []
     falhas: list[str] = []
     falharam: list[str] = []
+    # Tracks and vias carried over from an earlier pass: already drawn, so
+    # they are marked on the grid and kept in the output, and their nets
+    # are not routed again (see main()).
+    if mantidos:
+        seg_m, via_m = mantidos
+        for x_m, y_m, rede_m in via_m:
+            vias.append((x_m, y_m, rede_m))
+            g.via(x_m, y_m, rede_m, folga_de(rede_m))
+        for p0_m, p1_m, cam_m, rede_m, w_m in seg_m:
+            segmentos.append((p0_m, p1_m, cam_m, rede_m, w_m))
+            g.trilha(cam_m, p0_m, p1_m, w_m, rede_m, folga_de(rede_m))
 
     def emitir(caminho_cel, rede, larg, larg_pad=None, campo=None):
         i = 0
@@ -1243,7 +1299,8 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade):
     # no hand-drawn stretch on this board: the magnetic connector's pads
     # are 2,5 mm apart and the maze routes the pair from them
     pre_ligados: dict = {}
-    n_gnd = terra(g, por_rede, segmentos, vias, falhas)
+    n_gnd = (0 if so_estas is not None
+             else terra(g, por_rede, segmentos, vias, falhas))
 
     def alcance(r: str) -> float:
         xs = [q[2] for q in por_rede[r]]
@@ -1272,6 +1329,8 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade):
     # receiver is closed to foreign signals right after they are drawn.
     rf = [r for r in NAO_ROTEAR if r in por_rede]
     for rede in rf + ordem + resto:
+        if so_estas is not None and rede not in so_estas:
+            continue
         pads = por_rede[rede]
         if len(pads) < 2:
             continue
@@ -1415,8 +1474,65 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade):
     n_cost = costurar(g, vias)
     n_cost += costurar_rf(g, vias, segmentos)
     n_malha = costurar_area(g, vias)
-    podar_soltas(segmentos, vias, todos)
+    # PMETER_SEM_PODA=1 keeps every spur, to tell a pruning bug from a
+    # routing one: if the unconnected count falls with the pruning off, the
+    # pruning is eating copper that a net still needs. Measured on
+    # 2026-09-27, when the router reported success and the DRC listed 16
+    # unconnected items across GND, ERR_N, CHG_N, USB_DM, VBAT and 3V0_MOD,
+    # at distances of 13 to 36 mm: too far to be a stub that fell short.
+    if os.environ.get("PMETER_SEM_PODA") != "1":
+        podar_soltas(segmentos, vias, todos)
     return segmentos, vias, falhas, falharam, n_gnd, n_ok, n_cost, n_malha
+
+
+def emitir_caminhos(arv, todos, por_rede, caminhos_por_rede):
+    """Turn the negotiated stage's paths into segments and vias.
+
+    The same neck rule the sequential emitter uses: a piece of track that
+    is inside a footprint's pad field is drawn as narrow as that pad can
+    take, and the rest at the net's own width.
+    """
+    g = base(arv, todos)
+    segmentos: list[tuple] = []
+    vias: list[tuple] = []
+    for rede, caminhos in caminhos_por_rede.items():
+        for caminho, larg, larg_pad, campos_cel in caminhos:
+            def no_campo(k: int) -> bool:
+                c, ix, iy = caminho[k]
+                for x0, y0, x1, y1 in campos_cel:
+                    if x0 <= ix <= x1 and y0 <= iy <= y1:
+                        return True
+                return False
+
+            i = 0
+            while i < len(caminho) - 1:
+                a = caminho[i]
+                j = i + 1
+                if caminho[j][0] != a[0]:
+                    x, y = g.pos(a[1], a[2])
+                    vias.append((x, y, rede))
+                    g.via(x, y, rede, folga_de(rede))
+                    i = j
+                    continue
+                d = (caminho[j][1] - a[1], caminho[j][2] - a[2])
+                while j + 1 < len(caminho) and caminho[j + 1][0] == a[0] and \
+                        (caminho[j + 1][1] - caminho[j][1],
+                         caminho[j + 1][2] - caminho[j][2]) == d:
+                    j += 1
+                k0 = i
+                while k0 < j:
+                    estreito = no_campo(k0) or no_campo(k0 + 1)
+                    k1 = k0 + 1
+                    while k1 < j and (no_campo(k1) or no_campo(k1 + 1)) == estreito:
+                        k1 += 1
+                    p0 = g.pos(caminho[k0][1], caminho[k0][2])
+                    p1 = g.pos(caminho[k1][1], caminho[k1][2])
+                    w = larg_pad if estreito else larg
+                    segmentos.append((p0, p1, a[0], rede, w))
+                    g.trilha(a[0], p0, p1, w, rede, folga_de(rede))
+                    k0 = k1
+                i = j
+    return g, segmentos, vias
 
 
 def conferir(segmentos, vias) -> list[str]:
@@ -1557,9 +1673,10 @@ def main() -> int:
             melhor = r
         if not so_ligacoes(falhas):
             break
-    # and then the failed nets first, while it helps (at most six more
-    # passes): see uma_passagem() for why
-    for k in range(6):
+    # Full re-routes with the failed nets in front: one of these can move
+    # a channel that a net drawn earlier had taken, which the incremental
+    # pass below cannot.
+    for k in range(4):
         pendentes = list(dict.fromkeys(melhor[3]))
         if not pendentes:
             break
@@ -1573,7 +1690,73 @@ def main() -> int:
             melhor = r
         else:
             break
+
+    # And then incremental rip-up: freeze every net that closed and hand
+    # the ones that did not the whole of the rest of the board. A full
+    # re-route throws away ninety good connections to chase twenty, and
+    # they take their channels back in a different arrangement; this keeps
+    # what worked.
+    for k in range(12):
+        pendentes = set(melhor[3])
+        if not pendentes:
+            break
+        seg_bons = [s for s in melhor[0] if s[3] not in pendentes]
+        via_boas = [v for v in melhor[1] if v[2] not in pendentes]
+        r = uma_passagem(arv, numeros, todos, por_rede, caixa_fp,
+                         ("falhas", sorted(pendentes)),
+                         mantidos=(seg_bons, via_boas), so_estas=pendentes)
+        gnd_falhas = [f for f in melhor[2]
+                      if f.startswith("GND: sem lugar para a via")]
+        combinado = (list(r[0]), list(r[1]), list(r[2]) + gnd_falhas, r[3],
+                     melhor[4], r[5], r[6], r[7])
+        n_antes = len(so_ligacoes(melhor[2]))
+        n_depois = len(so_ligacoes(combinado[2]))
+        print(f"  incremental {k + 1}, {len(pendentes)} redes soltas: "
+              f"{n_depois} falhas", flush=True)
+        if n_depois < n_antes:
+            melhor = combinado
+        else:
+            break
     segmentos, vias, falhas, _f, n_gnd, n_ok, n_cost, n_malha = melhor
+
+    # Everything above draws one net at a time, and on this board that
+    # plateaus about twenty connections short whatever the order, the board
+    # size or the rip-up strategy (route_neg.py opens with the measurements).
+    # So when something is still open, hand the whole board to the
+    # negotiated-congestion router and keep its answer if it is better.
+    if so_ligacoes(falhas):
+        print("  congestao negociada (route_neg):", flush=True)
+        import route_neg as RN
+        ordem_redes = [r for r in por_rede
+                       if r not in NAO_ROTEAR and r != "GND"]
+        ordem_redes.sort(key=lambda r: (max(q[2] for q in por_rede[r])
+                                        - min(q[2] for q in por_rede[r]))
+                                       + (max(q[3] for q in por_rede[r])
+                                          - min(q[3] for q in por_rede[r])))
+        import sys as _sys
+        saida = RN.rodar(_sys.modules[__name__], arv, numeros, todos,
+                         por_rede, caixa_fp, ordem_redes)
+        if saida is not None:
+            (n_disputa, n_falhas), caminhos, falhas_n, n_ok_n, rodadas = saida
+            if n_disputa == 0 and n_ok_n > n_ok:
+                g2, seg2, via2 = emitir_caminhos(arv, todos, por_rede, caminhos)
+                falhas2: list[str] = []
+                n_gnd2 = terra(g2, por_rede, seg2, via2, falhas2)
+                n_cost2 = costurar(g2, via2)
+                n_malha2 = costurar_area(g2, via2)
+                # nao podar: a poda foi escrita para o roteador sequencial,
+                # que desenha uma ligacao de cada vez a partir de um pad. O
+                # estagio negociado devolve a arvore inteira de uma rede, e
+                # a poda cortava ramos legitimos dela (2026-09-27).
+                segmentos, vias = seg2, via2
+                falhas, n_gnd, n_ok = falhas2, n_gnd2, n_ok_n
+                n_cost, n_malha = n_cost2, n_malha2
+                print(f"    fechou em {rodadas} rodadas: {n_ok_n} ligacoes, "
+                      "0 celulas disputadas", flush=True)
+            else:
+                print(f"    nao fechou: {n_falhas} sem caminho, {n_disputa} "
+                      f"celulas disputadas depois de {rodadas} rodadas; "
+                      "fica o resultado sequencial", flush=True)
 
     ruins = conferir(segmentos, vias)
     print(f"  conferencia geometrica: {len(ruins)} pares perto demais")

@@ -31,9 +31,7 @@ import make_pcb as MP  # noqa: E402
 PARA_ONDE: dict[str, tuple[str, str]] = {
     "U201": ("+X", "a antena do modulo tem de olhar para fora da borda direita "
                    "(ficha ME54BS13 V1.0.0, 7.2)"),
-    "J102": ("-X", "a boca do conector da celula olha para a ponta esquerda da "
-                   "placa: a celula fica sob a placa com as abas nessa ponta, e "
-                   "o fio dobra em volta da ponta para entrar (docs/02, Pod)"),
+    # J102 saiu: sao dois furos de solda, e um furo nao tem boca.
 }
 
 DIR = {"+X": (1, 0), "-X": (-1, 0), "+Y": (0, 1), "-Y": (0, -1)}

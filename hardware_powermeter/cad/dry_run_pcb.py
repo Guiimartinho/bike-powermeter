@@ -1454,21 +1454,70 @@ def main() -> int:
                     return "tangencial", ("+y" if v[1] > 0 else "-y")
                 px, sx = _papel(eixos["X"])
                 py, sy = _papel(eixos["Y"])
-                esperado = ("radial", "tangencial")
-                if (px, py) != esperado:
-                    falhou("IM1", f"{IMU} a {ang} graus na frente poe o eixo X "
-                                  f"do sensor {px} (para {sx} da placa) e o Y "
-                                  f"{py} (para {sy}): o firmware supoe X radial "
-                                  "e Y tangencial (CONFIG_PM_IMU_AXIS_RADIAL e "
-                                  "_TANGENTIAL). Ou o U401 gira 90 graus, ou os "
-                                  "dois simbolos trocam - e o sinal de "
-                                  "PM_IMU_RADIAL_SIGN sai do lado do eixo "
-                                  "central do pedivela (04-placa.md)")
+                # THE OTHER SIDE. Until 2026-09-27 this rule carried the
+                # firmware's answer as a constant, so it went on failing
+                # after the firmware was changed to agree with the board -
+                # a rule that promises to compare two sides has to read
+                # both. These are the Kconfig defaults, read from the file.
+                KCONFIG = HERE.parents[1] / "zephyr_app" / "Kconfig"
+                EIXO = {0: "X", 1: "Y", 2: "Z"}
+                fw = {}
+                if KCONFIG.exists():
+                    import re as _re
+                    texto_k = KCONFIG.read_text(encoding="utf-8")
+                    for simbolo in ("PM_IMU_AXIS_RADIAL", "PM_IMU_AXIS_TANGENTIAL",
+                                    "PM_IMU_RADIAL_SIGN"):
+                        alvo = texto_k + chr(10) + "config "
+                        m = _re.search(r"^config " + simbolo + r"\b(.*?)^config ",
+                                       alvo, _re.S | _re.M)
+                        if not m:
+                            continue
+                        d = _re.search(r"^\s*default\s+(-?\d+)\s*$", m.group(1),
+                                       _re.M)
+                        if d:
+                            fw[simbolo] = int(d.group(1))
+                faltam = [s for s in ("PM_IMU_AXIS_RADIAL", "PM_IMU_AXIS_TANGENTIAL",
+                                      "PM_IMU_RADIAL_SIGN") if s not in fw]
+                if faltam:
+                    falhou("IM1", "nao mede nada: " +
+                           (f"{KCONFIG} nao existe" if not KCONFIG.exists()
+                            else "sem default para " + ", ".join(faltam)) +
+                           ", entao o lado do firmware nao pode ser lido")
                 else:
-                    ok.append(f"IM1: {IMU} a {ang} graus na frente, pino 1 em "
-                              f"{quadrante[0]}{quadrante[1]}: X do sensor {px} "
-                              f"para {sx}, Y {py} para {sy}, Z saindo da face "
-                              "da frente (ficha 8.2)")
+                    # what the board says, as the firmware spells it
+                    papel_do_eixo = {"X": (px, sx), "Y": (py, sy)}
+                    rad_fw = EIXO.get(fw["PM_IMU_AXIS_RADIAL"], "?")
+                    tan_fw = EIXO.get(fw["PM_IMU_AXIS_TANGENTIAL"], "?")
+                    sinal_fw = fw["PM_IMU_RADIAL_SIGN"]
+                    # the radial is positive OUTWARDS, away from the crank's
+                    # centre; the board's outward end is +x (04-placa.md), so
+                    # an axis pointing to -x needs a sign of -1
+                    erros = []
+                    if papel_do_eixo.get(rad_fw, ("?", "?"))[0] != "radial":
+                        erros.append(f"o firmware chama {rad_fw} de radial e na "
+                                     f"placa {rad_fw} e "
+                                     f"{papel_do_eixo.get(rad_fw, ('?',))[0]}")
+                    if papel_do_eixo.get(tan_fw, ("?", "?"))[0] != "tangencial":
+                        erros.append(f"o firmware chama {tan_fw} de tangencial e "
+                                     f"na placa {tan_fw} e "
+                                     f"{papel_do_eixo.get(tan_fw, ('?',))[0]}")
+                    sentido = papel_do_eixo.get(rad_fw, ("", "+x"))[1]
+                    sinal_placa = 1 if sentido == "+x" else -1
+                    if sinal_fw != sinal_placa:
+                        erros.append(f"o radial da placa aponta para {sentido}, "
+                                     f"que pede PM_IMU_RADIAL_SIGN {sinal_placa}, "
+                                     f"e o firmware tem {sinal_fw}")
+                    if erros:
+                        falhou("IM1", f"{IMU} a {ang} graus na frente: " +
+                               "; ".join(erros) + ". Ou o U401 gira, ou os "
+                               "simbolos do Kconfig mudam (04-placa.md)")
+                    else:
+                        ok.append(f"IM1: {IMU} a {ang} graus na frente, pino 1 em "
+                                  f"{quadrante[0]}{quadrante[1]}: X do sensor {px} "
+                                  f"para {sx}, Y {py} para {sy}, Z saindo da face "
+                                  f"da frente (ficha 8.2); o firmware diz radial "
+                                  f"{rad_fw}, tangencial {tan_fw}, sinal "
+                                  f"{sinal_fw} - os dois lados concordam")
 
     # -- ME7: o land pattern do modulo contra um desenho independente ------
     # O footprint do modulo e desenhado aqui a partir da ficha, e a ficha

@@ -67,7 +67,7 @@ def passive(ref: str, value: str, note: str = "", vertical: bool = False,
 # and GND on 5 V - a short the cable's supply survives - rather than on a
 # data line.
 add("J101", "conector magnetico 6 vias", [
-    (1, "GND", "power_out", R), (2, "VBUS", "power_out", R),
+    (1, "GND", "passive", R), (2, "VBUS", "power_out", R),
     (3, "D-", "passive", R), (4, "D+", "passive", R),
     (5, "SWDIO", "passive", R), (6, "SWCLK", "passive", R),
     ("MP1", "MP1", "passive", B), ("MP2", "MP2", "passive", B),
@@ -131,11 +131,10 @@ add("U102", "MAX17048G+T10", [
 # 1,0 mm pitch, side entry, 2,9 mm tall. The pack maker decides which contact
 # is which; here 1 is the positive, as the usual red-wire-on-1 convention,
 # and 06-conectores-e-pontos-de-teste.md sends that to the maker.
-add("J102", "JST SM02B-SRSS-TB", [
-    (1, "1", "power_out", R), (2, "2", "power_out", R),
-], confirmed=True, lcsc="C160404",
-    note="conector da celula, 2 vias, JST SH passo 1,0 mm, entrada lateral; "
-         "1 = VBAT+, 2 = GND, a mandar ao fabricante do pack. LCSC a conferir")
+add("J102", "furos da celula", [
+    (1, "1", "power_out", R), (2, "2", "passive", R),
+], confirmed=True,
+    note="dois furos metalizados de 0,9 mm a 2,5 de passo: 1 = VBAT+, 2 = GND. Nao ha conector - num pod envasado e vedado a IPX7 o fio soldado segura melhor que uma trava, e o JST SH de 2,90 mm era a peca mais alta da placa, que sozinha obrigava a tampa a subir"),
 
 # Passives of the energy sheet. Values from the nPM1100 PS v1.5: table 28
 # (configuration 1: 2,2 uF/25 V on VBUS, 22 uF on VOUTB, 1,0 uF on DEC),
@@ -218,7 +217,7 @@ _GPIO = [
 ]
 _mod = [("7", "USB_DM", "bidirectional", L), ("8", "USB_DP", "bidirectional", L),
         ("9", "VBUS", "power_in", T), ("5", "SWDIO", "bidirectional", L),
-        ("6", "SWDCLK", "input", L), ("4", "RESET", "input", L),
+        ("6", "SWDCLK", "input", L), ("4", "RESET", "no_connect", L),
         ("2", "RF", "no_connect", R), ("19", "VDD", "power_in", T),
         ("1", "GND", "power_in", B), ("3", "GND3", "power_in", B),
         ("10", "GND10", "power_in", B), ("11", "GND11", "power_in", B),
@@ -242,16 +241,6 @@ passive("C201", "100 nF", "VDD do modulo, a 0,5 mm do pad 19 (ficha 7.2)")
 passive("C202", "4,7 uF", "reserva do modulo, lado do modulo do ferrite")
 passive("C203", "4,7 uF", "reserva do modulo, lado do trilho do ferrite")
 
-# Tag-Connect TC2030-NL, TC2030-CTX_1 table "Connections": 1 VCC, 2 SWDIO,
-# 3 nRESET, 4 SWCLK, 5 GND, 6 SWO. The bike computer had 3 and 6 swapped
-# for a day, and wrote down why (its parts.py).
-add("J201", "Tag-Connect TC2030-NL", [
-    (1, "VTref", "power_in", L), (2, "SWDIO", "bidirectional", R),
-    (3, "RESET", "output", R), (4, "SWDCLK", "output", R),
-    (5, "GND", "power_in", B), (6, "SWO", "no_connect", R),
-], confirmed=True,
-    note="so furos e pads, para a gravacao de fabrica e a bancada; o "
-         "conector magnetico leva SWDIO e SWCLK para o cabo do ciclista")
 
 # TUOZHAN S4-3528RGBTA-A, datasheet S35210052: common anode, pins 1 blue,
 # 2 anode, 3 green, 4 red, the chamfered corner beside the red. The same

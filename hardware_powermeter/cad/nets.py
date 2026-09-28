@@ -54,7 +54,7 @@ net("DEC", ("U101", "DEC"), ("C103", "1"))
 # 3V0: the buck output, the rail of everything (docs/02, Blocos e trilhos)
 net("3V0", ("L101", "2"), ("U101", "VOUTB"), ("C102", "1"), ("TP103", "1"),
     ("R103", "1"), ("R104", "1"), ("R105", "1"), ("R204", "1"), ("R205", "1"),
-    ("FB201", "1"), ("C203", "1"), ("J201", "VTref"),
+    ("FB201", "1"), ("C203", "1"),
     ("U301", "AVDD"), ("U301", "DVDD"), ("C305", "1"), ("C306", "1"),
     ("U302", "VIN"), ("C308", "1"),
     ("U401", "VDD"), ("U401", "VDDIO"), ("C401", "1"), ("C402", "1"),
@@ -75,7 +75,7 @@ net("GND",
     ("J102", "2"), ("TP104", "1"),
     ("U201", "GND"), ("U201", "GND3"), ("U201", "GND10"), ("U201", "GND11"),
     ("U201", "GND20"), ("U201", "GND_D0"), ("U201", "GND_E0"), ("U201", "GND_F0"),
-    ("C201", "2"), ("C202", "2"), ("C203", "2"), ("J201", "GND"),
+    ("C201", "2"), ("C202", "2"), ("C203", "2"),
     ("U301", "AVSS"), ("U301", "DGND"), ("U301", "PAD"), ("U301", "CLK"), ("U301", "REFN0"),
     ("C302", "2"), ("C303", "2"), ("C304", "2"), ("C305", "2"), ("C306", "2"),
     ("C307", "2"), ("C308", "2"), ("J301", "E-"), ("J301", "SH"), ("U302", "GND"),
@@ -94,9 +94,12 @@ net("USB_DM", ("J101", "D-"), ("D101", "D1N"), ("D101", "NC3"), ("U201", "USB_DM
 # module's SWD pads, which the Tag-Connect reaches directly.
 net("SWDIO_J", ("J101", "SWDIO"), ("D101", "D2P"), ("D101", "NC2"), ("R107", "1"))
 net("SWCLK_J", ("J101", "SWCLK"), ("D101", "D2N"), ("D101", "NC1"), ("R108", "1"))
-net("SWDIO", ("R107", "2"), ("U201", "SWDIO"), ("J201", "SWDIO"))
-net("SWDCLK", ("R108", "2"), ("U201", "SWDCLK"), ("J201", "SWDCLK"))
-net("RESET", ("U201", "RESET"), ("J201", "RESET"))
+net("SWDIO", ("R107", "2"), ("U201", "SWDIO"))
+net("SWDCLK", ("R108", "2"), ("U201", "SWDCLK"))
+# RESET saiu com o Tag-Connect: o unico outro pino desta rede era o dele.
+# O pad 4 do modulo fica aberto, com o pull-up interno do SoC, e quem
+# reinicia a placa e o cabo magnetico, por SWD
+# (06-conectores-e-pontos-de-teste.md).
 
 # --------------------------------------------------------------- energia
 net("ICHG", ("U101", "ICHG"), ("R101", "1"))
