@@ -76,7 +76,18 @@ PLACA_W, PLACA_H, PLACA_ESP = MD.W, MD.H, MD.THICKNESS
 # pouch is 2,5 mm thick where a 150 mAh one is 4,0, and those 1,5 mm are
 # what takes the pod's height from 10,0 to 8,5, the target of docs/02. The
 # chosen cell has to fit this envelope, not the other way round.
-CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 15.0, 2.5, 0.5
+# The cell is 13 mm wide, not 15, and it is NOT centred: it is pushed to
+# the wall away from the bridge's wire slot. Measured on 2026-09-28 -
+# when the board went from 60 to 48 mm the slot came with J301 and
+# landed under the cell, undoing what 2026-09-27 had already settled
+# ("a celula tem de acabar antes do rasgo", which is why it went from
+# 25 to 23 mm then). In x there is no way out: between the cell's end
+# at 25,5 and the module at 31 there are 5,5 mm and the connector needs
+# 5,9 even in two rows. So the cell gives 2 mm of WIDTH - 13 % of its
+# volume, 862 to 748 mm3 - and the slot passes beside it. The owner
+# chose this over moving J301 away from the converter, which is what
+# keeps the 2 mV analogue path short.
+CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 13.0, 2.5, 0.5
 # From the board's left end, and the number is set by the SLOT: the
 # bridge's five holes are at the middle of the board and the floor is cut
 # under them (pod x 30,45 to 40,95, measured on 2026-09-27), so the cell
@@ -96,6 +107,7 @@ LED_FURO = 2.5
 # 0,9 mm hole.
 RASGO_FOLGA = 0.4
 PILAR_D = 2.0
+PILAR_FOLGA = 0.15          # a post must not touch a pad: the solder sits proud
 NERVURA = 0.6
 COLA = 0.5                    # glue between the arm and the floor (not drawn)
 ALVO = (60.0, 20.0, 8.5)      # docs/02, Requisitos: the envelope target
@@ -117,7 +129,7 @@ PLACA_Z1 = PLACA_Z0 + PLACA_ESP
 TAMPA_Z0 = PLACA_Z1 + TETO
 T_P = TAMPA_Z0 + TAMPA
 CELULA_X0 = PLACA_X0 + CELULA_DESLOC
-CELULA_Y0 = (H_P - CELULA_H) / 2.0
+CELULA_Y0 = PAREDE + RESSALTO          # against the wall, clear of the slot
 # The lid's lip, inside the walls. 0,4 wide and 0,1 of play, not 0,8 and
 # 0,15: the lip drops into the same 0,5 mm the board leaves to the wall,
 # and at 0,95 it came down on the module's 2,4 mm body (PD12).
@@ -312,13 +324,51 @@ class Pod:
             r = max(q["hw"] for q in j3["pads"])
             self.rasgo = (PLACA_X0 + min(xs) - r - RASGO_FOLGA, PLACA_Y0 + min(ys) - r - RASGO_FOLGA,
                           PLACA_X0 + max(xs) + r + RASGO_FOLGA, PLACA_Y0 + max(ys) + r + RASGO_FOLGA)
-        self.pilares = [(PLACA_X0 + 1.2, PLACA_Y0 + 1.5),
-                        (PLACA_X0 + 1.2, PLACA_Y0 + PLACA_H - 1.5)]
-        # the rib at the cell's right end, short of the slot
+        # The two posts that hold the board's left end. They are NOT fixed
+        # points: a post touches the back of the board, so it must not land
+        # on a pad. Measured on 2026-09-28: the nominal post at 1,5 mm from
+        # the edge was sitting on a through pad of J102 (the cell connector
+        # has mounting tabs, which pierce the board), so each post now slides
+        # along y from its nominal place until its whole head is clear of
+        # every back pad, and stays between the ledges.
+        pads_tras = [(PLACA_X0 + q["x"] - q["hw"] - PILAR_FOLGA,
+                      PLACA_Y0 + q["y"] - q["hh"] - PILAR_FOLGA,
+                      PLACA_X0 + q["x"] + q["hw"] + PILAR_FOLGA,
+                      PLACA_Y0 + q["y"] + q["hh"] + PILAR_FOLGA)
+                     for pe in pecas.values() for q in pe["pads"]
+                     if q["camada"].startswith("B.") or not q["smd"]]
+        ylim = (PAREDE + RESSALTO + PILAR_D / 2.0, H_P - PAREDE - RESSALTO - PILAR_D / 2.0)
+
+        def livre(cx: float, cy: float) -> bool:
+            a = (cx - PILAR_D / 2, cy - PILAR_D / 2, cx + PILAR_D / 2, cy + PILAR_D / 2)
+            return not any(not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
+                           for b in pads_tras)
+
+        self.pilares = []
+        for cy0 in (PLACA_Y0 + 1.5, PLACA_Y0 + PLACA_H - 1.5):
+            cx = PLACA_X0 + 1.2
+            escolha = (cx, cy0)
+            for passo in [0.0] + [s * 0.25 * k for k in range(1, 61) for s in (1, -1)]:
+                cy = cy0 + passo
+                if ylim[0] - 1e-9 <= cy <= ylim[1] + 1e-9 and livre(cx, cy):
+                    escolha = (cx, cy)
+                    break
+            self.pilares.append(escolha)
+        # The rib at the cell's right end, short of the slot. And when the
+        # slot IS there - measured on 2026-09-28: the bridge connector sits
+        # 0,2 mm past the cell, so the rib was being clipped to 0,0 mm and
+        # the board had nothing holding it off the cell's edge - the rib
+        # goes just PAST the slot instead, which supports the same span.
         nx0 = CELULA_X0 + CELULA_W + 0.2
         nx1 = nx0 + NERVURA
         if self.rasgo:
             nx1 = min(nx1, self.rasgo[0] - 0.2)
+            if nx1 - nx0 < NERVURA / 2.0:
+                # past the slot AND past the cell: the slot of this board
+                # ends at 28,85 and the cell at 29,2, so taking only the
+                # slot into account would put the rib on top of the cell
+                nx0 = max(self.rasgo[2] + 0.2, CELULA_X0 + CELULA_W + 0.2)
+                nx1 = min(nx0 + NERVURA, W_P - PAREDE - RESSALTO - 0.2)
         self.nervura = (nx0, nx1)
         # the module's antenna band, in pod coordinates (the same 4,46 mm
         # the board's dry run measures)

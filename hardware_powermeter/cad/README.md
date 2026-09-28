@@ -25,7 +25,10 @@ flowchart LR
     CDXF --> PCB["make_pcb.py<br/>coloca as 57 peças"]
     PCB --> ROUTE["route.py<br/>labirinto A* em 3 camadas"]
     ROUTE --> FILL["fill_zones.py<br/>malhas, Python do KiCad"]
-    FILL --> CPCB["check_pcb.py --como-esta<br/>DRC, contorno, redes"]
+    FILL --> DRC1["kicad-cli pcb drc<br/>_drc_all.json"]
+    DRC1 --> REP["reparar.py<br/>fecha o que o DRC diz aberto"]
+    REP --> FILL2["fill_zones.py de novo"]
+    FILL2 --> CPCB["check_pcb.py --como-esta<br/>DRC, contorno, redes"]
     CPCB --> DRY["dry_run_pcb.py<br/>22 regras das fichas"]
     DRY --> M3D["make_3d.py<br/>GLB e vistas placa-3d-*.png"]
     M3D --> M2D["make_2d.py · montagem.py<br/>placa/pmeter-pcb.pdf, pmeter-montagem.pdf"]
@@ -42,6 +45,9 @@ python hardware_powermeter/cad/make_dxf.py
 python hardware_powermeter/cad/check_dxf.py
 python hardware_powermeter/cad/make_pcb.py
 python hardware_powermeter/cad/route.py
+"D:/KiCAD/bin/python.exe" hardware_powermeter/cad/fill_zones.py
+cd hardware_powermeter/cad && "D:/KiCAD/bin/kicad-cli.exe" pcb drc --severity-all --format json -o _drc_all.json pmeter.kicad_pcb
+python hardware_powermeter/cad/reparar.py
 "D:/KiCAD/bin/python.exe" hardware_powermeter/cad/fill_zones.py
 python hardware_powermeter/cad/check_pcb.py --como-esta
 python hardware_powermeter/cad/dry_run_pcb.py
@@ -70,6 +76,8 @@ que o alvo de 48 × 16 de `docs/02` virou o comprimento registrado em
 | `footprints.py`, `fp_load.py` | qual footprint cada peça usa (biblioteca do KiCad ou gerado aqui com a cota da ficha), os corpos 3D em VRML, as alturas |
 | `make_pcb.py` | o colocador: posições fixas (módulo, conector magnético, furos da ponte, conector da célula), âncoras por zona, desacoplamento encostado no pino, o resto por conectividade; os planos de terra e a área sem plano sob o nó de chaveamento |
 | `route.py` | o roteador: vias de terra por pad, labirinto A* em `F.Cu`, `In2.Cu` e `B.Cu`, o par USB junto, costura de terra na borda, poda de vias soltas |
+| `route_neg.py` | o segundo estágio, de congestão negociada (PathFinder, McMurchie e Ebeling 1995), chamado quando o labirinto empaca; recebe como obstáculo o cobre que não vai rotear |
+| `reparar.py` | fecha as ligações que o **DRC** ainda chama de abertas, na grade da placa pronta: parte sempre de um pad, mira o cobre inteiro da rede e recusa desenhar o que não encosta |
 | `fill_zones.py` | preenche as malhas com o Python do KiCad (só ele sabe) |
 | `check_pcb.py` | a placa como o KiCad a vê: DRC, peças presentes uma vez, redes dos pads, sobreposições, contorno, furos, cabe no envelope do pod, planos, serigrafia |
 | `dry_run_pcb.py` | as regras das fichas e da IPC-2221 medidas na placa ([abaixo](#as-regras-do-dry-run)) |
@@ -145,6 +153,29 @@ sai girado 180°; o VRML da biblioteca do KiCad põe vírgula entre todos os
   falha `ME2` e `PD4`.
 - **Os furos da ponte são passantes** (`PASSANTE`): ocupam as duas faces
   no colocador e todas as camadas no roteador.
+- **Nenhum dos dois estágios do roteador sabe dizer se ligou** (medido em
+  2026-09-28). O sequencial conta ligações que achou e o negociado conta
+  caminhos que planejou; o negociado fechou dizendo "96 ligações, 0 células
+  disputadas" com **onze pads sem cobre nenhum**, entre eles os três
+  terminais do `USB_DM`. Pior: o critério de aceitação era `n_ok_n > n_ok`,
+  ou seja, mais ligações — não menos pads abertos —, e ao aceitar o
+  resultado do negociado o cobre sequencial das redes que ele **não** rodou
+  ia para o lixo. Quem julga o roteamento é o DRC do KiCad, e é por isso
+  que o `reparar.py` existe e entra na cadeia entre dois DRC.
+- **Cobre herdado tem de ser obstáculo para quem herda.** Passar ao
+  negociado as trilhas que ele não vai rotear (`pre_seg`, `pre_via`) levou
+  o DRC de 182 violações para 25: sem isso ele planeja sobre placa vazia e
+  o cobre herdado cai em cima das trilhas dele.
+- **Uma via não é de graça.** Ela atravessa todas as camadas, então tem de
+  se afastar de todas as redes em todas elas. Uma via posta sem essa
+  conferência custou dois curtos, um isolamento de furo e uma ponte de
+  máscara — quatro erros por uma ligação que nem fechou
+  (`route.via_cabe_aqui`).
+- **`SO_FRENTE` é preferência, não lei.** O par USB foi calculado como
+  microstrip de 90 Ω em `F.Cu`, e com isso como lei o `USB_DM` não fecha
+  (16,7 mm por uma face cheia). O aparelho fala **full speed**, 12 Mbit/s:
+  a busca tenta a frente nas duas folgas e só troca de camada se não
+  houver caminho — e avisa quando trocou.
 - **O conector magnético é genérico**: `confirmed=False` em `parts.py`,
   e a janela da tampa segue o contorno dele; trocar a peça é trocar o
   footprint, a altura e rodar os dois dry runs.

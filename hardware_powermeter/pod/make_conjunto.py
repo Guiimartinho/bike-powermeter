@@ -3,9 +3,9 @@
 
 Every other view in this project shows one piece at a time, and the
 question that keeps coming back is where the sensor actually is. It is not
-in the pod: the four strain gauges are bonded to the ARM, which is the
-elastic element, and five wires carry the bridge up into the board. This
-draws that, from the same geometry the pod is generated from.
+in the pod: the bridge is bonded to the ARM, which is the elastic element,
+and five wires carry it up into the board. This draws that, from the same
+geometry the pod is generated from.
 
     python hardware_powermeter/pod/make_conjunto.py
 
@@ -22,14 +22,13 @@ What is real and what is a placeholder, because the difference matters:
     between the two axes, a body that tapers from 30 to 20 mm of width and
     is 14 mm thick, a spindle boss of 34 mm and a pedal boss of 22. It is
     there to show WHERE things sit, not to be fabricated from;
-  - the gauges are drawn at the size of a transducer-class pattern, about
-    6 x 4 mm of carrier, four of them. They are drawn at 45 degrees because
-    that is what 01-lista-de-componentes.md still specifies, and docs/06
-    now says that specification is wrong for a crank arm: bending gives
-    8,9 times more signal than shear here and is far less sensitive to a
-    misplaced bond. When the pattern is settled, the angle in this drawing
-    settles with it. Where along the arm they are bonded is also still
-    open, and it is what sets the slope.
+  - the bridge is ONE piece and its size is real: the S5229 pattern of the
+    transducer-class databook, 4,0 x 3,7 mm of carrier with four grids on
+    it, two along the arm and two across (the Poisson bridge). It is drawn
+    off the middle line of the face on purpose, because the middle line is
+    the neutral axis and bending strain there is zero. WHERE along the arm
+    it is bonded, and how far off the middle, are still open, and they are
+    what set the slope: nothing here has been bonded to a crank.
 """
 from __future__ import annotations
 

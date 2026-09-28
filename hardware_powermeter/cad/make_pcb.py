@@ -108,7 +108,17 @@ ATRAS: set[str] = {"TP101", "TP102", "TP103", "TP104", "TP201", "TP202", "TP301"
                    # reach that end of the board.
                    "C201", "C202", "C203", "FB201", "R204", "R205",
                    # and the two low packages that live at the same end
-                   "U302", "U402"}
+                   "U302", "U402",
+                   # and THEIR decoupling, for the same reason and measured
+                   # on 2026-09-28: a chip on the back whose capacitor stays
+                   # on the front is decoupled through the board. The front
+                   # ring round those two is full (C401, C402, U401, C304,
+                   # C306 and four test points), so the placer was carrying
+                   # C403 12,6 mm from the TMP117 pin the datasheet wants it
+                   # 0,1 uF away from, and C308 11,1 mm from the load
+                   # switch input. C307 fits on the front by luck, and goes
+                   # with them so the pair of the same chip shares a face.
+                   "C307", "C308", "C403"}
 # Everything else stays on the front, and the reason is the cell: it lies
 # against the back over the first 25 mm, so a part whose chip is at that
 # end has nowhere underneath to go. The charger's resistors and the fuel

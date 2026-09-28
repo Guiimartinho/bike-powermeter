@@ -98,15 +98,22 @@ flowchart LR
   longas e num terceiro na ponta direita, mais dois pilares de 2,0 mm de
   diâmetro na ponta esquerda. Não há parafuso: a placa é envasada;
 - **a célula** deita no fundo, entre os ressaltos, com 0,5 mm de ar até a
-  face de trás da placa, presa por uma nervura na ponta direita e pelo
-  envase. O envelope reservado é 25 × 15 × 4 mm; a célula exata **não
+  face de trás da placa, presa por uma nervura logo depois dela e pelo
+  envase. A nervura fica **depois do rasgo dos fios da ponte** quando o
+  rasgo cai onde ela ficaria, que é o caso desta placa: o `J301` está
+  0,2 mm além da ponta da célula, e até 2026-09-28 a nervura saía com
+  0,0 mm de largura por causa disso. O envelope reservado é 25 × 15 × 4 mm; a célula exata **não
   está escolhida**, e é ela que tem de caber nele, não o contrário;
 - **os fios da célula** sobem pelo canal de 2,5 mm da ponta esquerda,
   dobram sobre a ponta da placa e entram no `J102`, cuja boca olha para
   essa ponta ([06](06-conectores-e-pontos-de-teste.md#j102--célula));
-- **a face de trás da placa é plana**: só pads de teste. Uma peça com
-  corpo ali encostaria na célula, e as regras `ME2` da placa e `PD4` do
-  pod recusam.
+- **a face de trás da placa é plana sob a célula**, e só sob ela. A célula
+  cobre 23 dos 48 mm da placa; passados eles o fundo do pod desce — primeiro
+  a nervura, com 1,0 mm de ar até a placa, depois o fundo raso, com 2,0. É
+  nessa parte que ficam os pontos de teste, o desacoplamento do módulo e o
+  dos dois chips do verso (`U302` e `U402`). A regra `PD4` **mede o ar sob
+  cada peça** contra o que está embaixo dela; até 2026-09-28 ela reprovava
+  qualquer corpo no verso, sem olhar onde, o que é outra coisa.
 
 ## Os fios da ponte
 
@@ -175,11 +182,11 @@ colocada. Uma regra que não acha o que medir **falha dizendo isso**.
 | PD1 | a placa na cavidade, com a folga e o canal dos fios |
 | PD2 | toda peça da frente sob a tampa, com 0,3 mm de ar |
 | PD3 | a janela, o poço e a face do conector magnético |
-| PD4 | a face de trás plana: nenhuma peça com corpo |
+| PD4 | o ar sob cada peça da face de trás: contra a célula, a nervura, um pilar ou o fundo |
 | PD5 | a célula entre os ressaltos, sob a placa, longe da nervura, dos pilares e do rasgo |
 | PD6 | a célula a 5 mm da área da antena do módulo (ficha ME54BS13, 7.4: nada de metal) |
 | PD7 | o rasgo sob os cinco furos da ponte, dentro do fundo |
-| PD8 | nenhum pad da face de trás sob um pilar ou um ressalto |
+| PD8 | nenhum pad da face de trás sob um pilar ou um ressalto (os pilares deslizam em y até sair de cima dos pads) |
 | PD9 | o furo de luz sobre o corpo do LED |
 | PD10 | o envelope contra o alvo de `docs/02` |
 | PD11 | a massa estimada contra os 20 g |

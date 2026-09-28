@@ -153,13 +153,42 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
                         f"{f2(pod.janela[2] - pod.janela[0])} x {f2(pod.janela[3] - pod.janela[1])} e a "
                         f"face dele fica {f2(pod.poco)} abaixo do topo da tampa (o poco)")
 
-    # -- PD4: the back is flat ------------------------------------------------
-    corpos_tras = [(ref, p["altura"]) for ref, p in tras.items() if p["altura"] > 1e-9]
-    if corpos_tras:
-        r.falha("PD4", f"{len(corpos_tras)} pecas com corpo na face de tras, que encosta na celula: " +
-                ", ".join(f"{ref} {f2(h)}" for ref, h in corpos_tras[:6]))
+    # -- PD4: what a back-face body has under it ------------------------------
+    # This rule used to fail on ANY body on the back, which is not what the
+    # pod is: the cell covers 23 of the board's 38 mm, and past it the floor
+    # steps down - first the rib, then the bare floor. Measured on
+    # 2026-09-28: the blunt rule was reporting the module's own decoupling,
+    # which sits over the recessed floor with 2,0 mm of air, as standing on
+    # the cell. It now measures the air under each body.
+    sob = [(celula, C.CELULA_Z1, "a celula"),
+           ((pod.nervura[0], C.PAREDE + C.RESSALTO, pod.nervura[1],
+             C.H_P - C.PAREDE - C.RESSALTO), C.CELULA_Z1 - 0.5, "a nervura")]
+    sob += [((cx - C.PILAR_D / 2, cy - C.PILAR_D / 2, cx + C.PILAR_D / 2, cy + C.PILAR_D / 2),
+             C.PLACA_Z0, "um pilar") for cx, cy in pod.pilares]
+    sob += [(a, C.PLACA_Z0, "um ressalto") for a in
+            ((C.PAREDE, C.PAREDE, C.W_P - C.PAREDE, C.PAREDE + C.RESSALTO),
+             (C.PAREDE, C.H_P - C.PAREDE - C.RESSALTO, C.W_P - C.PAREDE, C.H_P - C.PAREDE),
+             (C.W_P - C.PAREDE - C.RESSALTO, C.PAREDE, C.W_P - C.PAREDE, C.H_P - C.PAREDE))]
+    corpos_tras = [(ref, p) for ref, p in tras.items() if p["altura"] > 1e-9]
+    batem = []
+    for ref, p in corpos_tras:
+        caixa = C.no_pod(p["caixa"])
+        topo, quem = C.FUNDO, "o fundo"
+        for zona, z, nome in sob:
+            if _cruza(caixa, zona) and z > topo:
+                topo, quem = z, nome
+        ar = C.PLACA_Z0 - topo
+        if p["altura"] > ar + 1e-9:
+            batem.append((ref, p["altura"], ar, quem))
+    if not tras:
+        r.falha("PD4", "nao mede nada: a placa nao tem peca na face de tras")
+    elif batem:
+        r.falha("PD4", f"{len(batem)} pecas da face de tras batem no que esta sob elas: " +
+                ", ".join(f"{ref} tem {f2(h)} e so cabe {f2(ar)} sobre {quem}"
+                          for ref, h, ar, quem in batem[:4]))
     else:
-        r.ok("PD4", f"a face de tras e plana: {len(tras)} pecas, todas pads sem corpo")
+        r.ok("PD4", f"as {len(corpos_tras)} pecas com corpo da face de tras cabem no ar que tem "
+                    f"sob elas (as outras {len(tras) - len(corpos_tras)} sao pads sem corpo)")
 
     # -- PD5: the cell between the ledges, under the board ---------------------
     entre_ressaltos = (C.PAREDE + C.RESSALTO, C.PAREDE + C.RESSALTO,

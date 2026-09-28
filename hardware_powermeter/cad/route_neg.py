@@ -233,9 +233,23 @@ def _marcar(uso, celulas, off, rede, R=None, off_via=None):
         ant = (c, ix, iy)
 
 
-def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes):
-    """The whole loop. Returns (segmentos, vias, falhas, n_ok, rodadas)."""
+def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
+          pre_seg=(), pre_via=()):
+    """The whole loop. Returns (segmentos, vias, falhas, n_ok, rodadas).
+
+    `pre_seg` and `pre_via` are copper this stage must NOT route but must
+    keep away from: the ground net, and anything route.py left out. Without
+    them the grid holds only pads, every path is planned through empty
+    board, and the copper route.py carries over afterwards lands on top of a
+    negotiated track. Measured on 2026-09-28: the first carry-over, made
+    without telling this stage, took the design rule check from 22
+    violations to 182.
+    """
     g = R.base(arv, todos)
+    for p0, p1, cam, rede, w in pre_seg:
+        g.trilha(cam, p0, p1, w, rede, R.folga_de(rede))
+    for vx, vy, rede in pre_via:
+        g.via(vx, vy, rede, R.folga_de(rede))
     hist: dict = {}
     melhor_saida = None
     pressao = PRESENTE_0
@@ -310,6 +324,12 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes):
                            campos_cel, larg_pad, so_camada=so_camada,
                            pressao=pressao, duro=duro, off_uso=off_olha,
                            off_via_olha=off_via_olha, vias_postas=vias_postas)
+                if p is None and so_camada is not None:
+                    # the front is a preference, not a law (route.SO_FRENTE)
+                    p = rotear(R, g, rede, next(iter(alvo)), feito, uso, hist,
+                               campos_cel, larg_pad, so_camada=None,
+                               pressao=pressao, duro=duro, off_uso=off_olha,
+                               off_via_olha=off_via_olha, vias_postas=vias_postas)
                 if p is None:
                     c0 = next(iter(alvo))
                     falhas.append(

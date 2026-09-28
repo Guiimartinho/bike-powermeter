@@ -155,6 +155,17 @@ NAO_ROTEAR: set[str] = set()
 # a 0,10 do outro, e nao e 90 ohm de nada. As amarracoes dos contatos
 # repetidos ficam em In2.Cu de proposito, mas sao emendas de 1,7 mm entre
 # ilhas do mesmo no, nao a linha.
+#
+# E uma preferencia, nao uma lei, e a diferenca foi medida em 2026-09-28: com
+# ela como lei o USB_DM nao fecha. Ele tem de ir de J101 (23,5; 2,1) a U101
+# (7,2; 6,0) e a U201 (35,6; 2,0) - 16,7 e 8,3 mm - por uma face de cima que
+# ja esta cheia, e o roteador dava por encerrado deixando o par em tres
+# pedacos. Este aparelho fala USB **full speed**, 12 Mbit/s: o proprio
+# make_pro.py registra que a essa velocidade, em 3 cm de trilha, nem a folga
+# maior do outro projeto comprou nada. Um trecho em In2.Cu fora dos 90 ohm
+# nao muda nada a 12 Mbit/s, e uma ligacao que nao existe muda tudo. Entao a
+# busca tenta a frente primeiro, nas duas folgas, e so troca de camada se a
+# frente nao tiver caminho.
 SO_FRENTE = NAO_ROTEAR | {"USB_DP", "USB_DM"}
 # The differential pair. They are routed one after the other, and the second
 # one is drawn towards the first, so they run together instead of taking two
@@ -1444,11 +1455,17 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
             if rede == PAR[1] and PAR[0] in caminhos:
                 perto = caminhos[PAR[0]]
             p = None
-            for folga in (100, 350):
+            tentativas = [(so_camada, 100), (so_camada, 350)]
+            if so_camada is not None:
+                tentativas.append((None, 350))
+            for camada_t, folga in tentativas:
                 p = a_estrela(g, rede, next(iter(alvo)), feito, folga,
-                              so_camada=so_camada, perto_de=perto,
+                              so_camada=camada_t, perto_de=perto,
                               campos=campos_cel, larg_estreita=larg_pad)
                 if p:
+                    if camada_t is None and so_camada is not None:
+                        print(f"    {rede} nao coube so na frente: trocou de "
+                              "camada (full speed, ver SO_FRENTE)", flush=True)
                     break
             if p is None:
                 c0 = next(iter(alvo))
@@ -1483,6 +1500,139 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
     if os.environ.get("PMETER_SEM_PODA") != "1":
         podar_soltas(segmentos, vias, todos)
     return segmentos, vias, falhas, falharam, n_gnd, n_ok, n_cost, n_malha
+
+
+def encostar_nos_pads(segmentos: list, vias: list, todos: list,
+                      limite: float = 1.5) -> int:
+    """Join a track that stopped a step short of its own pad.
+
+    Both routing stages work on a grid, and a grid cell centre is not a pad
+    centre: a path can finish on the cell beside the pad and leave a gap of
+    a tenth of a millimetre that KiCad counts as an open connection, which
+    is what the leftover 0,15 and 0,21 mm stubs in the report were. This
+    walks every pad that nothing of its net touches, looks for the nearest
+    track end of that same net on a layer the pad lives on, and, if it is
+    closer than `limite`, draws the piece between them at that track's own
+    width. Anything farther is a route that is genuinely missing, and it is
+    left alone rather than bridged blind across other copper.
+    """
+    orx, ory = MP.ORIGEM
+    por_camada: dict = {}
+    for i, (p0, p1, cam, rede, w) in enumerate(segmentos):
+        por_camada.setdefault((cam, rede), []).append((p0, p1, w))
+    vias_rede: dict = {}
+    for vx, vy, rede in vias:
+        vias_rede.setdefault(rede, []).append((vx, vy))
+
+    def tocado(x, y, hw, hh, idx, rede) -> bool:
+        for vx, vy in vias_rede.get(rede, ()):
+            if abs(vx - x) <= hw + 0.25 and abs(vy - y) <= hh + 0.25:
+                return True
+        for (cam, r), lista in por_camada.items():
+            if r != rede or (idx >= 0 and idx != cam):
+                continue
+            for q0, q1, w in lista:
+                for p in (q0, q1):
+                    if abs(p[0] - x) <= hw + w / 2 + 0.02 and \
+                            abs(p[1] - y) <= hh + w / 2 + 0.02:
+                        return True
+                # or the run passes over the pad
+                if min(q0[0], q1[0]) - w / 2 <= x <= max(q0[0], q1[0]) + w / 2 and \
+                        min(q0[1], q1[1]) - w / 2 <= y <= max(q0[1], q1[1]) + w / 2:
+                    return True
+        return False
+
+    postos = 0
+    for nome, idx, px, py, hw, hh in todos:
+        if not nome:
+            continue
+        x, y = px - orx, py - ory
+        if tocado(x, y, hw, hh, idx, nome):
+            continue
+        # the nearest end of this net, on ANY layer: a pad on the back with
+        # its track on the front is the other half of this problem, and it
+        # needs a via, not a stub
+        melhor = None
+        for (cam, r), lista in por_camada.items():
+            if r != nome:
+                continue
+            mesma = (idx < 0 or idx == cam)
+            for q0, q1, w in lista:
+                for p in (q0, q1):
+                    d = math.hypot(p[0] - x, p[1] - y)
+                    # a stub on the pad's own layer is always preferred to
+                    # one that costs a via
+                    custo = d + (0.0 if mesma else 0.6)
+                    if d <= limite and (melhor is None or custo < melhor[0]):
+                        melhor = (custo, d, p, cam, w, mesma)
+        if melhor is None:
+            continue
+        _c, _d, p, cam, w, mesma = melhor
+        # narrow, so the piece added at the end does not eat the clearance
+        # the netclass asks for: four clearance errors came from drawing it
+        # at the run's own width (2026-09-28)
+        wl = max(LARGURA, min(w, 2.0 * min(hw, hh) - 0.05))
+        destino = cam if mesma else (idx if idx >= 0 else cam)
+        if not mesma:
+            # A via is not free: it goes through every layer, so it has to
+            # clear every net on all of them. Measured on 2026-09-28: placed
+            # blind, one GND via landed on the module's 3V0_MOD pad and cost
+            # two shorts, a hole clearance and a mask bridge - four new DRC
+            # errors for a connection it did not even close. If there is no
+            # room, the pad stays open and says so, which is the truth.
+            if not via_cabe_aqui(p[0], p[1], nome, segmentos, vias, todos):
+                continue
+            vias.append((p[0], p[1], nome))
+            vias_rede.setdefault(nome, []).append((p[0], p[1]))
+        segmentos.append((p, (x, y), destino, nome, wl))
+        por_camada.setdefault((destino, nome), []).append((p, (x, y), wl))
+        postos += 1
+    return postos
+
+
+def via_cabe_aqui(vx: float, vy: float, rede: str,
+                  segmentos: list, vias: list, todos: list) -> bool:
+    """Is there room for a via of `rede` at (vx, vy), in board coordinates?
+
+    Measured against the copper that is already there, not against the grid:
+    this runs after both routing stages, when the grid no longer describes
+    the board.
+    """
+    orx, ory = MP.ORIGEM
+
+    def perto(dist: float, minimo: float) -> bool:
+        return dist < minimo - 1e-9
+
+    for p0, p1, _cam, r, w in segmentos:
+        if r == rede:
+            continue
+        f = max(folga_de(rede), folga_de(r))
+        if perto(_dist_ponto_seg(vx, vy, p0, p1), VIA_D / 2 + f + w / 2):
+            return False
+    for wx, wy, r in vias:
+        if r == rede:
+            continue
+        f = max(folga_de(rede), folga_de(r))
+        if perto(math.hypot(wx - vx, wy - vy), VIA_D + f):
+            return False
+    for nome, _idx, px, py, hw, hh in todos:
+        if not nome or nome == rede:
+            continue
+        f = max(folga_de(rede), folga_de(nome))
+        dx = max(0.0, abs(px - orx - vx) - hw)
+        dy = max(0.0, abs(py - ory - vy) - hh)
+        if perto(math.hypot(dx, dy), VIA_D / 2 + max(f, FOLGA_FURO)):
+            return False
+    return True
+
+
+def _dist_ponto_seg(x: float, y: float, p0, p1) -> float:
+    ax, ay = p0
+    bx, by = p1
+    dx, dy = bx - ax, by - ay
+    n = dx * dx + dy * dy
+    t = 0.0 if n <= 1e-12 else max(0.0, min(1.0, ((x - ax) * dx + (y - ay) * dy) / n))
+    return math.hypot(x - (ax + t * dx), y - (ay + t * dy))
 
 
 def emitir_caminhos(arv, todos, por_rede, caminhos_por_rede):
@@ -1734,12 +1884,37 @@ def main() -> int:
                                        + (max(q[3] for q in por_rede[r])
                                           - min(q[3] for q in por_rede[r])))
         import sys as _sys
+        # what this stage will NOT route has to be an obstacle for it, or the
+        # copper carried over below lands on top of its tracks
+        fora = set(ordem_redes)
+        pre_seg = [s for s in segmentos if s[3] not in fora]
+        pre_via = [v for v in vias if v[2] not in fora]
         saida = RN.rodar(_sys.modules[__name__], arv, numeros, todos,
-                         por_rede, caixa_fp, ordem_redes)
+                         por_rede, caixa_fp, ordem_redes, pre_seg, pre_via)
         if saida is not None:
             (n_disputa, n_falhas), caminhos, falhas_n, n_ok_n, rodadas = saida
             if n_disputa == 0 and n_ok_n > n_ok:
                 g2, seg2, via2 = emitir_caminhos(arv, todos, por_rede, caminhos)
+                # The negotiated stage routes only the nets it was given, and
+                # it was given neither GND nor the ones it failed on. Taking
+                # its answer WHOLE threw the sequential copper of everything
+                # else away: on 2026-09-27 ERR_N ended with no copper at all
+                # while the router reported "95 routed, 0 nets left out", and
+                # the DRC found 16 connections open. So what it did not route
+                # is carried over, and replayed into its grid first, or the
+                # ground vias and the stitching would land on top of it.
+                redes_neg = set(caminhos)
+                herda_seg = [s for s in segmentos if s[3] not in redes_neg]
+                herda_via = [v for v in vias if v[2] not in redes_neg]
+                for p0, p1, cam, rede, w in herda_seg:
+                    g2.trilha(cam, p0, p1, w, rede, folga_de(rede))
+                for vx, vy, rede in herda_via:
+                    g2.via(vx, vy, rede, folga_de(rede))
+                seg2 = herda_seg + seg2
+                via2 = herda_via + via2
+                print(f"    herdadas do sequencial: {len(herda_seg)} trilhas e "
+                      f"{len(herda_via)} vias de {len(set(s[3] for s in herda_seg))} "
+                      "redes que o negociado nao roteou", flush=True)
                 falhas2: list[str] = []
                 n_gnd2 = terra(g2, por_rede, seg2, via2, falhas2)
                 n_cost2 = costurar(g2, via2)
@@ -1757,6 +1932,10 @@ def main() -> int:
                 print(f"    nao fechou: {n_falhas} sem caminho, {n_disputa} "
                       f"celulas disputadas depois de {rodadas} rodadas; "
                       "fica o resultado sequencial", flush=True)
+
+    n_enc = encostar_nos_pads(segmentos, vias, todos)
+    if n_enc:
+        print(f"  {n_enc} pads alcançados por encosto final")
 
     ruins = conferir(segmentos, vias)
     print(f"  conferencia geometrica: {len(ruins)} pares perto demais")
