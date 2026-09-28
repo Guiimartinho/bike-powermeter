@@ -377,14 +377,17 @@ static void test_bad_text_values_change_nothing(void)
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "crank", "-172.5"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "radius", "60x"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "radius", "70000"));
-    /* An empty value on an INTEGER key. `$CFG,radius,` with nothing after
-     * the comma arrives here as "", and strtoll on "" sets no errno and
-     * leaves end == text, so without the explicit guard at the top of
-     * parse_long it would read as a perfectly good zero. The guard was
-     * there and untested: this is the line gcov reported uncovered on
-     * 2026-09-28. The float keys already had their empty case ("k2"
-     * below); the integer ones did not. */
-    TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "radius", ""));
+    /* An empty value on an integer key where ZERO IS LEGAL. `$CFG,zero,`
+     * with nothing after the comma arrives here as "", and strtoll on ""
+     * sets no errno and leaves end == text, so without the explicit guard
+     * at the top of parse_long it reads as a perfectly good zero -- and
+     * for `zero` and `tempcal` zero is inside the limits, so the setting
+     * would silently change. The first draft of this test used `radius`,
+     * and the mutation SURVIVED: a radius of zero is refused by the limit
+     * check anyway, so there the guard is redundant and the test proved
+     * nothing. Measured on 2026-09-28, which is why the key changed. */
+    TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "zero", ""));
+    TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "tempcal", ""));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "side", "X"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "sign", "2"));
     TEST_ASSERT_EQUAL(PM_EINVAL, pm_settings_set_text(&s, "zero", "9999999999"));
