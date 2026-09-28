@@ -177,6 +177,21 @@ sai girado 180°; o VRML da biblioteca do KiCad põe vírgula entre todos os
   (16,7 mm por uma face cheia). O aparelho fala **full speed**, 12 Mbit/s:
   a busca tenta a frente nas duas folgas e só troca de camada se não
   houver caminho — e avisa quando trocou.
+- **Rotear depois do `fill_zones.py` custa 4 ligações e 45 trilhas**
+  (medido em 2026-09-28, mesma colocação e mesmo código). Direto do
+  `make_pcb.py`: 70 ligações na primeira passagem, 36 falhas, 440 segmentos,
+  31 não roteados. Depois do preenchimento: 64, 42, 395, 35. **Esvaziar as
+  malhas não devolve o resultado bom** — testado —, então não é o cobre
+  despejado: é o arquivo inteiro, que o pcbnew reescreve à sua maneira. O
+  `route.py` recusa rodar sobre placa preenchida e diz o que rodar antes.
+  E o roteador **é determinístico**: duas execuções da mesma entrada dão o
+  mesmo arquivo, o que foi medido para descartar a outra hipótese.
+- **O passe de encosto final também tem de medir.** Ele liga uma trilha que
+  parou a um passo do próprio pad, e desenhava sem conferir nada: um pad
+  aberto por 0,15 mm virava um curto de 1,4 mm de trilha. O roteador via os
+  cinco pares perto demais, dizia, e gravava a placa. Hoje cada toco é
+  medido antes de ser aceito e o que não passa deixa o pad aberto dizendo
+  por quê.
 - **O conector magnético é genérico**: `confirmed=False` em `parts.py`,
   e a janela da tampa segue o contorno dele; trocar a peça é trocar o
   footprint, a altura e rodar os dois dry runs.
