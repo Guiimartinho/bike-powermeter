@@ -24,47 +24,33 @@ medido está em [08](08-dry-run-2026-09-27.md).
 
 | Item | Valor |
 |---|---|
-| Tamanho | **51 × 16 mm** |
+| Tamanho | **47 × 14 mm** |
 | Espessura | 0,8 mm |
 | Raio dos cantos | 1,5 mm |
-| Furos de fixação | nenhum: a placa assenta em ressaltos e é envasada ([07](07-pod.md)) |
-| Recorte | sob a área da antena do módulo, 4,3 × 10,2 mm na borda direita |
+| Furo de fixação | **um**, M1,6 passante em (30,5; 7,0), Ø 2,2 mm, com reserva de 1,4 mm de raio; o outro extremo da placa é preso pelos ressaltos ([07](07-pod.md)) |
+| Recorte | **nenhum**: a antena do módulo é cerâmica e pede zona livre, não placa vazada |
 
-O alvo de [`docs/02`](../docs/02-hardware.md#placa) era 48 × 16, e o
-comprimento saiu de rodar o colocador e o roteador em um comprimento atrás
-do outro (`PMETER_W=52 python make_pcb.py`), não de uma conta.
+O alvo de [`docs/02`](../docs/02-hardware.md#placa) era 48 × 16. A placa é
+menor que o alvo, e quem a encolheu foi a **troca do módulo de rádio**
+([09](09-modulo-de-radio.md)): o ME54BS13 ocupava 12,0 × 16,5 mm, o
+HOLYIOT-26001-A ocupa 10,0 × 12,5, e aquele módulo sozinho era 26 % da área
+da placa — mais que as 37 peças pequenas somadas. Nenhuma outra alavanca de
+tamanho chega perto: passar os passivos de 0402 para 0201 devolveria menos
+de um terço disso e custaria montagem.
 
-**A medida de 2026-09-28 substitui a de 2026-09-27**, e o que mudou não foi
-a placa: foi o colocador. Depois que a face de trás passou a carregar os
-pontos de teste, o desacoplamento do módulo e o dos dois chips do verso, a
-colocação deixou de ser o gargalo — **todo comprimento de 48 a 54 assenta as
-56 peças sem uma sobrando**. A tabela antiga dizia que 48 deixava 18 peças
-sem lugar e 51 deixava 5; nenhuma das duas coisas é verdade hoje.
+**A largura é o ganho que interessa.** Ela é o limite do pod, não uma
+escolha: a face interna do braço do pedivela dá 20 mm de envelope, menos
+duas paredes e duas folgas ([07](07-pod.md#o-envelope)), e quem punha o
+piso era a largura do módulo. Com 10 mm no lugar de 12 a placa vai de 16
+para **14 mm**, e o pod de 19,4 para **17,4** — abaixo da faixa inteira da
+classe de referência (18 a 22 mm).
 
-Quem decide agora é a folga do **roteador**, e o número que importa não é
-área livre e sim **quantos lugares aceitam uma via**: a fuga de um pad de
-passo fino precisa de uma, e `cabe_via` era falso em volta de todos os pads
-que ficavam abertos.
-
-| Comprimento | Células livres | Sítios de via | Colocação |
-|---|---|---|---|
-| 48 mm | 67.936 | 1.491 | cabe |
-| 49 mm | 69.941 | 1.640 | cabe |
-| 50 mm | 72.103 | 1.744 | cabe |
-| **51 mm** | **73.894** (+8,8 %) | **2.026** (+36 %) | cabe — o que está desenhado |
-| 52 mm | 75.978 | 2.189 | cabe |
-| 53 mm | 78.123 | 2.331 | cabe |
-| 54 mm | 79.859 | 2.576 | cabe |
-
-Os sítios de via são amostrados de 2 em 2 células nos dois eixos, então o
-número absoluto vale para comparar, não como contagem. Em 48 mm o
-roteamento parava com 13 ligações abertas; o dono autorizou cerca de 3 mm e
-51 é o que se ganha por eles.
-
-A largura de 16 mm é o limite do pod, não uma escolha: a face interna do
-braço do pedivela dá 20 mm de envelope, menos duas paredes de 1,2 e duas
-folgas de 0,5 ([07](07-pod.md#o-envelope)). O módulo de rádio tem 12 mm de
-largura e é ele que põe o piso.
+**O comprimento não saiu de uma conta**, e sim de rodar o colocador e o
+roteador em um comprimento atrás do outro (`PMETER_W=48 python
+make_pcb.py`). O que decide não é área livre e sim **quantos lugares aceitam
+uma via**: a fuga de um pad de passo fino precisa de uma. Em 47 mm as 58
+peças assentam, `RF4` passa (a antena cerâmica encosta na borda) e o
+roteador fecha; encurtar mais tira sítios de via antes de tirar área.
 
 ## Camadas
 
@@ -90,20 +76,24 @@ alimentação.
 ```mermaid
 flowchart LR
     E["0 a 14<br/>ENERGIA<br/>nPM1100 · indutor<br/>medidor · J102"]
-    C["14 a 34<br/>conector magnético na borda de cima<br/>Tag-Connect e LED · ADS1220 e filtro<br/>furos da ponte na borda de baixo · sensores"]
-    M["34 a 51<br/>MÓDULO<br/>antena na borda direita"]
+    C["14 a 34<br/>conector magnético na borda de cima<br/>Tag-Connect e LED · ADS1220 e filtro<br/>furos da ponte na borda de baixo · sensores<br/>furo M1,6 em (30,5; 7,0)"]
+    M["34 a 47<br/>MÓDULO<br/>antena cerâmica encostando<br/>na borda direita"]
     E --- C --- M
 ```
 
 O que decide cada limite:
 
 - **o módulo** fica no extremo direito com a antena virada para fora da
-  borda, porque a ficha manda (ME54BS13 V1.0.0, 7.3). A placa é vazada sob
-  a área da antena (7.4);
-- **o bloco de energia** acaba 20 mm antes do módulo, que é a distância
-  que a mesma ficha pede de uma fonte chaveada ou de um indutor de
-  potência (7.2, *Interference Isolation Rule*). É esse número, e não a
-  estética, que empurra o buck para o outro extremo;
+  borda. O guia de montagem do fabricante classifica a antena passando
+  para fora da borda da placa como a **melhor** posição, o canto como boa e
+  o meio da placa como a pior, e pede a região sem plano de terra
+  ([09](09-modulo-de-radio.md#a-antena-manda-no-layout)). Não há mais
+  recorte vazado: aquilo era o que a antena de traço do módulo antigo
+  pedia;
+- **o bloco de energia** acaba 20 mm antes do módulo, que é a distância que
+  a regra de isolamento de interferência pede de uma fonte chaveada ou de
+  um indutor de potência. É esse número, e não a estética, que empurra o
+  buck para o outro extremo;
 - **o conector magnético** fica deitado na borda de cima, no meio, com os
   pinos para a tampa do pod;
 - **os furos da ponte** ficam na borda de baixo, sob o conversor: os fios
@@ -117,7 +107,7 @@ são pads, e onze peças que não precisam ser alcançadas: o desacoplamento do
 módulo com os resistores de barramento (`C201` a `C203`, `FB201`, `R204`,
 `R205`), os dois chips baixos da ponta direita (`U302` e `U402`) e o
 desacoplamento deles (`C307`, `C308`, `C403`). Isso é possível porque a
-célula cobre só 23 dos 51 mm: passada ela o fundo do pod desce, e a regra
+célula cobre só 23 dos 47 mm: passada ela o fundo do pod desce, e a regra
 `PD4` mede o ar sob **cada** peça em vez de proibir todas
 ([07](07-pod.md#o-que-segura-cada-peça)).
 
@@ -125,9 +115,16 @@ célula cobre só 23 dos 51 mm: passada ela o fundo do pod desce, e a regra
 
 | Zona | O que é | Fonte |
 |---|---|---|
-| `KEEPOUT_ANTENA_MODULO` | 4,7 mm da borda direita: sem cobre, sem componente, sem metal | ME54BS13 V1.0.0, 7.3 e 7.4 |
-| `RECORTE_ANTENA_MODULO` | a placa é **vazada** sob a área da antena | 7.4 |
+| `KEEPOUT_ANTENA_MODULO` | 4,3 mm da borda direita: sem cobre, sem componente, sem metal, sem plano de terra | guia de montagem do HOLYIOT-26001-A ([09](09-modulo-de-radio.md#a-antena-manda-no-layout)) |
+| `SOMBRA_CELULA_MAX_0-0MM` | a sombra da célula na face de trás: nenhuma peça pode ficar sob ela | derivada das cotas da própria célula em `make_dxf` |
 | `SOMBRA_TAMPA_MAX_2-7MM` | teto de 2,7 mm sobre a face da frente | [07](07-pod.md#a-pilha-de-alturas) |
+
+**O recorte vazado saiu.** A antena de traço do módulo antigo pedia a placa
+aberta sob ela; a cerâmica do HOLYIOT pede o contrário — corpo dielétrico
+sobre substrato, com a região livre de cobre e **encostando numa borda**.
+A regra `RF4` do dry run mudou junto: ela mede se a antena está dentro da
+zona livre **e** se toca uma borda da placa, e não mais se existe um furo
+vazado.
 
 O teto é o de `make_dxf.TETO_TAMPA` e o nome da zona sai dele, então os dois
 nunca divergem. Quem o fixa é a peça mais alta que fica **sob a tampa**: hoje
@@ -139,34 +136,46 @@ atravessa a tampa é o conector magnético (`make_dxf.ATRAVESSA_TAMPA`).
 
 ## O land pattern do módulo
 
-A ficha do ME54BS13 **não traz land pattern oficial** (a Minew fornece o
-dela sob pedido), então o footprint é desenhado aqui a partir do desenho
-mecânico. Até 2026-09-27 isso era só uma ressalva; agora existe medida.
+> [!WARNING]
+> **Do HOLYIOT-26001-A não existe ficha em PDF, nem land pattern oficial,
+> nem desenho de terceiros.** O que existe é o desenho mecânico do anúncio
+> do fabricante, fotografado pelo dono em 2026-09-28. O footprint é
+> desenhado aqui a partir dele, e **não tem conferência independente**.
+> Com o módulo antigo havia: um desenho comunitário do mesmo módulo batia
+> pad a pad com o nosso, desvio máximo 0,000 mm. Aqui não há com o que
+> comparar, e a única saída é medir uma peça real quando ela chegar.
 
-O footprint gerado foi comparado, pad a pad, com um desenho independente
-do mesmo módulo, de origem comunitária
-(`datasheets/ME54BS13_3rdparty_girishji.kicad_mod`, fora do git):
+O que o desenho dá, e o que o gerador
+[`cad/footprints.py`](cad/footprints.py) reproduz:
 
-| O que foi comparado | Resultado |
+| | Valor |
 |---|---|
-| Quantidade e nome dos pads | **80 iguais**: 20 castelados numerados e a matriz LGA de `A0` a `F9` |
-| Posição de cada pad, relativa ao centro da caixa de pads | **desvio máximo 0,000 mm** |
-| Tamanho de cada pad | igual, contando o giro próprio do pad (os castelados do desenho de referência estão a 90°, e 0,7 × 1,5 girado é o mesmo cobre que 1,5 × 0,7) |
+| Corpo | 10,0 × 12,5 mm |
+| Ilhas | **36**, todas meio-furo (castelado), passo **1,2 mm** |
+| Nas bordas esquerda e direita | 7 fileiras × 2 ilhas de cada lado: a externa em \|x\| = 4,75 mm, 1,5 × 0,6; a interna em \|x\| = 2,5 mm, 1,0 × 0,8 |
+| Na borda de baixo | 8 ilhas de 0,6 × 1,0, em \|x\| = 0,6 / 1,8 / 3,0 / 4,2 |
+| Pé de solda | **0,5 mm** para fora do corpo, só nas ilhas de borda |
+| Antena | cerâmica, a faixa de 3,8 mm na ponta de cima (`Dwgs.User` no footprint) |
 
-Os dois desenhos são o mesmo land pattern. É evidência independente de que
-os 20 pads castelados a 1,1 mm de passo e a matriz LGA a 1,5 × 1,2 mm
-estão certos. A regra `ME7` de
-[`cad/dry_run_pcb.py`](cad/dry_run_pcb.py) refaz essa medida a cada
-execução e **falha dizendo que não pôde medir** se o arquivo de referência
-não estiver presente.
+A regra `ME7` de [`cad/dry_run_pcb.py`](cad/dry_run_pcb.py) foi refeita em
+2026-09-28 junto com o módulo. Ela **não pode mais** comparar com um
+terceiro, então mede a coerência interna do desenho, que é o que ainda pega
+erro de gerador: uma ilha por pino da tabela `PADS_HOLYIOT` do esquemático
+(36 para 36), nenhum nome repetido, o corpo do `F.Fab` igual ao de
+`footprints.CORPO` — que é o corpo que o 3D e o pod usam —, nenhuma ilha
+saindo mais que os 0,5 mm de pé de solda, e passo constante em cada
+fileira. **Medido em 2026-09-28: passa, com a saída máxima em exatamente
+0,500 mm.** E a regra diz, em toda execução, que isso não é conferência
+independente.
 
-Além disso, o número de cada pad foi conferido contra a pinagem vista de
-cima da ficha (`ME54BS13_pin-definition_top-view_v1.0.0.png`): os 20
-castelados (1 `GND`, 2 `RF`, 3 `GND`, 4 `nRESET`, 5 `SWDIO`, 6 `SWDCLK`,
-7 `D−`, 8 `D+`, 9 `VBUS`, 10 e 11 `GND`, 12 a 18 `P1.26` a `P1.15`,
-19 `VCC`, 20 `GND`) e os 19 pads LGA usados pelo projeto batem, um a um,
-com a tabela de [`docs/02`](../docs/02-hardware.md#pinos-do-módulo).
-**O espelhamento** do mapa continua por conferir num módulo real.
+> O primeiro desenho da regra media o corpo pelo centro do envelope das
+> ilhas, e isso estava errado: as ilhas não são simétricas em `y` (só a
+> borda de baixo tem fileira), então o corpo saía 1,9 mm fora do lugar e
+> toda ilha de baixo parecia estar escapando da peça. O corpo é o retângulo
+> do `F.Fab`.
+
+**O espelhamento** do mapa continua por conferir num módulo real: é a mesma
+pendência do módulo antigo, e ela não some porque a peça mudou.
 
 ## A orientação do acelerômetro
 

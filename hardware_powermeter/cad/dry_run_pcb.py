@@ -146,13 +146,15 @@ REGRAS = [
      "Bosch BST-BMA400-DS000-14, 8.2 (Sensing axis orientation, pagina 112) "
      "e a tabela de orientacao da mesma pagina; docs/02-hardware.md, "
      "Orientacao do acelerometro"),
-    ("ME7", "o land pattern do modulo de radio bate, pad a pad, com um "
-            "desenho independente do mesmo modulo: nome, posicao relativa "
-            "ao centro da caixa de pads e tamanho",
-     "footprints.me54bs13() e o desenho da ficha ME54BS13 V1.0.0 nao sao "
-     "o land pattern oficial (a Minew fornece o dela sob pedido), entao a "
-     "unica conferencia possivel e contra um terceiro: "
-     "datasheets/ME54BS13_3rdparty_girishji.kicad_mod"),
+    ("ME7", "o land pattern do modulo de radio: um pad por pino da tabela "
+            "do esquematico, as ilhas de borda saindo do corpo pelo pe de "
+            "solda declarado e nenhuma outra, e passo constante em cada "
+            "fileira",
+     "footprints.holyiot_26001a() e desenhado das cotas do desenho mecanico "
+     "do fabricante (fotos do anuncio, 2026-09-28). NAO existe ficha em PDF "
+     "nem land pattern oficial nem desenho de terceiros deste modulo, entao "
+     "esta regra mede a coerencia interna do desenho, e NAO o substitui por "
+     "uma conferencia independente"),
     ("ME4", "as ilhas de solda de uma peca ficam sob o corpo do modelo 3D "
             "do fabricante",
      "um rabicho de solda fica em cima da sua ilha: se o corpo nao as cobre, "
@@ -1546,75 +1548,106 @@ def main() -> int:
                                   f"{rad_fw}, tangencial {tan_fw}, sinal "
                                   f"{sinal_fw} - os dois lados concordam")
 
-    # -- ME7: o land pattern do modulo contra um desenho independente ------
-    # O footprint do modulo e desenhado aqui a partir da ficha, e a ficha
-    # NAO traz land pattern oficial. Um desenho de terceiros do mesmo
-    # modulo e a unica conferencia independente que existe, e em
-    # 2026-09-27 ninguem dos dois projetos o tinha comparado. A regra nao
-    # passa calada quando o arquivo nao esta: diz que nao pode medir.
-    REF_MODULO = HERE.parent / "datasheets" / "ME54BS13_3rdparty_girishji.kicad_mod"
-    TOL_ME7 = 0.05        # mm, por eixo e por lado do pad
-    if not REF_MODULO.exists():
-        falhou("ME7", f"nao mede nada: {REF_MODULO.name} nao esta em "
-                      "datasheets/ (pasta fora do git), entao o land pattern "
-                      "do modulo nao tem conferencia independente")
+    # -- ME7: a coerencia interna do land pattern do modulo ----------------
+    # O modulo nao tem ficha em PDF nem land pattern oficial nem desenho de
+    # terceiros: o footprint sai das cotas do desenho mecanico do anuncio.
+    # Comparar o footprint com as cotas que o geraram seria circular. O que
+    # da' para medir, e que pega erro de gerador, e' a geometria dele contra
+    # o corpo declarado e contra a tabela de pinos do esquematico.
+    TOL_ME7 = 0.02        # mm
+    PE_SOLDA = 0.5        # o quanto a ilha de borda sai do corpo, por desenho
+    corpo_mod = FPS.CORPO.get(FPS.FP[MODULO][0])
+    pinos_esq = set(P.PADS_HOLYIOT.values()) if hasattr(
+        P, "PADS_HOLYIOT") else set()
+    if not corpo_mod:
+        falhou("ME7", f"nao mede nada: o footprint de {MODULO} nao tem cotas de corpo em "
+                      "footprints.CORPO")
+    elif not pinos_esq:
+        falhou("ME7", "nao mede nada: parts.PADS_HOLYIOT nao existe, entao "
+                      "nao ha tabela de pinos para conferir contra")
     else:
-        def _pads_do_texto(texto: str):
-            arv = fp_load.parse(texto)
-            saida = {}
-            for q in fp_load.kids(arv, "pad"):
-                a = fp_load.kid(q, "at")
-                s = fp_load.kid(q, "size")
-                if not a or not s:
-                    continue
-                w, h = float(s[1]), float(s[2])
-                # a pad carries its OWN angle, and a 0,7 x 1,5 pad turned
-                # 90 degrees is the same copper as a 1,5 x 0,7 pad at 0.
-                # Comparing the numbers without it made the twenty
-                # castellated pads of the reference look 0,8 mm wrong when
-                # they are the same pad (2026-09-27).
-                ang = int(round(float(a[3]))) % 180 if len(a) > 3 else 0
-                if ang == 90:
-                    w, h = h, w
-                saida[str(q[1])] = (float(a[1]), float(a[2]), w, h)
-            return saida
+        arv_mod = fp_load.parse(fp_load.carregar(FPS.FP[MODULO][0])[0])
+        ilhas = {}
+        for q in fp_load.kids(arv_mod, "pad"):
+            a = fp_load.kid(q, "at")
+            s = fp_load.kid(q, "size")
+            if not a or not s:
+                continue
+            ilhas[str(q[1])] = (float(a[1]), float(a[2]),
+                                float(s[1]), float(s[2]))
+        # O corpo e' o retangulo do `F.Fab` do proprio footprint, nao o meio
+        # do envelope das ilhas: as ilhas NAO sao simetricas em y (ha uma
+        # fileira so' na borda de baixo), entao tirar o centro delas punha o
+        # corpo 1,9 mm fora do lugar e toda ilha de baixo parecia estar
+        # saindo da peca. Medido em 2026-09-28 contra o `F.Fab`, que e' onde
+        # o KiCad desenha o contorno do corpo.
+        problemas = []
+        fab = None
+        for q in fp_load.kids(arv_mod, "fp_rect"):
+            cam = fp_load.kid(q, "layer")
+            if cam and str(cam[1]) == "F.Fab":
+                a, b = fp_load.kid(q, "start"), fp_load.kid(q, "end")
+                fab = (float(a[1]), float(a[2]), float(b[1]), float(b[2]))
+                break
+        if fab is None:
+            problemas.append("o footprint nao tem retangulo no F.Fab para "
+                             "servir de corpo: nao da para medir o pe de "
+                             "solda de ilha nenhuma")
+            fab = (-corpo_mod[0] / 2.0, -corpo_mod[1] / 2.0,
+                   corpo_mod[0] / 2.0, corpo_mod[1] / 2.0)
+        cx, cy = (fab[0] + fab[2]) / 2.0, (fab[1] + fab[3]) / 2.0
+        cw, ch = abs(fab[2] - fab[0]) / 2.0, abs(fab[3] - fab[1]) / 2.0
+        # e o corpo desenhado tem de ser o mesmo que o 3D e o pod usam
+        if (abs(2 * cw - corpo_mod[0]) > TOL_ME7
+                or abs(2 * ch - corpo_mod[1]) > TOL_ME7):
+            problemas.append(
+                f"o corpo do F.Fab ({2 * cw:g} x {2 * ch:g}) nao e o de "
+                f"footprints.CORPO ({corpo_mod[0]:g} x {corpo_mod[1]:g}), "
+                "que e o que o 3D e o pod usam")
 
-        nosso = _pads_do_texto(fp_load.carregar(FPS.FP[MODULO][0])[0])
-        deles = _pads_do_texto(REF_MODULO.read_text(encoding="utf-8"))
+        if len(ilhas) != len(pinos_esq):
+            problemas.append(f"{len(ilhas)} ilhas para {len(pinos_esq)} "
+                             "pinos da tabela do esquematico")
+        # o esquematico numera os pinos; o footprint nomeia as ilhas pelo
+        # sinal. O que se compara e' a QUANTIDADE e a unicidade.
+        if len(set(ilhas)) != len(ilhas):
+            problemas.append("ha nome de ilha repetido")
 
-        def _centro(d):
-            xs = [v[0] for v in d.values()]
-            ys = [v[1] for v in d.values()]
-            return ((min(xs) + max(xs)) / 2.0, (min(ys) + max(ys)) / 2.0)
+        # quanto cada ilha passa do corpo, no eixo em que ela e' de borda
+        for nome_i, (px, py, pw, ph) in sorted(ilhas.items()):
+            fora_x = abs(px - cx) + pw / 2.0 - cw
+            fora_y = abs(py - cy) + ph / 2.0 - ch
+            passa = max(fora_x, fora_y)
+            if passa > PE_SOLDA + TOL_ME7:
+                problemas.append(f"a ilha {nome_i} sai {passa:.3f} mm do "
+                                 f"corpo (o pe de solda e {PE_SOLDA:g})")
 
-        if not nosso or not deles:
-            falhou("ME7", "um dos dois desenhos nao tem pad nenhum para medir")
+        # passo constante em cada fileira
+        fileiras = {}
+        for nome_i, (px, py, _pw, _ph) in ilhas.items():
+            fileiras.setdefault(round(py, 3), []).append(px)
+        for yq, linha in sorted(fileiras.items()):
+            if len(linha) < 3:
+                continue
+            linha.sort()
+            passos = [linha[k + 1] - linha[k] for k in range(len(linha) - 1)]
+            if max(passos) - min(passos) > TOL_ME7:
+                # duas colunas de cada lado dao dois passos de proposito;
+                # so' um passo irregular DENTRO de um grupo e defeito
+                distintos = sorted(set(round(v, 3) for v in passos))
+                if len(distintos) > 2:
+                    problemas.append(f"a fileira y={yq:g} tem passos "
+                                     f"{distintos}")
+        if problemas:
+            falhou("ME7", "; ".join(problemas[:4]))
         else:
-            cn, cd = _centro(nosso), _centro(deles)
-            faltam = sorted(set(deles) - set(nosso))
-            sobram = sorted(set(nosso) - set(deles))
-            piores = []
-            for nome_pad in sorted(set(nosso) & set(deles)):
-                ax, ay, aw, ah = nosso[nome_pad]
-                bx, by, bw, bh = deles[nome_pad]
-                dx = abs((ax - cn[0]) - (bx - cd[0]))
-                dy = abs((ay - cn[1]) - (by - cd[1]))
-                dw = abs(aw - bw)
-                dh = abs(ah - bh)
-                piores.append((max(dx, dy, dw, dh), nome_pad, dx, dy, dw, dh))
-            piores.sort(reverse=True)
-            fora = [q for q in piores if q[0] > TOL_ME7]
-            if faltam or sobram or fora:
-                falhou("ME7", (f"{len(faltam)} pads faltando, {len(sobram)} a "
-                               f"mais, {len(fora)} fora de {TOL_ME7:g} mm" +
-                               ("; pior " + ", ".join(
-                                   f"{n} dx {a:.3f} dy {b:.3f} dw {c:.3f} dh {e:.3f}"
-                                   for _m, n, a, b, c, e in fora[:4]) if fora else "")))
-            else:
-                ok.append(f"ME7: os {len(nosso)} pads do modulo batem com o "
-                          f"desenho independente ({REF_MODULO.name}): desvio "
-                          f"maximo {piores[0][0]:.3f} mm, tolerancia "
-                          f"{TOL_ME7:g}")
+            ok.append(f"ME7: as {len(ilhas)} ilhas do modulo batem com os "
+                      f"{len(pinos_esq)} pinos do esquematico, nenhuma sai "
+                      f"mais de {PE_SOLDA:g} mm do corpo de "
+                      f"{corpo_mod[0]:g} x {corpo_mod[1]:g} e o passo de "
+                      f"cada fileira e constante. NAO e conferencia "
+                      f"independente: nao existe ficha nem desenho de "
+                      f"terceiros deste modulo")
 
     # -- ME4: a boca do conector de borda aponta para fora? ------------------
     # O 2D nao responde isto e o DRC muito menos: as ilhas de um receptaculo
