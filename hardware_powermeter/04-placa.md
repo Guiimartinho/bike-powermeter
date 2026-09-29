@@ -231,22 +231,26 @@ eixo central**, para dentro.
 
 | Medida | Valor |
 |---|---|
-| Segmentos | **440** |
-| Vias | **153** |
-| Ligações fechadas | **75** |
-| Itens desconectados no DRC completo | **14**, em 7 ligações |
+| Segmentos | **551** |
+| Vias | **137** |
+| Ligações fechadas | **81** |
+| Itens desconectados no DRC completo | **30** |
 | **Erros de DRC** | **0** |
-| Avisos de DRC | 25, todos de registro de biblioteca |
+| Avisos de DRC | 23, todos de registro de biblioteca |
 
-Das 7 ligações em aberto, **4 são vias de costura do plano de terra** — que
-o plano resolve, e o `reparar.py` diz isso com todas as letras — e **3 são
-de sinal**: `I2C_SCL`, `SPI_MOSI` e `SPI_SCK`, as três do mesmo trecho
-entre o conversor e o módulo.
+**Estes números são de 2026-09-29 e não são comparáveis com os de 28.** Na
+placa de 28 o módulo de rádio estava **sem uma única ligação** (as ilhas
+dele saíram nomeadas pelo sinal em vez de numeradas, e nenhuma rede as
+achava), então um quarto das ligações da placa não existia. Com o módulo
+ligado o roteador tem 25 ligações a mais para fazer, e os desconectados
+sobem de 14 para 30 — o 14 era favorável por omissão.
 
-O estágio de congestão negociada rodou as 160 rodadas e **foi recusado**:
-ele chega a zero célula disputada só com 62 a 64 ligações, contra as 75 do
-sequencial, e o critério exige as duas coisas ao mesmo tempo. Fica o
-resultado sequencial, e a saída diz isso.
+Das que faltam, **22 das 49 que o roteador não fechou são vias de costura
+do plano de terra**, que o plano resolve. As de sinal se agrupam em dois
+lugares, e os dois são **fuga de ilha de passo fino**: os pinos do nPM1100
+(um QFN de 0,5 mm com nove redes presas) e os do módulo. Não é falta de
+área: crescer a placa para 50 ou 52 mm foi medido e dá 33 desconectados
+em vez de 30.
 
 O roteador é o do ciclocomputador e levou três correções medidas nesta
 placa, que [`cad/README.md`](cad/README.md#o-que-mudou-em-relação-ao-ciclocomputador)
