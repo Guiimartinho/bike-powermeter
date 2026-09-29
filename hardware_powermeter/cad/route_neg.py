@@ -64,6 +64,10 @@ HISTORICO = 1.0
 # The ceiling is now well clear of what the board needs; a round costs a few
 # seconds and the loop still leaves the moment nothing is contested.
 MAX_RODADAS = 30
+# Trinta rodadas, medido: com 45 e com 60 o resultado PIORA (82 a 88
+# ligacoes, 28 desconectados e 2 erros de DRC contra 88 e 21 com zero).
+# A fase sem partilha do fim e quem entrega a rodada limpa, e depois de
+# um certo ponto a pressao acumulada so espalha conflito.
 # how often the whole board is ripped up instead of only the nets in the way
 RIPAGEM_TOTAL = 6
 

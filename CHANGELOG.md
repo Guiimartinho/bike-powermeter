@@ -12,6 +12,8 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Medido
 
+- **Mais rodadas de negociação pioram** (2026-09-29). Com 30 rodadas o estágio fecha com **88 ligações, zero célula disputada, 21 itens desconectados e 0 erros de DRC**. Com 45 ele escolhe uma rodada de 107 ligações e 240 pares perto demais, que a limpeza não dá conta (217 erros); com 60, cai para 82 ligações, 28 desconectados e 2 erros. A fase sem partilha do fim é quem entrega a rodada limpa, e depois de certo ponto a pressão acumulada só espalha conflito. A constante fica em 30, com a medida ao lado.
+
 - **O estágio de congestão negociada nunca tinha sido aceito, e era ele que faltava** (2026-09-29). O critério de aceitação exigia **zero célula disputada**, e nesta placa ele chega a zero só com 62 a 64 ligações, contra as 81 do sequencial — então era recusado em toda execução, depois de rodar 160 rodadas. Como agora existe a limpeza geométrica que tira a trilha e a via culpadas uma a uma, o resultado dele pode ser aceito e limpo depois. Com isso ele **fecha em 25 rodadas com 88 ligações e zero célula disputada**, e a placa vai de 551 para **1.383 segmentos**, de 81 para **88 ligações**, e de **30 para 21 itens desconectados, com 0 erros de DRC**. Das 44 que o roteador não fechou, **todas são de uma rede só** — a costura do plano de terra — contra 23 redes antes.
 
 - **E o critério do melhor resultado tem de ser o mais LIMPO, não o mais completo** (2026-09-29). Trocado para preferir mais ligações, o estágio escolheu uma rodada com 107 ligações e **240 pares perto demais**; a limpeza tirou 40 trilhas e parou, e o DRC acusou **217 erros**. A rodada limpa entrega 88 ligações e **zero erro**. Medido nos dois sentidos antes de decidir.
