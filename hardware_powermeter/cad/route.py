@@ -175,7 +175,13 @@ SO_FRENTE = NAO_ROTEAR
 # net on the board, so nothing about the routing changes here.
 PAR: tuple[str, ...] = ()
 # Nets that go first and have to stay short: the switching loops.
-PRIMEIRO = ["BUCK_SW"]
+# As redes que a placa cheia nao consegue fechar vao PRIMEIRO, com a
+# placa vazia. Medido em 2026-09-28: sem isto, I2C_SCL, SPI_MOSI e
+# SPI_SCK terminavam sem cobre; com isto elas fecham e os itens
+# desconectados do DRC caem de 14 para 11. Quem entra aqui e quem o
+# relatorio mostrou falhando, nao um palpite.
+PRIMEIRO = ["BUCK_SW", "I2C_SCL", "SPI_MOSI", "SPI_SCK", "SPI_MISO",
+            "AIN_P", "AIN_N"]
 
 
 ALIMENTACAO = ("GND", "VSYS", "VBAT", "VBUS", "3V0", "3V0_MOD", "3V0_EXC")
@@ -313,9 +319,24 @@ def largura(rede: str) -> float:
         # passo, entao o par e roteado mais fino e a diferenca e reportada" -
         # que simplesmente nao existe: 0,207 sai.
         return LARGURA_USB_CALC
-    if e_alimentacao(rede):
+    # Toda rede que tem corrente escrita na tabela tira a largura dela, e
+    # nao so as de ALIMENTACAO. `BUCK_SW` nao e um trilho, e um no de
+    # chaveamento, entao nao estava na lista - e saia com a largura de
+    # sinal, 0,150 mm, para os 350 mA que a ficha do nPM1100 pede ao
+    # indutor. A IPC-2221 quer 0,184 em camada interna (medido em
+    # 2026-09-28). Passava por sorte, porque o no so foi parar em camada
+    # externa; quem decide e a corrente, nao a lista em que a rede esta.
+    if e_alimentacao(rede) or _tem_corrente(rede):
         return largura_de_corrente(rede)
     return LARGURA
+
+
+def _tem_corrente(rede: str) -> bool:
+    try:
+        import dry_run_pcb as _DR
+        return rede in _DR.CORRENTE
+    except Exception:
+        return False
 
 
 def folga_de(rede: str) -> float:
@@ -1757,6 +1778,15 @@ def emitir_caminhos(arv, todos, por_rede, caminhos_por_rede):
     return g, segmentos, vias
 
 
+def _dist_seg_ponto(a0, a1, px: float, py: float) -> float:
+    """Distancia de um ponto ao eixo de um segmento."""
+    vx, vy = a1[0] - a0[0], a1[1] - a0[1]
+    L = vx * vx + vy * vy
+    k = 0.0 if L == 0 else max(0.0, min(1.0, ((px - a0[0]) * vx +
+                                              (py - a0[1]) * vy) / L))
+    return math.hypot(px - (a0[0] + k * vx), py - (a0[1] + k * vy))
+
+
 def _dist_seg_seg(a0, a1, b0, b1) -> float:
     """Distancia entre os eixos de dois segmentos; 0 se eles se cruzam."""
     def pp(p, q0, q1):
@@ -1808,6 +1838,20 @@ def conferir(segmentos, vias, todos=()) -> list[str]:
             if d < VIA_D + 0.12:
                 problemas.append(f"via {r} e via {r2} a {d:.3f} mm "
                                  f"(em {x:.1f}; {y:.1f})")
+    # Vias contra TRILHAS, em qualquer camada. Faltava, e foi por aqui que
+    # passou o unico erro que sobrou em 2026-09-28: uma via de GND a
+    # 0,065 mm de uma trilha de VBUS na camada de alimentacao, com o
+    # roteador anunciando "0 pares perto demais". Uma via atravessa todas
+    # as camadas; ela nao tem o direito de ignorar nenhuma.
+    for (x, y, r) in vias:
+        for (q0, q1, _c2, r2, w2) in segmentos:
+            if r2 == r:
+                continue
+            exigido = VIA_D / 2 + w2 / 2 + max(folga_de(r), folga_de(r2)) - 0.01
+            d = _dist_seg_ponto(q0, q1, x, y)
+            if d < exigido:
+                problemas.append(f"via {r} a {d:.3f} mm da trilha {r2}, "
+                                 f"pede {exigido:.3f} (em {x:.1f}; {y:.1f})")
     # tracks against PADS. A pad with no net is not exempt: copper is copper,
     # and touching one shorts whatever the part connects internally.
     orx, ory = MP.ORIGEM
@@ -2162,6 +2206,77 @@ def main() -> int:
               "outra coisa; o pad fica aberto:")
         for r in enc_recusados[:6]:
             print(f"    {r}")
+
+    # Uma via de costura perto demais de uma trilha e RETIRADA. Ela e
+    # individualmente dispensavel - o plano continua ali e a GN2 mede o vao
+    # da costura -, e um curto na placa fabricada nao e. So sai via de GND:
+    # tirar a via de um sinal abriria a ligacao dele calada.
+    tiradas = 0
+    for _volta in range(20):
+        ruins = conferir(segmentos, vias, todos)
+        culpada = None
+        for texto_r in ruins:
+            if not texto_r.startswith("via GND a "):
+                continue
+            for k, (vx, vy, vr) in enumerate(vias):
+                if vr != "GND":
+                    continue
+                if f"(em {vx:.1f}; {vy:.1f})" in texto_r:
+                    culpada = k
+                    break
+            if culpada is not None:
+                break
+        if culpada is None:
+            break
+        vias.pop(culpada)
+        tiradas += 1
+    if tiradas:
+        print(f"  {tiradas} via(s) de costura RETIRADA(s) por ficarem perto "
+              "demais de uma trilha")
+
+    # E a TRILHA culpada, pelo mesmo motivo. Ate aqui um par de trilhas
+    # perto demais era detectado, anunciado e impresso: o relatorio dizia
+    # "N pares perto demais" e o DRC do KiCad achava o curto depois. A
+    # ligacao fica aberta, e essa e a escolha ja registrada em 04-placa.md:
+    # uma violacao de isolamento e um curto na placa fabricada, uma ligacao
+    # sem trilha e uma falta visivel que o RT1 conta.
+    import re as _re
+    fora = 0
+    for _volta in range(40):
+        ruins = conferir(segmentos, vias, todos)
+        alvo = None
+        for texto_r in ruins:
+            m = _re.match(r"^(\S+) e (\S+) na camada (\S+) a ", texto_r)
+            if not m:
+                continue
+            r1, r2 = m.group(1), m.group(2)
+            # sai a do par que tiver MAIS cobre: ela tem mais por onde
+            # voltar, e a que tem pouco provavelmente e uma ligacao unica
+            n1 = sum(1 for s in segmentos if s[3] == r1)
+            n2 = sum(1 for s in segmentos if s[3] == r2)
+            escolhida = r1 if n1 >= n2 else r2
+            mp = _re.search(r"\(em ([-\d.]+); ([-\d.]+)\)", texto_r)
+            if not mp:
+                continue
+            px, py = float(mp.group(1)), float(mp.group(2))
+            melhor, dmin = None, 1e9
+            for k, (q0, q1, _c, rr, _w) in enumerate(segmentos):
+                if rr != escolhida:
+                    continue
+                d = min(math.hypot(q0[0] - px, q0[1] - py),
+                        math.hypot(q1[0] - px, q1[1] - py))
+                if d < dmin:
+                    melhor, dmin = k, d
+            if melhor is not None:
+                alvo = melhor
+                break
+        if alvo is None:
+            break
+        segmentos.pop(alvo)
+        fora += 1
+    if fora:
+        print(f"  {fora} trilha(s) RETIRADA(s) por ficarem perto demais de "
+              "outra rede; a ligacao fica aberta e o RT1 a conta")
 
     ruins = conferir(segmentos, vias, todos)
     print(f"  conferencia geometrica: {len(ruins)} pares perto demais")

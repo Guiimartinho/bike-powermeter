@@ -960,6 +960,29 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
             continue
         dx, dy = lugar[dono][0], lugar[dono][1]
         por(ref, dx, dy, ROTACAO.get(ref, 0))
+        if ref in lugar:
+            continue
+        # Um ponto de teste que nao coube na face dele tenta a OUTRA, em vez
+        # de sumir da placa. Ele e um pad para encostar a ponta de prova: nao
+        # tem corpo, nao tem altura e nao tem lado preferido - o lado so
+        # existe para a face de tras ficar plana sob a celula, e um pad e
+        # plano nas duas. Medido em 2026-09-28: `TP104` e `TP301` ficaram de
+        # fora quando o desacoplamento do modulo passou a ser colocado de
+        # verdade, e o `check_pcb` os contou como ligacao sem pad.
+        era_atras = ref in ATRAS
+        if era_atras:
+            ATRAS.discard(ref)
+        else:
+            ATRAS.add(ref)
+        por(ref, dx, dy, ROTACAO.get(ref, 0))
+        if ref in lugar:
+            falhas.append(f"{ref}: nao coube na face de "
+                          f"{'tras' if era_atras else 'frente'}, foi para a "
+                          "outra")
+        elif era_atras:
+            ATRAS.add(ref)
+        else:
+            ATRAS.discard(ref)
 
     # ---- 4. the rest, by connectivity, turned along it ----
     ligados: dict[str, set[str]] = {}

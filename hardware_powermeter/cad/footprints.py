@@ -83,11 +83,20 @@ _fp([t[0] for t in _P.TESTE], "TestPoint:TestPoint_Pad_D1.0mm", "EXATO", "")
 
 # ------------------------------------------------------- footprints gerados
 def _pad(num, x, y, w, h, tipo="smd", forma="roundrect", drill=0.0,
-         camadas='"F.Cu" "F.Paste" "F.Mask"'):
+         camadas='"F.Cu" "F.Paste" "F.Mask"', funcao: str = ""):
+    """Uma ilha.
+
+    `num` e o NUMERO do pino, que e por onde a lista de nos acha a ilha, e
+    `funcao` e o nome do sinal, que o KiCad mostra e que NAO entra na
+    correspondencia. Trocar os dois deixa a peca inteira sem rede: foi o que
+    aconteceu com o modulo de radio, cujas 36 ilhas sairam nomeadas
+    `P1.04`, `VDD`, `GND` e ficaram todas sem ligacao nenhuma (2026-09-28).
+    """
     extra = f'\n\t\t(drill {drill})' if drill else ""
     rr = '\n\t\t(roundrect_rratio 0.25)' if forma == "roundrect" else ""
+    fn = f'\n\t\t(pinfunction "{funcao}")' if funcao else ""
     return (f'\t(pad "{num}" {tipo} {forma}\n\t\t(at {x:.4f} {y:.4f})\n'
-            f'\t\t(size {w:.4f} {h:.4f}){extra}\n\t\t(layers {camadas}){rr}\n'
+            f'\t\t(size {w:.4f} {h:.4f}){extra}\n\t\t(layers {camadas}){rr}{fn}\n'
             f'\t\t(uuid "{_uid(num, x, y)}")\n\t)')
 
 
@@ -1196,10 +1205,10 @@ def holyiot_26001a() -> str:
     """HOLYIOT-26001-A, nRF54L15 with a ceramic antenna, 10,0 x 12,5 mm.
 
     36 pads: a castellated column and an LGA column on each side, seven each,
-    and eight castellations along the bottom edge. The pad NAMES carry the
-    port pin (`P1.11`), not the pin number, because that is what the
-    netlist and `board_check.py` compare against the silicon - the two `GND`
-    pads are told apart by a suffix.
+    and eight castellations along the bottom edge. The pads are NUMBERED 1
+    to 36, like every other part on this board, and the port pin (`P1.11`)
+    goes in `pinfunction`. Naming them by signal instead left every pad of
+    the module with no net at all (2026-09-28).
 
     The origin is the body centre and the antenna is at -Y, which is up on
     the screen, the same convention the ME54BS13's footprint uses.
@@ -1215,12 +1224,25 @@ def holyiot_26001a() -> str:
     def fy(y):
         return y - H / 2.0          # drawing Y down, footprint Y down too
 
-    nomes = list(HOLY_PINOS)
-    vistos: dict[str, int] = {}
-    for i, n in enumerate(nomes):
-        if nomes.count(n) > 1:
-            vistos[n] = vistos.get(n, 0) + 1
-            nomes[i] = f"{n}{vistos[n]}"
+    # As ilhas sao NUMERADAS, 1 a 36, como as de toda peca desta placa - e
+    # nao nomeadas pelo sinal, como estavam. Medido em 2026-09-28: com o
+    # nome do sinal, NENHUM dos 36 pads do modulo recebia rede. A lista de
+    # nos pede `U201.P1.04`, o `parts.py` traduz esse nome para o numero 18
+    # pela tabela PADS_HOLYIOT, e o colocador procura a ilha "18" - que nao
+    # existia, porque a ilha se chamava "P1.04". O radio inteiro ficava sem
+    # uma ligacao, e o DRC nao via nada: ilha sem rede nao tem com o que
+    # estar desconectada. O `check_pcb` via ("25 ligacoes da lista ficaram
+    # sem pad") e o numero foi lido como informativo.
+    #
+    # O sinal continua no desenho, no campo `pinfunction`, que e onde o
+    # KiCad o mostra e onde ele nao atrapalha a correspondencia.
+    #
+    # O desempate dos dois GND tambem estava errado: `nomes.count(n)` era
+    # avaliado na lista que a propria volta ja tinha alterado, entao o
+    # primeiro virava "GND1" e o segundo ficava "GND". Numerar resolve os
+    # dois de uma vez.
+    nomes = [str(i + 1) for i in range(len(HOLY_PINOS))]
+    sinais = list(HOLY_PINOS)
 
     pads = []
     cw, ch = HOLY_PAD_CAST
@@ -1233,18 +1255,20 @@ def holyiot_26001a() -> str:
     bh_l = bh + HOLY_TOE
     y_baixo_l = y_baixo + HOLY_TOE / 2.0
     for i in range(7):                                     # 1..7
-        pads.append(_pad(nomes[i], fx(x_cast_l), fy(ys[i]), cw_l, ch, forma="rect"))
+        pads.append(_pad(nomes[i], fx(x_cast_l), fy(ys[i]), cw_l, ch, forma="rect",
+                         funcao=sinais[i]))
     for i in range(8):                                     # 8..15
         pads.append(_pad(nomes[7 + i], fx(xs_baixo[i]), fy(y_baixo_l), bw, bh_l,
-                         forma="rect"))
+                         forma="rect", funcao=sinais[7 + i]))
     for i in range(7):                                     # 16..22, bottom up
         pads.append(_pad(nomes[15 + i], fx(W - x_cast_l), fy(ys[6 - i]), cw_l, ch,
-                         forma="rect"))
+                         forma="rect", funcao=sinais[15 + i]))
     for i in range(7):                                     # 23..29, top down
-        pads.append(_pad(nomes[22 + i], fx(HOLY_X_LGA), fy(ys[i]), lw, lh, forma="rect"))
+        pads.append(_pad(nomes[22 + i], fx(HOLY_X_LGA), fy(ys[i]), lw, lh, forma="rect",
+                         funcao=sinais[22 + i]))
     for i in range(7):                                     # 30..36, bottom up
         pads.append(_pad(nomes[29 + i], fx(W - HOLY_X_LGA), fy(ys[6 - i]), lw, lh,
-                         forma="rect"))
+                         forma="rect", funcao=sinais[29 + i]))
 
     corpo = _corpo("pmeter:HOLYIOT_26001A_10x12.5mm", W, H, pads,
                    "HOLYIOT-26001-A, nRF54L15 com antena ceramica; 22 pads "
