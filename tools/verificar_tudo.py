@@ -45,9 +45,18 @@ VERIFICACOES = [
     ("contorno e zonas × documentos",
      [PY, "hardware_powermeter/cad/check_dxf.py"], lambda c, s: c == 0, ""),
 
+    # Esta verificação era `lambda: True`, "relata; o número vale, o código
+    # de saída não" — e foi assim que uma placa com o módulo de rádio SEM
+    # NENHUMA REDE passou por três execuções e foi publicada (2026-09-28).
+    # O `check_pcb` tinha dito, em português claro, "25 ligações da lista
+    # ficaram sem pad". Duas das coisas que ele mede são fatais e agora
+    # reprovam: peça da lista que não está na placa, e ligação da lista que
+    # não achou pad. A serigrafia sobreposta continua sendo relato.
     ("placa como o KiCad a vê",
      [PY, "hardware_powermeter/cad/check_pcb.py", "--como-esta"],
-     lambda c, s: True, "relata; o número vale, o código de saída não"),
+     lambda c, s: ("ficou sem pad (0)" in s or "ficou sem pad" not in s)
+                  and "faltam [" not in s,
+     "reprova em peça faltando ou ligação sem pad; a serigrafia é relato"),
 
     ("dry run da placa: regras das fichas e da IPC-2221B",
      [PY, "hardware_powermeter/cad/dry_run_pcb.py"], lambda c, s: True,
