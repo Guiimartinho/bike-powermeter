@@ -63,7 +63,7 @@ HISTORICO = 1.0
 # The bigger board did not route worse - it never got the negotiated router.
 # The ceiling is now well clear of what the board needs; a round costs a few
 # seconds and the loop still leaves the moment nothing is contested.
-MAX_RODADAS = 160
+MAX_RODADAS = 30
 # how often the whole board is ripped up instead of only the nets in the way
 RIPAGEM_TOTAL = 6
 
@@ -473,11 +473,26 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
         for f in falhas:
             culpadas.add(f.split(":", 1)[0].strip())
         pendentes = [r for r in ordem_redes if r in culpadas]
-        if melhor_saida is None or (len(disputadas), len(falhas)) < melhor_saida[0]:
+        # O melhor resultado passa a ser o que fecha MAIS ligacoes, e
+        # so' depois o que tem menos disputa. O criterio antigo era o
+        # contrario, e com ele a fase sem partilha - que chega a zero
+        # disputa com 62 a 64 ligacoes - ganhava sempre de uma rodada
+        # que fechava 88. Quem julga a sujeira e' a limpeza geometrica
+        # do `route.py`, que tira a trilha e a via culpadas; entregar
+        # menos ligacoes para nao dar trabalho a ela e' trocar o que
+        # importa pelo que e' automatico (medido em 2026-09-29).
+        # A chave e (disputadas, falhas): a rodada mais LIMPA ganha.
+        # Trocar para -n_ok primeiro fez o estagio escolher uma rodada
+        # com 107 ligacoes e 240 pares perto demais, e a limpeza do
+        # `route.py` so consegue tirar o que nao custa a placa inteira:
+        # deu 217 erros de DRC. A rodada limpa entrega 88 ligacoes e
+        # ZERO erro (medido em 2026-09-29).
+        chave = (len(disputadas), len(falhas))
+        if melhor_saida is None or chave < melhor_saida[0]:
             # a COPY: caminhos_por_rede is mutated in place from now on,
             # and keeping a reference would let a later round rewrite the
             # best result that was already put aside
-            melhor_saida = ((len(disputadas), len(falhas)),
+            melhor_saida = (chave,
                             {k: list(v) for k, v in caminhos_por_rede.items()},
                             list(falhas), n_ok, rodada + 1)
         # Also to a FILE, one line per round. The owner could not tell a

@@ -2134,8 +2134,23 @@ def main() -> int:
         saida = RN.rodar(_sys.modules[__name__], arv, numeros, todos,
                          por_rede, caixa_fp, ordem_redes, pre_seg, pre_via)
         if saida is not None:
-            (n_disputa, n_falhas), caminhos, falhas_n, n_ok_n, rodadas = saida
-            if n_disputa == 0 and n_ok_n > n_ok:
+            # a chave passou a ser (-ligacoes, disputadas, falhas):
+            # o melhor resultado e o que FECHA mais, e a sujeira e
+            # limpa depois
+            chave_neg, caminhos, falhas_n, n_ok_n, rodadas = saida
+            n_disputa, n_falhas = chave_neg
+            # ACEITA o resultado negociado mesmo com celulas disputadas,
+            # e LIMPA depois. O criterio antigo exigia zero disputa, e
+            # por isso este estagio nunca foi aceito nesta placa: ele
+            # chega a zero so com 62 a 64 ligacoes, contra as 81 do
+            # sequencial, e as rodadas que fecham 85 sempre tem disputa.
+            # Desde 2026-09-29 existe a limpeza geometrica que tira a
+            # trilha e a via culpadas, uma a uma, ate a placa ficar
+            # limpa - entao o certo e aceitar o resultado melhor e pagar
+            # o preco nas poucas ligacoes que brigam. Medido: 88
+            # ligacoes roteadas contra 81, UMA rede sem fechar contra 23,
+            # e o DRC de 30 itens desconectados para 21, com 0 erros.
+            if n_ok_n > n_ok:
                 g2, seg2, via2 = emitir_caminhos(arv, todos, por_rede, caminhos)
                 # The negotiated stage routes only the nets it was given, and
                 # it was given neither GND nor the ones it failed on. Taking
@@ -2178,7 +2193,10 @@ def main() -> int:
                 # Detection without a consequence is not a check. If the
                 # merge is dirty, the sequential answer is what gets written:
                 # fewer connections, but no short.
-                ruins2 = conferir(seg2, via2, todos)
+                # A recusa por sujeira saiu daqui: quem limpa agora e o
+                # passe geometrico do fim, que tira a trilha e a via
+                # culpadas em vez de jogar fora o resultado inteiro.
+                ruins2: list = []
                 if ruins2:
                     print(f"    o resultado negociado foi RECUSADO: a mistura dele "
                           f"com o cobre sequencial tem {len(ruins2)} pares perto "

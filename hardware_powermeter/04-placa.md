@@ -231,12 +231,12 @@ eixo central**, para dentro.
 
 | Medida | Valor |
 |---|---|
-| Segmentos | **551** |
-| Vias | **137** |
-| Ligações fechadas | **81** |
-| Itens desconectados no DRC completo | **30** |
+| Segmentos | **1.383** |
+| Vias | **232** |
+| Ligações fechadas | **88** |
+| Itens desconectados no DRC completo | **21** |
 | **Erros de DRC** | **0** |
-| Avisos de DRC | 23, todos de registro de biblioteca |
+| Avisos de DRC | todos de registro de biblioteca |
 
 **Estes números são de 2026-09-29 e não são comparáveis com os de 28.** Na
 placa de 28 o módulo de rádio estava **sem uma única ligação** (as ilhas
