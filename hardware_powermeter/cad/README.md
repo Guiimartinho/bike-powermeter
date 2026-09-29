@@ -192,6 +192,29 @@ sai girado 180°; o VRML da biblioteca do KiCad põe vírgula entre todos os
   cinco pares perto demais, dizia, e gravava a placa. Hoje cada toco é
   medido antes de ser aceito e o que não passa deixa o pad aberto dizendo
   por quê.
+- **O que NAO fecha as ligacoes que faltam** (tudo medido em 2026-09-29,
+  sobre a placa com o modulo ligado; a linha de base e 30 itens
+  desconectados com 0 erros de DRC e 16 regras cumpridas):
+
+  | Tentativa | Resultado |
+  |---|---|
+  | Placa de 50 ou 52 mm | 33 desconectados. **Nao e falta de area**: a ocupacao e 23 % das tres camadas |
+  | Trilha de sinal a 0,127 mm (o minimo declarado) | **identico**. O passo da grade e 0,15 mm, entao 0,023 mm nao muda uma celula |
+  | Grade de 0,10 mm | 32, com 2 erros, e 8,5 min de roteamento |
+  | Anel livre de 0,9 mm em volta dos CIs de passo fino | **nenhuma peca se moveu**: elas ja guardavam essa distancia |
+  | Anel de 1,6 mm nos quatro CIs + folga de mascara 0,20 | 28, mas duas regras a menos (o desacoplamento afasta) |
+  | Folga de mascara 0,20 / 0,14 | 29 / 28, a segunda com 3 erros de isolamento |
+  | Celula movida para a direita + passivos de energia no verso | 32 |
+  | Cinco ordens de roteamento diferentes | 11 a 43: **so troca quais redes falham** |
+
+- **O fanout e o caminho, e ainda nao esta pronto.** Tirar cada ilha de
+  passo fino para uma via ANTES de rotear - com a placa vazia - levou as
+  redes que falham de **23 para 12** e as ligacoes roteadas de 81 para 85.
+  Mas o numero do DRC piorou (30 para 42), porque o cobre do fanout que o
+  roteamento nao usa vira fragmento e conta como item desconectado, e podar
+  so o que sobra ainda nao ficou certo. E o passe **existe** em `pre_ligados`:
+  o laco principal ja sabe partir de cobre pre-desenhado. E por aqui que a
+  proxima rodada comeca.
 - **O conector magnético é genérico**: `confirmed=False` em `parts.py`,
   e a janela da tampa segue o contorno dele; trocar a peça é trocar o
   footprint, a altura e rodar os dois dry runs.
