@@ -993,6 +993,35 @@ def terra(g: Grade, por_rede, segmentos, vias, falhas, todos=()) -> int:
             continue                     # a through pad already meets the plane
         bx, by = x - MP.ORIGEM[0], y - MP.ORIGEM[1]
         posto = None
+        # PAD GRANDE: a via vai DENTRO dele. E o caso do pad termico de um
+        # QFN - o do nPM1100 tem 2,7 x 2,7 mm -, e e assim que ele se liga ao
+        # plano: uma matriz de vias no proprio pad, que tira calor e terra ao
+        # mesmo tempo. Procurar lugar "ao lado" de um pad desses e procurar
+        # fora do encapsulamento, onde nao ha espaco: medido em 2026-09-30,
+        # os pinos de terra do U101 e o pad termico ficaram SEM VIA NENHUMA e
+        # levaram dez ligacoes de GND a ficarem abertas.
+        if min(hw, hh) >= 0.35:
+            passo_p = max(PASSO, VIA_D + FOLGA)
+            n_x = max(1, int((2 * hw - VIA_D) / passo_p) + 1)
+            n_y = max(1, int((2 * hh - VIA_D) / passo_p) + 1)
+            for iy in range(n_y):
+                for ix in range(n_x):
+                    vx = bx - hw + VIA_D / 2 + ix * passo_p
+                    vy = by - hh + VIA_D / 2 + iy * passo_p
+                    c0, c1 = g.cel(vx, vy)
+                    if not g.dentro(c0, c1):
+                        continue
+                    vx, vy = g.pos(c0, c1)
+                    if abs(vx - bx) > hw - VIA_D / 2 or                             abs(vy - by) > hh - VIA_D / 2:
+                        continue        # a via tem de caber INTEIRA no pad
+                    if not via_cabe_aqui(vx, vy, "GND", segmentos, vias, todos):
+                        continue
+                    vias.append((vx, vy, "GND"))
+                    g.via(vx, vy, "GND")
+                    n_gnd += 1
+            if any(abs(v[0] - bx) <= hw and abs(v[1] - by) <= hh
+                   for v in vias if v[2] == "GND"):
+                continue                # ja ligado por dentro
         # the four sides first, then the corners: a via straight out of the
         # pad gives the shortest loop, and the diagonal is what saves the
         # pads in the crowded corner by the power supply
@@ -2016,6 +2045,12 @@ def costurar_pads_opostos(segmentos: list, vias: list, todos: list,
     return postos, sem_lugar
 
 
+# As areas de regra lidas do proprio arquivo da placa, em coordenada local.
+# Quem roda depois do roteamento (o `stitch_gnd.py`) preenche isto antes de
+# procurar lugar para qualquer via.
+AREAS_DO_ARQUIVO: list[tuple[float, float, float, float]] = []
+
+
 def via_cabe_aqui(vx: float, vy: float, rede: str,
                   segmentos: list, vias: list, todos: list) -> bool:
     """Is there room for a via of `rede` at (vx, vy), in board coordinates?
@@ -2067,9 +2102,21 @@ def via_cabe_aqui(vx: float, vy: float, rede: str,
     for fx, fy in M.FUROS_DOC:
         if perto(math.hypot(fx - vx, fy - vy), 1.7 / 2 + VIA_FURO / 2 + 0.2):
             return False
-    # E as AREAS DE REGRA, que sao proibicao e nao folga: a faixa da antena
-    # do modulo nao pode ter cobre nenhum. Sem isto a juncao pos uma via
-    # dentro dela e o DRC devolveu `items_not_allowed` (2026-09-30).
+    # E as AREAS DE REGRA, que sao proibicao e nao folga.
+    #
+    # Duas fontes, porque elas vem de dois lugares. As do `make_dxf` sao
+    # fixas (a faixa da antena do modulo). A do no de chaveamento,
+    # `SEM_PLANO_BUCK_SW`, e CALCULADA na hora de escrever a placa, a partir
+    # de onde as pecas foram parar, e por isso nao esta no `make_dxf`:
+    # procurar so por nome com "KEEPOUT" nao a achava, e as vias postas
+    # dentro do pad termico do nPM1100 cairam dentro dela - doze
+    # `items_not_allowed` de uma vez (2026-09-30). Quem le a placa preenche
+    # `AREAS_DO_ARQUIVO`.
+    for kx0, ky0, kx1, ky1 in AREAS_DO_ARQUIVO:
+        dx = max(kx0 - vx, vx - kx1, 0.0)
+        dy = max(ky0 - vy, vy - ky1, 0.0)
+        if math.hypot(dx, dy) < VIA_D / 2 + FOLGA:
+            return False
     for nome_z, (kx0, ky0, kx1, ky1), _c, _s in M.ZONES:
         if "KEEPOUT" not in nome_z:
             continue

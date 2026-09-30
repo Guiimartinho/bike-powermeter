@@ -399,11 +399,17 @@ def ler(caminho: pathlib.Path):
     del seg_edge
 
     vias = []
+    redes_por_numero = {n: nome for nome, n
+                        in fp_load.redes_da_placa(arv).items()}
     for v in fp_load.kids(arv, "via"):
         a = fp_load.kid(v, "at")
         vias.append({"x": float(a[1]) - MP.ORIGEM[0],
                      "y": float(a[2]) - MP.ORIGEM[1],
-                     "n": int(fp_load.kid(v, "net")[1])})
+                     "n": int(fp_load.kid(v, "net")[1]),
+                     # o NOME da rede, e nao so o numero: a AL6 precisa saber
+                     # se a via e da propria rede do pad termico
+                     "rede": redes_por_numero.get(
+                         int(fp_load.kid(v, "net")[1]), "")})
     return pecas, pads, seg, vias, cortes
 
 
@@ -1353,6 +1359,15 @@ def main() -> int:
         if (q["ref"], q["pad"]) not in TERMICOS:
             continue
         for v in vias:
+            # Uma via da PROPRIA rede do pad termico nao e defeito: e assim
+            # que um pad termico se liga ao plano, e a ficha do nPM1100 pede
+            # exatamente isso. O que a regra existe para pegar e a via de
+            # OUTRA rede passando por baixo, que suga solda e nao tem o que
+            # fazer ali. Ate 2026-09-30 a regra nao olhava a rede, e as tres
+            # vias postas dentro dos pads termicos - as unicas que ligam o
+            # terra do U101 ao plano - apareciam como falha.
+            if v.get("rede") == q.get("rede"):
+                continue
             # "sob o pad" e o pad mais 0,5 mm de margem, nao 1,2 mm fixos:
             # com 1,2 a regra acusou uma via de terra a 1,3 mm do centro de
             # um pad de 0,58, que esta a 1 mm do cobre dele. A ponte de

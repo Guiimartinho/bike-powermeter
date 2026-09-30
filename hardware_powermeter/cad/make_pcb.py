@@ -417,6 +417,36 @@ def redes() -> tuple[dict[str, int], dict[tuple[str, str], str]]:
     return numeros, por_pad
 
 
+# Os CIs de passo fino que ja foram postos na FRENTE, e a caixa de cada um.
+# `colocar()` preenche isto enquanto coloca; `livre()` le. Existe porque
+# `livre()` e funcao de modulo e a colocacao e local de `colocar()`.
+CIS_DA_FRENTE: dict[str, tuple[float, float, float, float]] = {}
+# O que conta como passo fino: encapsulamento sem perna visivel, em que o
+# vao entre duas ilhas nao cabe uma via.
+_FINO = ("QFN", "DFN", "SON", "LGA", "BGA", "WLCSP")
+
+
+def e_fino(ref: str) -> bool:
+    nome = FPS.FP[ref][0] if ref in FPS.FP else ""
+    return any(k in nome.upper() for k in _FINO)
+
+
+def _registra_ci(ref: str, x: float, y: float, ang: int, atras: bool) -> None:
+    """Guarda a caixa de um CI de passo fino posto na frente."""
+    if atras or not e_fino(ref):
+        return
+    b = caixa(ref, ang)
+    CIS_DA_FRENTE[ref] = (x + b[0], y + b[1], x + b[2], y + b[3])
+
+
+def sob_ci_fino(x0: float, y0: float, x1: float, y1: float) -> bool:
+    """A caixa encosta no contorno de um CI de passo fino da frente?"""
+    for _r, (kx0, ky0, kx1, ky1) in CIS_DA_FRENTE.items():
+        if x1 > kx0 and kx1 > x0 and y1 > ky0 and ky1 > y0:
+            return True
+    return False
+
+
 def livre(x: float, y: float, bx: tuple[float, float, float, float],
           postos: list[tuple[float, float, float, float]],
           ref: str = "", borda: float | None = None) -> bool:
@@ -445,6 +475,23 @@ def livre(x: float, y: float, bx: tuple[float, float, float, float],
         dy = max(my + m[1] - y1, y0 - (my + m[3]), 0.0)
         if math.hypot(dx, dy) < LONGE_DO_MODULO:
             return False
+    # NADA DO VERSO DEBAIXO DE UM CI DE PASSO FINO DA FRENTE.
+    #
+    # Medido em 2026-09-30, com o Freerouting: das 26 ligacoes que sobraram
+    # abertas, quase todas tocavam o `U101` - os pinos 1, 2, 3, 6, 9, 14, 17,
+    # 21 e 22 do nPM1100. O motivo estava debaixo dele: o `R101` a 0,0 mm do
+    # centro, e `R102`, `C103`, `C106`, `C102` e `R106` a menos de 3,5 mm,
+    # todos no verso, sob o corpo do QFN. O passe de HPWL os levou para la
+    # porque diretamente sob o pino o fio tem comprimento zero.
+    #
+    # So que fio zero nao existe: a ligacao entre as duas faces e uma VIA, e
+    # sob um QFN de 0,5 mm de passo nao ha onde por uma - o vao entre duas
+    # ilhas e 0,25 mm e uma via de 0,40 com folga pede mais que isso. O
+    # capacitor do verso tem de ficar logo FORA do contorno do CI, com a via
+    # ao lado da ilha dele; e mais longe em desenho e mais perto em
+    # eletricidade, que e o que conta.
+    if ref in ATRAS and sob_ci_fino(x0, y0, x1, y1):
+        return False
     # The cell lies against the back face: a part with a body may stand on
     # the back anywhere the cell does not reach, and nowhere it does.
     if ref in ATRAS:
@@ -782,6 +829,7 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
                 f"leva-la {d:.1f} mm de ({cx:.1f}; {cy:.1f}), e o limite e "
                 f"{LIMITE_DESLOCA(ref):.1f} mm")
         lugar[ref] = (p[0], p[1], ang, ref in ATRAS)
+        _registra_ci(ref, p[0], p[1], ang, ref in ATRAS)
         caixa_posta = (p[0] + bx[0], p[1] + bx[1], p[0] + bx[2], p[1] + bx[3])
         postos_face[atras].append(caixa_posta)
         if ref in PASSANTE:
@@ -1134,6 +1182,8 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
         del lugar[ref]
         return (x, y, ang, atras)
 
+    _registra = _registra_ci
+
     def poe(ref: str, x: float, y: float, ang: int, atras: bool) -> bool:
         bx = caixa(ref, ang)
         postos = postos_face[atras]
@@ -1142,6 +1192,7 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
         if not livre(x, y, bx, postos, ref):
             return False
         lugar[ref] = (x, y, ang, atras)
+        _registra(ref, x, y, ang, atras)
         postos_face[atras].append(caixa_em(ref, x, y, ang))
         return True
 
@@ -1195,6 +1246,7 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
             # construcao, entao, se nem ele passar, ela volta a forca.
             if not poe(ref, melhor[1], melhor[2], melhor[3], atras0) and                     not poe(ref, x0, y0, ang0, atras0):
                 lugar[ref] = (x0, y0, ang0, atras0)
+                _registra(ref, x0, y0, ang0, atras0)
                 postos_face[atras0].append(caixa_em(ref, x0, y0, ang0))
             if melhor[0] < antes - 1e-9:
                 ganho_total += antes - melhor[0]
