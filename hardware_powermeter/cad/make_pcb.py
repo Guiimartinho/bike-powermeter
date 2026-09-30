@@ -60,6 +60,18 @@ FOLGA = 0.25                   # between two courtyards: the courtyard
 PASSO = 0.5                    # placement grid
 
 # The part that anchors each zone of 04-pcb-e-caixa.md.
+# Quantas voltas de melhoria da colocacao, e ate onde cada peca procura
+# lugar melhor. Ver o passe 5 de colocar().
+MELHORA_VOLTAS = 3
+MELHORA_RAIO = 6.0
+
+
+def caixa_em(ref: str, x: float, y: float, ang: int):
+    """A caixa que uma peca ocupa, ja posta em (x, y)."""
+    b = caixa(ref, ang)
+    return (x + b[0], y + b[1], x + b[2], y + b[3])
+
+
 ANCORAS: dict[str, str] = {
     "U101": "ZONA_ENERGIA",
     "U301": "ZONA_CONVERSOR_ADS1220",
@@ -551,7 +563,11 @@ def rotulos(lugar: dict) -> dict[str, tuple[float, float, int]]:
     Candidates are tried from the part's own courtyard outwards, nearest
     first, so a label stays next to the thing it names.
     """
-    postas: list[tuple] = []
+    # Um rotulo por FACE: F.SilkS e B.SilkS sao duas serigrafias, e um
+    # designador da frente sobre um de tras nao esconde nada. Tratar os dois
+    # como uma lista so' gastava candidatos a toa e empurrava rotulos para
+    # longe da peca que eles nomeiam.
+    postas_face: dict[bool, list[tuple]] = {False: [], True: []}
     corpos = []
     ordem_corpos = []
     for ref, (x, y, ang, _a) in lugar.items():
@@ -566,6 +582,7 @@ def rotulos(lugar: dict) -> dict[str, tuple[float, float, int]]:
         (caixa(r, lugar[r][2])[3] - caixa(r, lugar[r][2])[1])))
     for ref in ordem:
         x, y, ang, _atras = lugar[ref]
+        postas = postas_face[bool(_atras)]
         bx = caixa(ref, ang)
         rot = 90 if ang % 180 else 0
         meia_w = len(ref) * TEXTO_ALT * TEXTO_LARG / 2
@@ -586,7 +603,11 @@ def rotulos(lugar: dict) -> dict[str, tuple[float, float, int]]:
         # Entao: candidatos do mais perto para o mais longe, e o primeiro que
         # nao cai sobre OUTRO rotulo ganha. Cair sobre contorno so desempata
         # entre candidatos da mesma distancia.
-        for passo in (0.0, 0.25, 0.5, 0.8, 1.2, 1.7, 2.3):
+        # ate 4 mm, e nao ate 2,3: tres rotulos caiam no ultimo recurso
+        # de ficar no centro da propria peca, e ai se sobrepunham
+        # (C307/C308, TP103/TP201, TP102/TP202, medido em 2026-09-29)
+        for passo in (0.0, 0.15, 0.25, 0.35, 0.5, 0.65, 0.8, 1.0,
+                      1.2, 1.45, 1.7, 2.0, 2.3, 3.0, 4.0):
             anel = []
             for dx, dy in ((0.0, bx[1] - meia_h - 0.2 - passo),
                            (0.0, bx[3] + meia_h + 0.2 + passo),
@@ -1049,6 +1070,127 @@ def colocar() -> tuple[dict[str, tuple[float, float, int, bool]], list[str]]:
                 desistidos.add(ref)
         resto = [r for r in resto if r not in lugar and r not in desistidos]
 
+    # ---- 5. melhoria: encurtar o que o roteador vai ter de ligar ----
+    # O custo e o HPWL: por rede, a meia-perimetro da caixa que contem as
+    # ilhas dela. E o limite inferior do comprimento de qualquer arvore que
+    # as ligue, e cai quando as pecas de uma rede se aproximam.
+    redes_de: dict = {}
+    for nome_n, pinos in N.NETS.items():
+        refs = {r for r, _q in pinos}
+        if len(refs) > 8 or len(refs) < 2:
+            continue          # um trilho liga tudo: nao diz nada
+        for r in refs:
+            redes_de.setdefault(r, set()).add(nome_n)
+
+    def _cx_cy(ref: str):
+        return (lugar[ref][0], lugar[ref][1]) if ref in lugar else None
+
+    def hpwl(nome_n: str) -> float:
+        pts = [_cx_cy(r) for r, _q in N.NETS[nome_n]]
+        pts = [q for q in pts if q]
+        if len(pts) < 2:
+            return 0.0
+        xs = [q[0] for q in pts]
+        ys = [q[1] for q in pts]
+        return (max(xs) - min(xs)) + (max(ys) - min(ys))
+
+    def custo(refs) -> float:
+        vistas = set()
+        for r in refs:
+            vistas |= redes_de.get(r, set())
+        return sum(hpwl(n_) for n_ in vistas)
+
+    # quem pode andar: nem ancora, nem posicao fixa, nem furo
+    presas = set(BORDA_FIXA) | set(ANCORAS) | {"J301"}
+    # O desacoplamento anda junto com o resto. MEDIDO em 2026-09-29, porque
+    # a escolha custa alguma coisa dos dois lados: solto, o HPWL encurta
+    # 31,8 mm de ligacao, o negociado fecha e a placa sai com 90 ligacoes,
+    # 20 em aberto e nenhum erro - mas a `AL1` piora de 7 de 17 capacitores
+    # fora do limite (media 3,06 mm) para 11 de 19 (3,85 mm). Preso de vez,
+    # o ganho cai para 3,5 mm; com coleira de 2 mm, para 5,8 mm; nos dois
+    # casos o negociado NAO fecha e a placa cai para o sequencial, com 85
+    # ligacoes e 24 a 26 em aberto. Fica solto, e a `AL1` continua o item
+    # grave que ela ja era: ela nao se resolve mexendo peca, e sim com mais
+    # area, que o dono nao quer dar.
+    moveis = [r for r in lugar if r not in presas and r in tam_bruto]
+
+    def tira(ref: str):
+        x, y, ang, atras = lugar[ref]
+        postos_face[atras].remove(caixa_em(ref, x, y, ang))
+        del lugar[ref]
+        return (x, y, ang, atras)
+
+    def poe(ref: str, x: float, y: float, ang: int, atras: bool) -> bool:
+        bx = caixa(ref, ang)
+        postos = postos_face[atras]
+        if ref in PASSANTE:
+            postos = postos + postos_face[not atras]
+        if not livre(x, y, bx, postos, ref):
+            return False
+        lugar[ref] = (x, y, ang, atras)
+        postos_face[atras].append(caixa_em(ref, x, y, ang))
+        return True
+
+    ganho_total = 0.0
+    for _volta in range(MELHORA_VOLTAS):
+        mexeu = False
+        for ref in sorted(moveis, key=lambda r: -custo([r])):
+            if ref not in lugar:
+                continue
+            antes = custo([ref])
+            if antes <= 0.0:
+                continue
+            x0, y0, ang0, atras0 = tira(ref)
+            # o centro das pecas com que ele fala: e para la que ele quer ir
+            amigos = set()
+            for n_ in redes_de.get(ref, ()):
+                amigos |= {r for r, _q in N.NETS[n_] if r != ref}
+            alvos = [_cx_cy(r) for r in amigos]
+            alvos = [q for q in alvos if q]
+            melhor = (antes, x0, y0, ang0)
+            if alvos:
+                ax = sum(q[0] for q in alvos) / len(alvos)
+                ay = sum(q[1] for q in alvos) / len(alvos)
+                cands = []
+                raio = PASSO
+                while raio <= MELHORA_RAIO:
+                    n_p = max(8, int(2 * math.pi * raio / PASSO))
+                    for i in range(n_p):
+                        a = 2 * math.pi * i / n_p
+                        cands.append((round((ax + raio * math.cos(a)) / PASSO) * PASSO,
+                                      round((ay + raio * math.sin(a)) / PASSO) * PASSO))
+                    raio += PASSO
+                cands.insert(0, (round(ax / PASSO) * PASSO,
+                                 round(ay / PASSO) * PASSO))
+                vistos_c = set()
+                for cx_, cy_ in cands:
+                    if (cx_, cy_) in vistos_c:
+                        continue
+                    vistos_c.add((cx_, cy_))
+                    for ang in (ang0, (ang0 + 90) % 360):
+                        if not poe(ref, cx_, cy_, ang, atras0):
+                            continue
+                        c = custo([ref])
+                        if c < melhor[0] - 1e-9:
+                            melhor = (c, cx_, cy_, ang)
+                        tira(ref)
+            # A peca TEM de voltar. `tira()` a arrancou de `lugar` e de
+            # `postos_face`, e se o `poe()` final recusasse ela sumia da
+            # placa calada: em 2026-09-29 o gerador passou a colocar 58 das
+            # 59 pecas por causa disto. O lugar de origem era legal por
+            # construcao, entao, se nem ele passar, ela volta a forca.
+            if not poe(ref, melhor[1], melhor[2], melhor[3], atras0) and                     not poe(ref, x0, y0, ang0, atras0):
+                lugar[ref] = (x0, y0, ang0, atras0)
+                postos_face[atras0].append(caixa_em(ref, x0, y0, ang0))
+            if melhor[0] < antes - 1e-9:
+                ganho_total += antes - melhor[0]
+                mexeu = True
+        if not mexeu:
+            break
+    if ganho_total > 0.0:
+        print(f"  melhoria da colocacao: {ganho_total:.1f} mm de ligacao a "
+              f"menos (HPWL)")
+
     return lugar, falhas
 
 
@@ -1345,6 +1487,25 @@ def plano_de_terra(numero: int, camadas: tuple[str, ...], recuo: float) -> str:
             f'\t\t(polygon\n\t\t\t(pts\n{poly}\n\t\t\t)\n\t\t)\n\t)')
 
 
+def uuids_unicos(corpo: str, ref: str) -> str:
+    """Um UUID por item da placa, e nao um por desenho de footprint.
+
+    `footprints._pad()` deriva o UUID da ilha do NUMERO do pino e da posicao
+    DENTRO do footprint, que sao os mesmos em toda instancia do mesmo
+    desenho: os dezessete resistores 0402 saiam todos com a mesma ilha "1".
+    O KiCad guarda os itens num mapa por KIID, entao um UUID repetido faz o
+    relatorio do DRC descrever o item ERRADO: a lista de desconectados
+    trazia pares entre redes diferentes ("Ilha 1 [VBUS] de TP101" contra uma
+    ilha de UART_RX), o que nao existe num ratsnest, e por isso nao dava
+    para saber o que faltava fechar. Medido em 2026-09-29: 2.791 UUIDs
+    escritos, 2.325 distintos, 43 desenhos repetidos ate dezessete vezes.
+    Aqui cada UUID passa a levar a referencia da peca junto.
+    """
+    def troca(m):
+        return '(uuid "' + uid("it", ref, m.group(1)) + '")'
+    return re.sub(r'\(uuid "([0-9a-f-]{36})"\)', troca, corpo)
+
+
 def com_redes(corpo: str, ref: str, por_pad: dict, numeros: dict) -> str:
     """Put the net of each pad into the footprint body."""
     saida = []
@@ -1464,6 +1625,7 @@ def main() -> int:
             corpo = FPS.modelo_no_verso(corpo)
         corpo = girar_pads(corpo, ang)
         corpo = com_redes(corpo, ref, por_pad, numeros)
+        corpo = uuids_unicos(corpo, ref)
         px, py = P_(x, y)
         camada = "B.Cu" if atras else "F.Cu"
         # rotulos() picks the offset in the BOARD's frame, and KiCad turns a
