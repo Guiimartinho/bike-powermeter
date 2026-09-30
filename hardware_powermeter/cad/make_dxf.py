@@ -58,8 +58,15 @@ HERE = pathlib.Path(__file__).resolve().parent
 # module gives back about 4 mm of it, which is what the pod's new O-ring
 # seal costs, so the pod lands at 59,4 x 19,0 inside the 60 x 20 target
 # (04-placa.md and 07-pod.md have both tables).
-W = float(os.environ.get("PMETER_W", 47.0))
-H = float(os.environ.get("PMETER_H", 14.0))
+# 50 x 16 desde 2026-09-30 (decisao do dono). Cresce mais na LARGURA que no
+# comprimento, que e a forma do pod que se quer: baixo e largo, e nao
+# comprido. O motivo esta medido: a face de cima tinha 55,2% de celula livre
+# ANTES da primeira trilha - quase metade dela ja era ilha e folga -, contra
+# 87,1% da In2.Cu e 81,6% da B.Cu, e toda falha de roteamento era "sem
+# caminho ate (x; y) na camada 0", a saida do pino. Nao faltava area de
+# placa: faltava face de cima.
+W = float(os.environ.get("PMETER_W", 50.0))
+H = float(os.environ.get("PMETER_H", 16.0))
 THICKNESS = 0.8
 
 # Corner radius: 1,5 mm, the smallest a pod wall of 1,0 mm can follow with
@@ -133,9 +140,18 @@ MOD_Y1 = H / 2.0 + _MOD_ALT / 2.0
 TETO_TAMPA = 2.7
 ATRAVESSA_TAMPA = {"J101"}
 SOMBRA_TAMPA = f"SOMBRA_TAMPA_MAX_{TETO_TAMPA:.1f}MM".replace(".", "-")
+# A CELULA SAIU DE BAIXO DA PLACA (2026-09-30, decisao do dono): ela passa a
+# ficar AO LADO da placa dentro do pod, para o aparelho ficar mais baixo -
+# sem ela na pilha a altura cai de 10 mm para uns 6,5. O efeito no projeto da
+# placa e maior que no do pod: antes a celula cobria x 1,5 a 26 da face de
+# tras, isto e, o bloco de energia inteiro, que por isso nao tinha verso
+# nenhum para aliviar a face de cima. Agora o verso e livre de ponta a ponta.
+# `SOMBRA_CELULA` continua existindo como nome vazio para quem a cita.
 SOMBRA_CELULA = "SOMBRA_CELULA_MAX_0-0MM"
-SOMBRA_VERSO = "SOMBRA_VERSO_MAX_1-0MM"
-TETO_VERSO = 1.0
+SOMBRA_VERSO = "SOMBRA_VERSO_MAX_1-5MM"
+# 1,5 e nao 1,0: sem a celula no fundo, o rebaixo do pod pode ser mais fundo.
+# Cabe um 0603 (0,9) e um TDFN de 0,8, e nao so o 0402 de 0,5.
+TETO_VERSO = 1.5
 
 
 def _f(x0: float, y0: float, x1: float, y1: float) -> tuple:
@@ -200,14 +216,10 @@ ZONES = [
     # was a fixed rectangle of 1,0 to 26,0 and the cell grew to 25 mm and
     # moved against the wall on 2026-09-28, so three back-face capacitors
     # ended up over it with 0,5 mm of air (PD4 caught them).
-    ("SOMBRA_CELULA_MAX_0-0MM", _f(1.5, 0.0, 2.5 + 23.0 + 0.5, 0.5 + 11.0 + 0.5), 5,
-     "docs/02, Pod: a celula deitada sob a placa; nada com corpo na face de "
-     "tras dentro desta area"),
-    # and the ceiling the back face has OUTSIDE that shadow: the pod's
-    # floor is recessed there, and a 0402 is 0,5 mm tall
-    ("SOMBRA_VERSO_MAX_1-0MM", _f(0.0, 0.0, W, H), 6,
-     "pod/make_pod.py: o rebaixo do fundo deixa 1,0 mm para peca baixa na "
-     "face de tras, fora da sombra da celula"),
+    ("SOMBRA_VERSO_MAX_1-5MM", _f(0.0, 0.0, W, H), 6,
+     "pod/make_pod.py: o rebaixo do fundo deixa 1,5 mm para peca baixa na "
+     "face de tras. A celula nao fica mais sob a placa (2026-09-30), entao "
+     "o verso e livre de ponta a ponta"),
     # The lid's shadow, which the ME2 rule of the board's dry run measures:
     # every part of the front face is under it.
     (SOMBRA_TAMPA, _f(0.0, 0.0, W, H), 4,

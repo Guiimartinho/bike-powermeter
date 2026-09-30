@@ -1401,9 +1401,10 @@ def main() -> int:
     # of them and passes; this rule was failing the same parts. Two rules
     # of the same project disagreeing about the same millimetre is worse
     # than either being wrong alone, because both look measured.
+    # A sombra da celula saiu: desde 2026-09-30 a celula fica AO LADO da
+    # placa, nao debaixo dela, e o verso tem um teto so' de ponta a ponta.
     TETOS = ((M.SOMBRA_TAMPA, M.TETO_TAMPA, False),
-             (M.SOMBRA_CELULA, 0.0, True),
-             (M.SOMBRA_VERSO, 1.0, True))
+             (M.SOMBRA_VERSO, M.TETO_VERSO, True))
     altos = []
     sem_altura = []
     sem_zona: set = set()

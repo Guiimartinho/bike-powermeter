@@ -73,7 +73,7 @@ import fp_load  # noqa: E402
 import make_dxf as M  # noqa: E402
 import make_pcb as MP  # noqa: E402
 
-# 0,10 e nao 0,15 (2026-09-29, decisao do dono: "diminua os valores ate
+# 0,09 e nao 0,15 (2026-09-29 e 2026-09-30, decisao do dono: "diminua os valores ate
 # caber"). O que limita esta placa nao e a area livre - sao 23% de ocupacao
 # em tres camadas - e sim a SAIDA DOS PINOS: o negociado acha caminho para
 # 107 das 108 ligacoes e nao consegue separa-las, e toda falha e "sem
@@ -83,8 +83,8 @@ import make_pcb as MP  # noqa: E402
 # trilhas no mesmo canal. Os numeros sao capacidade NORMAL de fabrica em 4
 # camadas (JLCPCB: 0,0889 mm de trilha e de isolamento, furo de 0,20 e via
 # de 0,40), e o `pmeter.kicad_pro` passou a cobrar 0,09 para sobrar margem.
-PASSO = 0.10                # routing grid, mm
-LARGURA = 0.10              # default track width
+PASSO = 0.09                # routing grid, mm
+LARGURA = 0.09              # default track width
 LARGURA_ALIM = 0.4          # power track width
 LARGURA_USB = 0.2
 VIA_D, VIA_FURO = 0.40, 0.20
@@ -100,7 +100,13 @@ VIA_D, VIA_FURO = 0.40, 0.20
 # The classes of pmeter.kicad_pro, read and not guessed: Default 0.127,
 # Alimentacao 0.127 (it differs by via size, not by clearance) and USB 0.2.
 # Treating USB as 0.127 is what put a ground track 0.075 mm from USB_DP.
-FOLGA = 0.10                # 0.09 da classe, mais a grade
+# 0,10 com a classe em 0,0889. A folga do roteador tem de ficar ACIMA da
+# que o fabricante recebe, nunca abaixo: a `conferir` desconta 0,01 de si
+# mesma, entao com FOLGA = 0,09 ela passou a exigir 0,170 mm entre dois
+# trilhos de 0,09 enquanto o KiCad exige 0,179 - isto e, a minha medida
+# ficou MAIS FROUXA que o DRC e deixava passar o que ele reprova. Com 0,10
+# ela volta a exigir 0,180 e a ser a mais estrita das duas (2026-09-30).
+FOLGA = 0.10                # 0,0889 da classe, mais a grade e a margem
 FOLGA_FURO = 0.21           # 0.2 do min_hole_clearance, mais a grade
 FOLGA_USB = FOLGA           # the USB class keeps the fabricator's 0,127 here
                             # (make_pro.py): at full speed on 3 cm of track
@@ -145,8 +151,8 @@ I_BCU = NC - 1
 # 20 celulas (3 mm) ja paga as duas vias para descer e voltar, que e' como
 # se desenha uma placa densa a mao: sai do pino, desce, atravessa por
 # dentro, sobe no destino.
-CUSTO_CAMADA = (0.4, 0.0, 0.17)
-CUSTO_VIA = 9.0             # em passos de grade, uns 0,9 mm
+CUSTO_CAMADA = (0.36, 0.0, 0.15)
+CUSTO_VIA = 10.0            # em passos de grade, uns 0,9 mm
 CUSTO_CURVA = 0.7             # virar 90 graus
 CUSTO_CURVA_45 = 0.2          # virar 45: meia virada, meio custo
 # A maze search that cannot get through explores everything it is allowed to
@@ -1569,7 +1575,7 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
 
 
 def toco_limpo(p0, p1, cam: int, rede: str, w: float,
-               segmentos: list, todos, vias=()) -> str:
+               segmentos: list, todos, vias=(), estrito: bool = False) -> str:
     """O toco que se quer desenhar guarda distancia de tudo? Devolve o porque.
 
     A mesma geometria da `conferir`, mas de UM segmento contra o resto, para
@@ -1606,6 +1612,38 @@ def toco_limpo(p0, p1, cam: int, rede: str, w: float,
         if d < exigido:
             return (f"encostaria no pad {nome or '<sem rede>'} a {d:.3f} mm, "
                     f"pede {exigido:.3f}")
+    if not estrito:
+        return ""
+    # O passe de juncao desenha cobre num tabuleiro que ja esta pronto, e ele
+    # precisa saber de tudo o que a grade do roteador sabia e esta funcao nao
+    # sabia: a borda, a faixa da antena, o furo de fixacao e a mascara de
+    # solda. Sem estes quatro, a juncao de 2026-09-30 fechou onze ligacoes e
+    # devolveu dez erros de DRC - um `items_not_allowed` dentro da antena,
+    # dois `solder_mask_bridge`, dois de furo e quatro de isolamento.
+    meia = w / 2.0
+    for q in (p0, p1):
+        if q[0] < meia + 0.3 or q[1] < meia + 0.3 or                 q[0] > M.W - meia - 0.3 or q[1] > M.H - meia - 0.3:
+            return f"sairia da borda em ({q[0]:.1f}; {q[1]:.1f})"
+    for fx, fy in M.FUROS_DOC:
+        d = _dist_ponto_seg(fx, fy, p0, p1)
+        if d < 1.7 / 2 + meia + 0.2:
+            return f"encostaria no furo de ({fx:.1f}; {fy:.1f}) a {d:.3f} mm"
+    for nome_z, (kx0, ky0, kx1, ky1), _c, _s in M.ZONES:
+        if "KEEPOUT" not in nome_z:
+            continue
+        for q in (p0, p1, ((p0[0] + p1[0]) / 2.0, (p0[1] + p1[1]) / 2.0)):
+            dx = max(kx0 - q[0], q[0] - kx1, 0.0)
+            dy = max(ky0 - q[1], q[1] - ky1, 0.0)
+            if math.hypot(dx, dy) < meia + FOLGA:
+                return f"entraria em {nome_z}"
+    orx2, ory2 = MP.ORIGEM
+    for nome, idx, px, py, hw, hh in todos:
+        if nome == rede or (idx >= 0 and idx != cam):
+            continue
+        d = _dist_seg_ret(p0, p1, px - orx2, py - ory2, hw, hh)
+        if d < meia + FOLGA_MASCARA:
+            return (f"a teia de mascara ate o pad {nome or '<sem rede>'} "
+                    f"ficaria com {d:.3f} mm")
     return ""
 
 
@@ -1730,6 +1768,254 @@ def encostar_nos_pads(segmentos: list, vias: list, todos: list,
     return postos, recusados
 
 
+def _componentes_da_rede(rede, segmentos, vias, todos):
+    """Os pedacos de cobre desta rede que se tocam, agrupados.
+
+    Cada item e (camadas, geometria): um segmento vive numa camada, uma via
+    vive em TODAS, um pad vive na sua. Dois itens ficam no mesmo grupo quando
+    o cobre deles encosta - e so isso, porque e assim que o KiCad decide o
+    que esta ligado. Sem esta conta o roteador nao sabia que um pino da
+    frente e o capacitor dele no verso eram dois pedacos separados: as duas
+    metades tinham cobre, cada uma passava em toda conferencia, e o DRC
+    contava a ligacao como aberta.
+    """
+    orx, ory = MP.ORIGEM
+    itens = []
+    for i, (p0, p1, cam, r, w) in enumerate(segmentos):
+        if r == rede:
+            itens.append(("s", {cam}, (p0, p1, w), i))
+    for i, (vx, vy, r) in enumerate(vias):
+        if r == rede:
+            itens.append(("v", set(range(NC)), ((vx, vy), (vx, vy), VIA_D), i))
+    for i, (nome, idx, px, py, hw, hh) in enumerate(todos):
+        if nome != rede:
+            continue
+        q = (px - orx, py - ory)
+        cams = set(range(NC)) if idx < 0 else {idx}
+        itens.append(("p", cams, (q, q, 2.0 * min(hw, hh)), i))
+
+    pai = list(range(len(itens)))
+
+    def acha(a):
+        while pai[a] != a:
+            pai[a] = pai[pai[a]]
+            a = pai[a]
+        return a
+
+    def une(a, b):
+        ra, rb = acha(a), acha(b)
+        if ra != rb:
+            pai[ra] = rb
+
+    for a in range(len(itens)):
+        _ta, ca, (a0, a1, wa), _ia = itens[a]
+        for b in range(a + 1, len(itens)):
+            _tb, cb, (b0, b1, wb), _ib = itens[b]
+            if not (ca & cb):
+                continue
+            if _dist_seg_seg(a0, a1, b0, b1) <= wa / 2 + wb / 2 + 0.02:
+                une(a, b)
+    grupos: dict = {}
+    for i in range(len(itens)):
+        grupos.setdefault(acha(i), []).append(itens[i])
+    return list(grupos.values())
+
+
+def juntar_componentes(segmentos: list, vias: list, todos: list,
+                       limite: float = 8.0) -> tuple:
+    """Uma via ou um toco entre dois pedacos soltos da mesma rede.
+
+    Enquanto a rede tiver mais de um pedaco, pega os dois mais proximos e
+    tenta liga-los: se estiverem em camadas diferentes, uma via onde os dois
+    alcancam; se na mesma, um toco. Tudo medido antes de ser desenhado, com a
+    mesma `toco_limpo` e o mesmo `via_cabe_aqui` do resto do arquivo. O que
+    nao couber fica aberto e a funcao diz.
+    """
+    postos, falhou = 0, []
+    redes = sorted({s[3] for s in segmentos} | {v[2] for v in vias} |
+                   {q[0] for q in todos if q[0]})
+    for rede in redes:
+        if rede in NAO_ROTEAR:
+            continue
+        for _tentativa in range(24):
+            grupos = _componentes_da_rede(rede, segmentos, vias, todos)
+            if len(grupos) < 2:
+                break
+            # o par de pedacos mais proximo
+            melhor = None
+            for i in range(len(grupos)):
+                for j in range(i + 1, len(grupos)):
+                    for _t1, c1, (p0, p1, w1), _i1 in grupos[i]:
+                        for _t2, c2, (q0, q1, w2), _i2 in grupos[j]:
+                            d = _dist_seg_seg(p0, p1, q0, q1)
+                            if d > limite:
+                                continue
+                            if melhor is None or d < melhor[0]:
+                                melhor = (d, (p0, p1, w1, c1), (q0, q1, w2, c2))
+            if melhor is None:
+                falhou.append(f"{rede}: {len(grupos)} pedacos, o mais proximo "
+                              f"alem de {limite:.1f} mm")
+                break
+            _d, (p0, p1, w1, c1), (q0, q1, w2, c2) = melhor
+            # o ponto de cada lado que esta mais perto do outro
+            a = _ponto_mais_perto(p0, p1, q0, q1)
+            b = _ponto_mais_perto(q0, q1, a, a)
+            wl = max(LARGURA, min(largura(rede), w1, w2))
+            juntas = c1 & c2
+            feito = False
+            if juntas:
+                cam = sorted(juntas)[0]
+                if not toco_limpo(a, b, cam, rede, wl, segmentos, todos,
+                                  vias, estrito=True):
+                    segmentos.append((a, b, cam, rede, wl))
+                    feito = True
+            if not feito:
+                # camadas diferentes: uma via que os dois alcancam
+                for vx, vy in ((a[0], a[1]), (b[0], b[1]),
+                               ((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0)):
+                    if not via_cabe_aqui(vx, vy, rede, segmentos, vias, todos):
+                        continue
+                    ca = sorted(c1)[0]
+                    cb = sorted(c2)[0]
+                    if toco_limpo(a, (vx, vy), ca, rede, wl, segmentos,
+                                  todos, vias, estrito=True):
+                        continue
+                    if toco_limpo((vx, vy), b, cb, rede, wl, segmentos,
+                                  todos, vias, estrito=True):
+                        continue
+                    vias.append((vx, vy, rede))
+                    segmentos.append((a, (vx, vy), ca, rede, wl))
+                    segmentos.append(((vx, vy), b, cb, rede, wl))
+                    feito = True
+                    break
+            if not feito:
+                falhou.append(f"{rede}: nao coube junta em "
+                              f"({a[0]:.1f}; {a[1]:.1f})")
+                break
+            postos += 1
+    return postos, falhou
+
+
+def _ponto_mais_perto(p0, p1, q0, q1):
+    """O ponto do segmento p0-p1 mais proximo do segmento q0-q1."""
+    melhor, dmin = p0, 1e9
+    n = 24
+    for k in range(n + 1):
+        tx = p0[0] + (p1[0] - p0[0]) * k / n
+        ty = p0[1] + (p1[1] - p0[1]) * k / n
+        d = _dist_ponto_seg(tx, ty, q0, q1)
+        if d < dmin:
+            melhor, dmin = (tx, ty), d
+    return melhor
+
+
+def costurar_pads_opostos(segmentos: list, vias: list, todos: list,
+                          limite: float = 2.5) -> tuple:
+    """Liga um pino ao cobre da propria rede que esta na OUTRA face.
+
+    Desde que os passivos passaram para o verso (2026-09-30), quase toda
+    ligacao da placa atravessa: o pino do CI fica em cima e o capacitor que
+    ele serve fica embaixo, debaixo dele. Medido nessa placa: das 28 ligacoes
+    que o DRC dava como abertas, mais de vinte eram `Ilha X no top_cu` contra
+    `Ilha Y no bottom_cu` da MESMA rede, sem uma via entre as duas.
+
+    O `encostar_nos_pads` ja sabia disso, mas so' procurava lugar para a via
+    na PONTA DA TRILHA - e quando nao cabia ali, desistia do pino. Aqui a
+    via e procurada em volta do proprio pino, num disco que cresce, e os dois
+    tocos (pino-via e via-trilha) sao medidos antes de existirem. Nada e
+    desenhado no escuro: se nao houver lugar, o pino continua aberto e a
+    funcao diz quantos ficaram.
+    """
+    orx, ory = MP.ORIGEM
+    postos = 0
+    sem_lugar: list[str] = []
+
+    def copia_por_camada() -> dict:
+        d: dict = {}
+        for p0, p1, cam, rede, w in segmentos:
+            d.setdefault((cam, rede), []).append((p0, p1, w))
+        return d
+
+    por_camada = copia_por_camada()
+    vias_rede: dict = {}
+    for vx, vy, rede in vias:
+        vias_rede.setdefault(rede, []).append((vx, vy))
+
+    def tocado(x, y, hw, hh, idx, rede) -> bool:
+        for vx, vy in vias_rede.get(rede, ()):
+            if abs(vx - x) <= hw + VIA_D / 2 and abs(vy - y) <= hh + VIA_D / 2:
+                return True
+        for (cam, r), lista in por_camada.items():
+            if r != rede or (idx >= 0 and idx != cam):
+                continue
+            for q0, q1, w in lista:
+                for q in (q0, q1):
+                    if abs(q[0] - x) <= hw + w / 2 + 0.02 and                             abs(q[1] - y) <= hh + w / 2 + 0.02:
+                        return True
+                if min(q0[0], q1[0]) - w / 2 <= x <= max(q0[0], q1[0]) + w / 2 and                         min(q0[1], q1[1]) - w / 2 <= y <= max(q0[1], q1[1]) + w / 2:
+                    return True
+        return False
+
+    for nome, idx, px, py, hw, hh in todos:
+        if not nome or idx < 0:
+            continue                      # sem rede, ou pad passante
+        x, y = px - orx, py - ory
+        if tocado(x, y, hw, hh, idx, nome):
+            continue
+        # o cobre desta rede que esta em OUTRA camada, mais perto primeiro
+        alvos = []
+        for (cam, r), lista in por_camada.items():
+            if r != nome or cam == idx:
+                continue
+            for q0, q1, w in lista:
+                for q in (q0, q1):
+                    d = math.hypot(q[0] - x, q[1] - y)
+                    if d <= limite:
+                        alvos.append((d, q, cam, w))
+        if not alvos:
+            continue
+        alvos.sort(key=lambda z: z[0])
+        wl = max(LARGURA, min(largura(nome), 2.0 * min(hw, hh) - 0.05))
+        achou = None
+        raio = 0.0
+        while raio <= 1.5 and achou is None:
+            n_p = 1 if raio < 1e-9 else max(8, int(2 * math.pi * raio / PASSO))
+            for i in range(n_p):
+                a = 2.0 * math.pi * i / n_p
+                vx = x + raio * math.cos(a)
+                vy = y + raio * math.sin(a)
+                if not via_cabe_aqui(vx, vy, nome, segmentos, vias, todos):
+                    continue
+                # o toco do pino ate a via, na camada do pino
+                if raio > 1e-9 and toco_limpo((x, y), (vx, vy), idx, nome, wl,
+                                              segmentos, todos, vias,
+                                              estrito=True):
+                    continue
+                # e da via ate o cobre do outro lado
+                for _d, q, cam, _w in alvos[:8]:
+                    if toco_limpo((vx, vy), q, cam, nome, wl, segmentos,
+                                  todos, vias, estrito=True):
+                        continue
+                    achou = ((vx, vy), q, cam)
+                    break
+                if achou:
+                    break
+            raio += PASSO
+        if achou is None:
+            sem_lugar.append(f"{nome} em ({x:.1f}; {y:.1f})")
+            continue
+        (vx, vy), q, cam = achou
+        vias.append((vx, vy, nome))
+        vias_rede.setdefault(nome, []).append((vx, vy))
+        if math.hypot(vx - x, vy - y) > 1e-9:
+            segmentos.append(((x, y), (vx, vy), idx, nome, wl))
+            por_camada.setdefault((idx, nome), []).append(((x, y), (vx, vy), wl))
+        segmentos.append(((vx, vy), q, cam, nome, wl))
+        por_camada.setdefault((cam, nome), []).append(((vx, vy), q, wl))
+        postos += 1
+    return postos, sem_lugar
+
+
 def via_cabe_aqui(vx: float, vy: float, rede: str,
                   segmentos: list, vias: list, todos: list) -> bool:
     """Is there room for a via of `rede` at (vx, vy), in board coordinates?
@@ -1767,6 +2053,29 @@ def via_cabe_aqui(vx: float, vy: float, rede: str,
         dx = max(0.0, abs(px - orx - vx) - hw)
         dy = max(0.0, abs(py - ory - vy) - hh)
         if perto(math.hypot(dx, dy), VIA_D / 2 + max(f, FOLGA_FURO)):
+            return False
+        # E a MASCARA: as duas aberturas crescem e a teia entre elas tem de
+        # sobreviver. Sem isto o passe de juncao entre faces de 2026-09-30
+        # deu dois `solder_mask_bridge` no DRC.
+        if perto(math.hypot(dx, dy), VIA_D / 2 + FOLGA_MASCARA):
+            return False
+    # A BORDA da placa: min_copper_edge_clearance e 0,3 mm, medido do cobre.
+    if vx < VIA_D / 2 + 0.3 or vy < VIA_D / 2 + 0.3 or             vx > M.W - VIA_D / 2 - 0.3 or vy > M.H - VIA_D / 2 - 0.3:
+        return False
+    # Os FUROS de fixacao: furo contra furo pede 0,2 mm entre bordas, e o
+    # furo de M1.6 tem 1,7 de broca.
+    for fx, fy in M.FUROS_DOC:
+        if perto(math.hypot(fx - vx, fy - vy), 1.7 / 2 + VIA_FURO / 2 + 0.2):
+            return False
+    # E as AREAS DE REGRA, que sao proibicao e nao folga: a faixa da antena
+    # do modulo nao pode ter cobre nenhum. Sem isto a juncao pos uma via
+    # dentro dela e o DRC devolveu `items_not_allowed` (2026-09-30).
+    for nome_z, (kx0, ky0, kx1, ky1), _c, _s in M.ZONES:
+        if "KEEPOUT" not in nome_z:
+            continue
+        dx = max(kx0 - vx, vx - kx1, 0.0)
+        dy = max(ky0 - vy, vy - ky1, 0.0)
+        if math.hypot(dx, dy) < VIA_D / 2 + FOLGA:
             return False
     return True
 
@@ -2280,6 +2589,22 @@ def main() -> int:
         print(f"  {len(enc_recusados)} encostos RECUSADOS por encostarem em "
               "outra coisa; o pad fica aberto:")
         for r in enc_recusados[:6]:
+            print(f"    {r}")
+
+    n_jc, jc_sem = juntar_componentes(segmentos, vias, todos)
+    if n_jc:
+        print(f"  {n_jc} junta(s) entre pedacos soltos da mesma rede")
+    if jc_sem:
+        print(f"  {len(jc_sem)} rede(s) com pedaco que nao deu para juntar:")
+        for r in jc_sem[:6]:
+            print(f"    {r}")
+
+    n_op, op_sem = costurar_pads_opostos(segmentos, vias, todos)
+    if n_op:
+        print(f"  {n_op} pad(s) ligados a outra face por via de fuga propria")
+    if op_sem:
+        print(f"  {len(op_sem)} pad(s) sem lugar para a via de fuga:")
+        for r in op_sem[:6]:
             print(f"    {r}")
 
     # Uma via de costura perto demais de uma trilha e RETIRADA. Ela e

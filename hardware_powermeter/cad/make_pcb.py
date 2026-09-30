@@ -112,27 +112,41 @@ JUNTO: dict[str, str] = {
 # had nowhere to stand and the placer was carrying it 11 to 14 mm away.
 # They go underneath instead, outside the cell's shadow (make_dxf), where
 # the pod's floor is recessed.
-ATRAS: set[str] = {"TP101", "TP102", "TP103", "TP104", "TP201", "TP202", "TP301",
-                   # The module's own decoupling and its bus pull-ups. The
-                   # module is 12 mm wide on a 16 mm board and its power
-                   # pads sit on the castellated rows along the two 1,75 mm
-                   # strips: no 0402 fits there, so on the front the placer
-                   # was carrying them 11 to 14 mm away from the pin they
-                   # serve. Underneath there is room, and the cell does not
-                   # reach that end of the board.
-                   "C201", "C202", "C203", "FB201", "R204", "R205",
-                   # and the two low packages that live at the same end
-                   "U302", "U402",
-                   # and THEIR decoupling, for the same reason and measured
-                   # on 2026-09-28: a chip on the back whose capacitor stays
-                   # on the front is decoupled through the board. The front
-                   # ring round those two is full (C401, C402, U401, C304,
-                   # C306 and four test points), so the placer was carrying
-                   # C403 12,6 mm from the TMP117 pin the datasheet wants it
-                   # 0,1 uF away from, and C308 11,1 mm from the load
-                   # switch input. C307 fits on the front by luck, and goes
-                   # with them so the pair of the same chip shares a face.
-                   "C307", "C308", "C403"}
+ATRAS: set[str] = set()
+# A FACE DE TRAS, agora que a celula saiu de baixo da placa (2026-09-30).
+#
+# Antes ela so' recebia os pontos de teste e um punhado de passivos: a
+# celula cobria x 1,5 a 26 do verso, ou seja o bloco de energia inteiro, e
+# quem tivesse corpo nao podia ficar la. Com a celula ao lado da placa o
+# verso e livre de ponta a ponta, e ele deixa de ser um recurso de ultimo
+# caso para virar o lugar natural do passivo.
+#
+# A medida que manda: a face de CIMA tinha 55,2% de celula livre antes da
+# primeira trilha - ilha e folga comiam 45% dela - contra 87,1% da In2.Cu e
+# 81,6% da B.Cu, e toda falha de roteamento era "sem caminho ate (x; y) na
+# camada 0". Afinar a trilha nao resolve isso, porque a ilha nao afina.
+# Tirar ilha de cima, sim.
+#
+# Entao vai para tras TODO passivo: resistor, capacitor e o ferrite. Um
+# capacitor de desacoplamento no verso, com uma via, fica SOB o pino que ele
+# serve - mais perto do que qualquer lugar que sobrasse do lado de cima, que
+# e o que a `AL1` vinha cobrando (11 de 19 fora do limite, ate 9 mm).
+#
+# Fica na frente o que precisa ser alcancado ou visto: os CIs, o modulo, os
+# conectores, o LED e o indutor do buck (o laco de chaveamento nao atravessa
+# a placa). O teto do verso e 1,5 mm: cabe 0402 (0,5), 0603 (0,9) e 0805
+# (1,2).
+for _r in list(FPS.FP):
+    if _r[0] in ("R", "C") and _r[1:].isdigit():
+        ATRAS.add(_r)
+ATRAS |= {"FB201", "TP101", "TP102", "TP103", "TP104", "TP201", "TP202",
+          "TP301"}
+# ... menos estes, que tem de ficar em cima:
+ATRAS -= {
+    # o capacitor de saida do buck fecha o laco de chaveamento com o
+    # indutor e o nPM1100, e esse laco nao pode atravessar a placa
+    "C104", "C105",
+}
 # Everything else stays on the front, and the reason is the cell: it lies
 # against the back over the first 25 mm, so a part whose chip is at that
 # end has nowhere underneath to go. The charger's resistors and the fuel
