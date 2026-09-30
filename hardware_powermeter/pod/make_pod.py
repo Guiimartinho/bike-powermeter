@@ -136,7 +136,31 @@ PLACA_W, PLACA_H, PLACA_ESP = MD.W, MD.H, MD.THICKNESS
 # 1012 mm3 -> ~78 mAh -> 52 h at 1,5 mA, which TIES the class reference and
 # does not beat it. Beating it means the 10 kOhm bridge (the bridge is 40 %
 # of the current), and the owner chose to keep the 5 kOhm part.
-CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 23.0, 11.0, 4.0, 0.5
+# A CELULA AO LADO DA PLACA, decidida pelo dono em 2026-09-30 para o
+# aparelho ficar mais baixo. Ela deixa de custar ALTURA e passa a custar
+# COMPRIMENTO, e por isso muda de forma: antes era comprida e estreita
+# porque tinha de caber sob a placa entre os ressaltos; agora e' o contrario
+# - quanto mais larga e mais grossa, menos comprimento ela toma.
+#
+#   largura 15,0   e o que sobra entre as paredes (21,0 de pod menos 2 x 2,0
+#                  de parede da' 17,0 uteis) com 1,0 de folga para o berco.
+#   espessura 5,0  nao custa nada: a pilha da placa manda 5,0 no mesmo
+#                  espaco (1,5 sob a placa + 0,8 dela + 2,7 de teto), entao
+#                  ate 5,0 a celula e' de graca em altura.
+#   comprimento 14,0  e o que sobra: 15 x 14 x 5,0 = 1050 mm3, que a 0,077
+#                  mAh/mm3 da' ~81 mAh e ~54 h a 1,5 mA. O envelope de antes
+#                  (23 x 11 x 4,0 = 1012 mm3) dava 78 mAh e 52 h, entao a
+#                  troca nao perde carga - ganha um pouco - e custa 14 mm de
+#                  pod em vez de 4 mm de altura.
+#
+# O `CELULA_VAO` deixa de existir como folga entre a celula e a placa: elas
+# nao se sobrepoem mais. Ele vira a folga entre a celula e a PONTA da placa.
+# 15 de comprimento e 14 de largura, e nao o contrario: entre as paredes
+# sobram 17,0 mm, e uma celula de 15 deixava 1,0 mm para os dois lados -
+# sem espaco para a nervura que a segura, que foi o que a `PD15` acusou na
+# primeira execucao. Com 14 sobram 1,5 de cada lado, que e nervura de 0,8
+# mais 0,7 de folga. O volume nao muda: 15 x 14 x 5,0 = 1050 mm3.
+CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 15.0, 14.0, 5.0, 0.5
 # The cell's own leads: a pouch of this size ships with a two-wire tail, and
 # it is what rises through the channel at the left end into J102. Drawn
 # because a battery without its wires is not the part anyone buys.
@@ -154,6 +178,33 @@ CELULA_DESLOC = 2.5
 TETO = MD.TETO_TAMPA          # the ceiling over the front parts (2,7)
 JANELA_FOLGA = 0.3            # the lid's window round the connector's courtyard
 JUNTA_LARG, JUNTA_REBAIXO = 1.5, 0.3
+# A junta plana e' GRAMPEADA na parede: o `J101` fica rente a borda de baixo
+# da placa e o anel de 1,5 passava 0,05 mm por cima do sulco do O-ring, o
+# que poria as duas vedacoes uma sobre a outra (PD20, 2026-09-30). Onde nao
+# cabe 1,5 ela usa o que ha, e a regra cobra este minimo.
+JUNTA_MIN = 1.0
+
+# ---------------------------------------------------------- as vedacoes
+# O aparelho fica na face interna do braco, a centimetros do chao: leva
+# chuva, spray de estrada e mangueira. Toda abertura do pod e um caminho de
+# agua ate a placa, e cada uma tem de ter a sua vedacao. A `PD19` enumera as
+# aberturas e cobra estas constantes uma a uma.
+#
+# O furo de luz do LED: cheio de resina TRANSPARENTE ate a face de fora.
+# Ele e' um furo passante de 2,5 mm na tampa, sobre o LED, e sem enchimento
+# e' o maior buraco do pod.
+LED_RESINA = True
+# O tampao sobre a cabeca do parafuso: a cabeca e' escareada na tampa e o
+# furo atravessa, entao sobra um poco de 0,8 mm sobre ela que se enche de
+# resina depois de apertar. Tambem trava o parafuso.
+PARAF_TAMPAO_P = 0.8
+# O colar em volta do rasgo dos fios da ponte, no FUNDO. O rasgo e' por onde
+# os fios do extensometro sobem do braco, e e' a unica abertura do lado de
+# baixo. O colar sobe 1,5 mm dentro da cavidade: ele segura o envase (que
+# senao escorreria por ali antes de curar) e alonga o caminho da agua. Por
+# fora, o proprio adesivo que cola o pod ao braco fecha o resto.
+RASGO_COLAR_L = 0.8
+RASGO_COLAR_ALT = 1.5
 LED_FURO = 2.5
 # The floor slot round the bridge's holes. 0,4 and not 0,5: at 0,5 the cut
 # ran 0,05 mm under the bottom ledge, which is what the board rests on
@@ -315,16 +366,25 @@ _boss = PARAF_BOSS_D + 2.0 * PARAF_VAO
 PARAF_EXTRA_ESQ = max(0.0, _boss - CANAL_FIO)
 PARAF_EXTRA_DIR = 0.0
 
-W_P = (PAREDE_EFET + CANAL_FIO + PARAF_EXTRA_ESQ + PLACA_W
-       + FOLGA_PLACA + PARAF_EXTRA_DIR + PAREDE_EFET)
+W_P = (PAREDE_EFET + CELULA_W + CELULA_VAO + CANAL_FIO + PARAF_EXTRA_ESQ
+       + PLACA_W + FOLGA_PLACA + PARAF_EXTRA_DIR + PAREDE_EFET)
 H_P = PLACA_H + 2.0 * (FOLGA_PLACA + PAREDE_EFET)
-PLACA_X0 = PAREDE_EFET + CANAL_FIO + PARAF_EXTRA_ESQ
+PLACA_X0 = (PAREDE_EFET + CELULA_W + CELULA_VAO + CANAL_FIO
+           + PARAF_EXTRA_ESQ)
 PLACA_Y0 = PAREDE_EFET + FOLGA_PLACA
+CELULA_X0 = PAREDE_EFET
+CELULA_Y0 = (H_P - CELULA_H) / 2.0     # centrada entre as paredes
+
 # The two screws, on the centre line. The left one sits in the wire
 # channel; the right one is THROUGH the board, in the window between the
 # cell's end and the module - and its x is derived from the cell, not
 # written down, so it follows if either of them moves.
-PARAF_X_ESQ = PAREDE_EFET + (CANAL_FIO + PARAF_EXTRA_ESQ) / 2.0
+# Entre a CELULA e a placa, e nao na ponta esquerda: desde 2026-09-30 a
+# ponta esquerda e a celula, e o ressalto do parafuso invadia a bolsa
+# (PD14 pegou isso na primeira execucao). O vao entre as duas e' onde os
+# fios da celula sobem para o J102, e o parafuso divide esse vao com eles.
+PARAF_X_ESQ = (CELULA_X0 + CELULA_W + CELULA_VAO
+               + (CANAL_FIO + PARAF_EXTRA_ESQ) / 2.0)
 # taken from the BOARD's hole and not computed again here: the two have to
 # be the same point, and deriving it twice is how they drift apart
 PARAF_X_DIR = PLACA_X0 + MD.FUROS_DOC[0][0]
@@ -333,12 +393,18 @@ PARAF_XY = ((PARAF_X_ESQ, H_P / 2.0), (PARAF_X_DIR, PLACA_Y0 + MD.FUROS_DOC[0][1
 PARAF_NA_PLACA = (False, True)
 CELULA_Z0 = FUNDO
 CELULA_Z1 = FUNDO + CELULA_ESP
-PLACA_Z0 = CELULA_Z1 + CELULA_VAO
+# A placa nao sobe mais sobre a celula: ela desce ate o ar que as pecas do
+# VERSO pedem, que e o teto do verso do `make_dxf` (1,5 mm desde que os 43
+# passivos foram para la). Era esta soma que fazia o pod ter 10 mm.
+SOB_A_PLACA = MD.TETO_VERSO
+PLACA_Z0 = FUNDO + SOB_A_PLACA
 PLACA_Z1 = PLACA_Z0 + PLACA_ESP
-TAMPA_Z0 = PLACA_Z1 + TETO
+# O teto da cavidade e o mais alto dos dois: a pilha da placa ou a celula.
+TAMPA_Z0 = max(PLACA_Z1 + TETO, CELULA_Z1)
 T_P = TAMPA_Z0 + TAMPA
-CELULA_X0 = PLACA_X0 + CELULA_DESLOC
-CELULA_Y0 = PAREDE + RESSALTO          # against the wall, clear of the slot
+# A celula ocupa a ponta ESQUERDA do pod, antes da placa. A esquerda e nao a
+# direita porque a antena ceramica do modulo esta na ponta direita da placa
+# e uma bolsa de LiPo e uma folha de metal: `PD6` mede essa distancia.
 # The lid's lip, inside the walls. 0,4 wide and 0,1 of play, not 0,8 and
 # 0,15: the lip drops into the same 0,5 mm the board leaves to the wall,
 # and at 0,95 it came down on the module's 2,4 mm body (PD12).
@@ -517,8 +583,11 @@ class Pod:
         self.conector_alt = j["altura"]
         # the well: from the lid's top down to the connector's face
         self.poco = T_P - (PLACA_Z1 + self.conector_alt)
-        self.junta = (self.janela[0] - JUNTA_LARG, self.janela[1] - JUNTA_LARG,
-                      self.janela[2] + JUNTA_LARG, self.janela[3] + JUNTA_LARG)
+        # grampeada na parede: ver JUNTA_MIN
+        self.junta = (max(self.janela[0] - JUNTA_LARG, PAREDE),
+                      max(self.janela[1] - JUNTA_LARG, PAREDE),
+                      min(self.janela[2] + JUNTA_LARG, W_P - PAREDE),
+                      min(self.janela[3] + JUNTA_LARG, H_P - PAREDE))
         d = pecas.get("D201")
         self.led = None
         if d:
@@ -531,6 +600,7 @@ class Pod:
             xs = [q["x"] for q in j3["pads"]]
             ys = [q["y"] for q in j3["pads"]]
             r = max(q["hw"] for q in j3["pads"])
+            # (o colar vem logo abaixo, derivado deste retangulo)
             self.rasgo = (PLACA_X0 + min(xs) - r - RASGO_FOLGA, PLACA_Y0 + min(ys) - r - RASGO_FOLGA,
                           PLACA_X0 + max(xs) + r + RASGO_FOLGA, PLACA_Y0 + max(ys) + r + RASGO_FOLGA)
         # The two posts that hold the board's left end. They are NOT fixed
@@ -552,6 +622,19 @@ class Pod:
             a = (cx - PILAR_D / 2, cy - PILAR_D / 2, cx + PILAR_D / 2, cy + PILAR_D / 2)
             return not any(not (a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1])
                            for b in pads_tras)
+
+        # O COLAR em volta do rasgo, por dentro. O rasgo e a unica abertura
+        # do lado de baixo do pod: e por ele que os fios do extensometro
+        # sobem do braco. Sem colar, o envase escorreria por ali antes de
+        # curar e a agua teria um caminho reto ate a placa; com ele, o
+        # envase fica represado e o caminho da agua passa a ter a altura do
+        # colar mais a espessura do fundo. Por fora, quem fecha o resto e o
+        # proprio adesivo que cola o pod ao braco.
+        self.colar = None
+        if self.rasgo:
+            a, b, c, d = self.rasgo
+            self.colar = (a - RASGO_COLAR_L, b - RASGO_COLAR_L,
+                          c + RASGO_COLAR_L, d + RASGO_COLAR_L)
 
         self.pilares = []
         for cy0 in (PLACA_Y0 + 1.5, PLACA_Y0 + PLACA_H - 1.5):
@@ -616,8 +699,12 @@ class Pod:
         leave the cell held on one side (measured 2026-09-28: dropping gave
         one rib out of four).
         """
-        ent = (PAREDE + RESSALTO, PAREDE + RESSALTO,
-               W_P - PAREDE - RESSALTO, H_P - PAREDE - RESSALTO)
+        # O limite da baia e a PAREDE, nao parede mais ressalto. O ressalto
+        # e a borda em que a PLACA se apoia, e desde 2026-09-30 a placa nao
+        # chega a esta ponta do pod: a celula ficou sozinha aqui. Medindo
+        # contra parede+ressalto, as duas nervuras dos lados longos caiam
+        # por 0,15 mm e a `PD15` dizia, com razao, que a celula anda.
+        ent = (PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE)
         x0 = CELULA_X0 - BERCO_FOLGA - BERCO_LARG
         y0 = CELULA_Y0 - BERCO_FOLGA - BERCO_LARG
         x1 = CELULA_X0 + CELULA_W + BERCO_FOLGA + BERCO_LARG
@@ -682,6 +769,14 @@ class Pod:
             m.caixa(r[0], r[1], FUNDO, r[2], r[3], CELULA_Z1, COR_POD)
         furos = [self.rasgo] if self.rasgo else []
         m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, 0.0, FUNDO, furos, COR_POD)
+        # o colar do rasgo, subindo do fundo para dentro da cavidade
+        if self.colar:
+            a, b, c, d = self.colar
+            e, f, g, h = self.rasgo
+            m.caixa(a, b, FUNDO, e, d, FUNDO + RASGO_COLAR_ALT, COR_POD)
+            m.caixa(g, b, FUNDO, c, d, FUNDO + RASGO_COLAR_ALT, COR_POD)
+            m.caixa(e, b, FUNDO, g, f, FUNDO + RASGO_COLAR_ALT, COR_POD)
+            m.caixa(e, h, FUNDO, g, d, FUNDO + RASGO_COLAR_ALT, COR_POD)
         # The bonding land: the only part of the underside that touches the
         # arm. Outside it the floor is RELEVO higher, so the pod clears the
         # fillet of the arm's face instead of resting on it (PD17).

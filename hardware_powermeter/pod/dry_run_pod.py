@@ -196,18 +196,23 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     entre_ressaltos = (C.PAREDE + C.RESSALTO, C.PAREDE + C.RESSALTO,
                        C.W_P - C.PAREDE - C.RESSALTO, C.H_P - C.PAREDE - C.RESSALTO)
     problemas = []
-    if not _dentro(celula, entre_ressaltos, 0.0):
-        problemas.append("a celula bate nos ressaltos ou na parede")
-    if not _dentro(celula, placa, 0.0):
-        problemas.append("a celula sai de baixo da placa")
-    if C.PLACA_Z0 - C.CELULA_Z1 < C.CELULA_VAO - 1e-9:
-        problemas.append(f"so {f2(C.PLACA_Z0 - C.CELULA_Z1)} de ar entre a celula e a placa")
-    nx0, nx1 = pod.nervura
-    if nx1 <= nx0 + 0.3:
-        problemas.append(f"a nervura ficou com {f2(max(0.0, nx1 - nx0))} mm: o rasgo esta em cima da "
-                         "ponta da celula")
-    elif nx0 < celula[2]:
-        problemas.append("a nervura invade a celula")
+    # A celula fica AO LADO da placa desde 2026-09-30, nao sob ela: o que se
+    # mede mudou de "cabe no vao debaixo" para "tem baia propria e nao
+    # encosta na placa". A regra antiga cobrava as duas coisas que agora
+    # estao erradas de proposito - ficar sob a placa e ter ar entre as duas.
+    dentro_das_paredes = (C.PAREDE, C.PAREDE,
+                          C.W_P - C.PAREDE, C.H_P - C.PAREDE)
+    if not _dentro(celula, dentro_das_paredes, 0.0):
+        problemas.append("a celula bate na parede")
+    if _cruza(celula, placa):
+        problemas.append("a celula esta sob a placa: a baia dela e ao lado")
+    vao_x = placa[0] - celula[2]
+    if vao_x < C.CELULA_VAO - 1e-9:
+        problemas.append(f"so {f2(vao_x)} entre a celula e a ponta da placa, "
+                         f"pede {f2(C.CELULA_VAO)}")
+    if C.CELULA_Z1 > C.TAMPA_Z0 + 1e-9:
+        problemas.append(f"a celula de {f2(C.CELULA_ESP)} passa do teto da "
+                         f"cavidade ({f2(C.TAMPA_Z0)})")
     for cx, cy in pod.pilares:
         pil = (cx - C.PILAR_D / 2, cy - C.PILAR_D / 2, cx + C.PILAR_D / 2, cy + C.PILAR_D / 2)
         if _cruza(pil, celula):
@@ -217,10 +222,11 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     if problemas:
         r.falha("PD5", "; ".join(problemas))
     else:
-        r.ok("PD5", f"celula de {f2(C.CELULA_W)} x {f2(C.CELULA_H)} x {f2(C.CELULA_ESP)} entre os "
-                    f"ressaltos ({f2(entre_ressaltos[3] - entre_ressaltos[1])} de vao), "
-                    f"{f2(C.PLACA_Z0 - C.CELULA_Z1)} sob a placa, {f2(nx0 - celula[2])} da nervura e "
-                    f"{f2(pod.rasgo[0] - celula[2]) if pod.rasgo else '?'} do rasgo")
+        r.ok("PD5", f"celula de {f2(C.CELULA_W)} x {f2(C.CELULA_H)} x "
+                    f"{f2(C.CELULA_ESP)} na baia ao lado da placa, "
+                    f"{f2(vao_x)} da ponta dela, {f2(C.TAMPA_Z0 - C.CELULA_Z1)} "
+                    f"sob o teto da cavidade e "
+                    f"{f2(C.H_P - C.PAREDE - celula[3])} da parede de cima")
 
     # -- PD6: the cell away from the antenna ----------------------------------
     if not pod.antena:
@@ -296,10 +302,24 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
                               ("altura", C.T_P, C.ALVO[2])):
         if valor > alvo + 1e-9:
             fora.append(f"{nome} {f2(valor)} contra {alvo:g}")
+    # A pilha impressa e a de AGORA. Ate 2026-09-30 esta linha somava a
+    # celula, porque a celula ficava sob a placa; com ela ao lado quem manda
+    # na altura e o ar sob o verso mais a placa mais o teto, e a celula so
+    # entra se for mais alta que isso. Numero com nome errado engana mais
+    # que numero nenhum.
+    dentro = [f"{nome} {f2(valor)} de {alvo:g}"
+              for nome, valor, alvo in (("comprimento", C.W_P, C.ALVO[0]),
+                                        ("largura", C.H_P, C.ALVO[1]),
+                                        ("altura", C.T_P, C.ALVO[2]))
+              if valor <= alvo + 1e-9]
+    pilha = (f"pilha: fundo {f2(C.FUNDO)} + ar do verso {f2(C.SOB_A_PLACA)} + "
+             f"placa {f2(C.PLACA_ESP)} + teto {f2(C.TETO)} + tampa "
+             f"{f2(C.TAMPA)} = {f2(C.T_P)}; a celula de {f2(C.CELULA_ESP)} "
+             f"cabe nesse mesmo espaco, ao lado")
     if fora:
-        r.falha("PD10", "fora do envelope alvo de docs/02: " + "; ".join(fora) +
-                f" (pilha: fundo {f2(C.FUNDO)} + celula {f2(C.CELULA_ESP)} + ar {f2(C.CELULA_VAO)} + placa "
-                f"{f2(C.PLACA_ESP)} + teto {f2(C.TETO)} + tampa {f2(C.TAMPA)})")
+        r.falha("PD10", "fora do envelope alvo de docs/02: " + "; ".join(fora)
+                + (" (cumpre " + ", ".join(dentro) + ")" if dentro else "")
+                + f" ({pilha})")
     else:
         r.ok("PD10", f"{f2(C.W_P)} x {f2(C.H_P)} x {f2(C.T_P)} dentro do alvo de "
                      f"{C.ALVO[0]:g} x {C.ALVO[1]:g} x {C.ALVO[2]:g}")
@@ -486,6 +506,128 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
         r.ok("PD18", f"o modulo mede {f2(mod['altura'])} contra os {f2(C.MODULO_ALT_MAX)} que o teto "
                      "da tampa reserva. O anuncio NAO da a altura: 2,40 e requisito de compra, e a "
                      "peca que chegar tem de ser medida contra ele")
+
+    pd19_aberturas(pod, r)
+    pd20_caminho_da_agua(pod, r)
+
+
+def pd19_aberturas(pod, r) -> None:
+    """Toda abertura do pod tem vedacao, e a vedacao e medida.
+
+    O aparelho fica na face interna do braco, a centimetros do chao, e leva
+    chuva, spray de estrada e mangueira de lavagem. Cada furo do pod e um
+    caminho de agua ate a placa, e ate 2026-09-30 nao havia regra nenhuma
+    cobrando isso: o O-ring tinha a `PD13`, a janela do conector tinha a
+    `PD3` e a `PD16`, e o resto - o furo de luz, os dois parafusos e o rasgo
+    dos fios da ponte - nao tinha dono.
+
+    Aqui as aberturas sao ENUMERADAS a partir da geometria, uma a uma, e
+    cada uma tem de apontar para a vedacao que a fecha, com a medida dessa
+    vedacao. Uma abertura sem vedacao reprova pelo nome.
+    """
+    aberturas = []
+
+    # 1. a junta entre a concha e a tampa, em todo o contorno
+    aberturas.append((
+        "junta concha-tampa", "tampa",
+        f"O-ring de {f2(C.JUNTA_CORDAO)} num sulco de {f2(C.JUNTA_SULCO_L)} x "
+        f"{f2(C.JUNTA_SULCO_P)}",
+        C.JUNTA_SULCO_P > 0.0 and C.JUNTA_CORDAO > C.JUNTA_SULCO_P))
+
+    # 2. a janela do conector magnetico
+    jx0, jy0, jx1, jy1 = pod.janela
+    gx0, gy0, gx1, gy1 = pod.junta
+    folga_junta = min(jx0 - gx0, jy0 - gy0, gx1 - jx1, gy1 - jy1)
+    aberturas.append((
+        "janela do conector magnetico", "tampa",
+        f"junta plana de {f2(folga_junta)} em volta, rebaixo de "
+        f"{f2(C.JUNTA_REBAIXO)}, labio de {f2(C.POCO_LABIO)} e dreno de "
+        f"{f2(C.DRENO_L)}",
+        # o minimo, e nao a largura nominal: a junta e grampeada na parede
+        # onde o conector fica rente a borda, e ai ela e' menor de proposito
+        folga_junta >= C.JUNTA_MIN - 1e-9 and C.JUNTA_REBAIXO > 0.0
+        and C.POCO_LABIO > 0.0 and C.DRENO_L > 0.0))
+
+    # 3. o furo de luz do LED
+    if pod.led:
+        aberturas.append((
+            "furo de luz do LED", "tampa",
+            f"resina transparente enchendo os {f2(C.TAMPA)} de tampa "
+            f"(coluna de {f2(C.LED_FURO)} de diametro)",
+            getattr(C, "LED_RESINA", False)))
+
+    # 4. os furos dos parafusos
+    for i, (px, py) in enumerate(C.PARAF_XY):
+        aberturas.append((
+            f"furo do parafuso {i + 1} em ({f2(px)}; {f2(py)})", "tampa",
+            f"tampao de resina de {f2(getattr(C, 'PARAF_TAMPAO_P', 0.0))} "
+            "sobre a cabeca",
+            getattr(C, "PARAF_TAMPAO_P", 0.0) >= 0.5))
+
+    # 5. o rasgo dos fios da ponte, no fundo
+    if pod.rasgo:
+        # medido no DESENHO: o colar tem de cercar o rasgo pelos quatro
+        # lados e subir. Uma regra que le so a constante passa mesmo quando
+        # a peca nao foi desenhada.
+        colar_alt = getattr(C, "RASGO_COLAR_ALT", 0.0)
+        cerca = False
+        if getattr(pod, "colar", None):
+            cx0, cy0, cx1, cy1 = pod.colar
+            rx0, ry0, rx1, ry1 = pod.rasgo
+            larg = min(rx0 - cx0, ry0 - cy0, cx1 - rx1, cy1 - ry1)
+            cerca = larg >= getattr(C, "RASGO_COLAR_L", 0.0) - 1e-9
+        aberturas.append((
+            "rasgo dos fios da ponte", "fundo",
+            f"colar de {f2(getattr(C, 'RASGO_COLAR_L', 0.0))} cercando os "
+            f"quatro lados e subindo {f2(colar_alt)} para o envase segurar, "
+            "mais a cola ao braco",
+            cerca and colar_alt >= 1.0))
+
+    sem = [f"{nome} ({onde}): {como}" for nome, onde, como, ok in aberturas
+           if not ok]
+    if sem:
+        r.falha("PD19", f"{len(sem)} de {len(aberturas)} aberturas sem "
+                        "vedacao que feche: " + "; ".join(sem))
+    else:
+        r.ok("PD19", f"as {len(aberturas)} aberturas do pod tem vedacao: " +
+                     "; ".join(f"{nome} por {como}"
+                               for nome, _o, como, _k in aberturas))
+
+
+def pd20_caminho_da_agua(pod, r) -> None:
+    """A agua que entra no poco do conector sai para FORA, nunca para dentro.
+
+    O conector magnetico e' a unica coisa que fica exposta de proposito: os
+    seis contatos tem de ser alcancaveis pelo cabo. Entao o poco em volta
+    deles enche de agua, e o que decide se isso e' um problema nao e' o
+    poco - e' para onde ele drena. O dreno tem de apontar para a BORDA do
+    pod, e a junta plana tem de ficar entre o poco e a cavidade.
+    """
+    problemas = []
+    jx0, jy0, jx1, jy1 = pod.janela
+    gx0, gy0, gx1, gy1 = pod.junta
+    # a junta cerca a janela por inteiro?
+    if not (gx0 < jx0 and gy0 < jy0 and gx1 > jx1 and gy1 > jy1):
+        problemas.append("a junta plana nao cerca a janela por inteiro")
+    # o dreno sai para a borda mais proxima, e nao para o meio do pod
+    if min(gy0 - C.PAREDE, C.H_P - C.PAREDE - gy1,
+           gx0 - C.PAREDE, C.W_P - C.PAREDE - gx1) < -1e-9:
+        problemas.append("a junta plana passa da parede")
+    # e a largura que sobra em cada lado, que e o que veda
+    largs = (jx0 - gx0, jy0 - gy0, gx1 - jx1, gy1 - jy1)
+    if min(largs) < C.JUNTA_MIN - 1e-9:
+        problemas.append(f"a junta plana tem so {f2(min(largs))} no lado mais "
+                         f"estreito, e o minimo e {f2(C.JUNTA_MIN)}")
+    # e a placa nao pode ficar sob o poco sem a junta no meio
+    if C.JUNTA_REBAIXO <= 0.0:
+        problemas.append("a junta plana nao tem rebaixo: ela nao comprime")
+    if problemas:
+        r.falha("PD20", "; ".join(problemas))
+    else:
+        r.ok("PD20", f"o poco do conector drena por um canal de "
+                     f"{f2(C.DRENO_L)} x {f2(C.DRENO_P)} ate a borda, e entre "
+                     f"ele e a cavidade ha a junta plana de {f2(min(largs))} "
+                     f"no lado mais estreito, comprimida {f2(C.JUNTA_REBAIXO)}")
 
 
 def main() -> int:

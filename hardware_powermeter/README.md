@@ -26,8 +26,8 @@ venha de uma ficha ou de uma medida.
 | Parte | Estado |
 |---|---|
 | Esquemático | 4 folhas, 58 peças, 43 nós, gerado e conferido nó a nó contra `nets.py` pelo `check_sch.py` |
-| Placa | **47 × 14 mm**, 4 camadas, 58 peças mais um furo de fixação M1,6, 43 redes; roteada por programa |
-| Pod | **55,7 × 19,0 × 10,0 mm**, 13,3 g estimados, vedado por anel O e fechado por dois parafusos M1,6, dois STL (concha e tampa) |
+| Placa | **50 × 16 mm**, 4 camadas, 58 peças mais um furo de fixação M1,6, 43 redes; roteada por programa |
+| Pod | **74,2 × 21,0 × 7,0 mm**, 13,8 g estimados, com a célula **ao lado** da placa, vedado por anel O e fechado por dois parafusos M1,6, dois STL (concha e tampa) |
 | Ponte | S5229 de 5 kΩ numa peça só, `N2K-13-S5229A-50C/DG/E3`, colada no braço |
 
 ## A cadeia

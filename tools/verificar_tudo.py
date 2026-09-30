@@ -65,7 +65,10 @@ VERIFICACOES = [
     ("dry run do pod: 18 regras",
      [PY, "hardware_powermeter/pod/dry_run_pod.py"],
      lambda c, s: "1 violadas" in s or "0 violadas" in s,
-     "PD17 falha até o dono medir a folga do quadro da bicicleta dele"),
+     "PD10 e PD17 ficam abertas: com a célula ao lado o pod tem 74,2 x 21,0 "
+     "contra o alvo de 60 x 20, e a largura sobra 0,5 mm de cada lado da "
+     "face do braço. A folga do quadro, que era a outra falha, passou a "
+     "cumprir (7,5 contra 10,0)"),
 
     ("mapa de pinos × silício × docs/02 × esquemático",
      [PY, "tools/fw/board_check.py"], lambda c, s: c == 0, ""),

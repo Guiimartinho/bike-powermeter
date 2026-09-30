@@ -213,6 +213,22 @@ O primeiro desenho fechou em 65,4 × 19,4 × 10,5 mm, acima do alvo em comprimen
 
 A largura já está dentro, e a troca do módulo em 2026-09-28 a levou de 19,4 para 19,0. O custo assumido é montagem nas duas faces, mais cara de fabricar, e a face de trás deixa de ser plana: ela passa a ser plana **sob a sombra da célula**, e é assim que as regras do dry run medem.
 
+### A célula saiu de baixo da placa (2026-09-30)
+
+Decisão do dono: **a célula passa a ficar ao lado da placa**, não sob ela, para o aparelho ficar mais baixo. Ela sai da pilha de altura e entra na de comprimento, e a tabela acima deixa de valer nas três linhas que dependiam disso.
+
+| | Antes (célula embaixo) | Agora (célula ao lado) |
+|---|---|---|
+| Pod | 55,7 × 19,0 × **10,0** | 74,2 × 21,0 × **7,0** |
+| Pilha da altura | fundo 1,0 + célula 4,0 + ar 0,5 + placa 0,8 + teto 2,7 + tampa 1,0 | fundo 1,0 + **ar do verso 1,5** + placa 0,8 + teto 2,7 + tampa 1,0 |
+| Célula | 23 × 11 × 4,0 = 1.012 mm³ ≈ 78 mAh | **15 × 14 × 5,0 = 1.050 mm³ ≈ 81 mAh** |
+| Face de trás | plana sob a sombra da célula, 1,0 mm fora dela | **1,5 mm de ponta a ponta**: não há mais sombra |
+| `cola + pod` contra a folga do quadro | 10,5 contra 10,0 ✗ | **7,5 contra 10,0 ✓** |
+
+A célula muda de forma porque muda o que ela custa: embaixo, ela tinha de ser comprida e estreita para caber entre os ressaltos; ao lado, quanto mais larga e mais grossa, menos comprimento toma. Os 5,0 mm de espessura são de graça — a pilha da placa já reserva 5,0 no mesmo espaço.
+
+**O que não fechou:** o pod tem 21,0 mm de largura e a face interna de um braço da classe tem 20,0, então ele sobra 0,5 mm de cada lado. A área de colagem cabe, o relevo livra a concordância e a folga do quadro passa; o que excede é só a silhueta. Fechar isso pede placa de 15 mm em vez de 16 (que custa roteamento) ou aceitar a sobra. A `PD17` reprova com o número até você decidir.
+
 ## Conector magnético
 
 Seis pinos pogo, ímã com polaridade, passo de 2,0 a 2,5 mm, 1 A por pino, banho de ouro, face plana vedada por junta e envasada por trás. O cabo termina em USB-A (5 V, GND, D+, D−) e numa saída SWD de 10 vias (Cortex Debug) para o J-Link. Proteção: TPD4E05U06 nos quatro sinais, 100 Ω em série no SWD, e o VBUS entra no nPM1100, que é entrada; nada sai do pod pelos pinos sem cabo. O fornecedor é escolhido com o desenho do footprint, que entra na cadeia de CAD como as outras peças, com o corpo 3D medido.

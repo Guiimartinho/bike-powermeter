@@ -1465,8 +1465,9 @@ def main() -> int:
         n_tras = sum(1 for pe in pecas.values() if pe["atras"])
         ok.append(f"ME2: nenhuma peca da frente passa do teto da tampa "
                   f"({TETOS[0][1]:.1f} mm) e nenhuma das {n_tras} da face de "
-                  f"tras passa do teto da sombra em que esta (0,0 mm sob a "
-                  f"celula, 1,0 fora dela); {len(sem_altura)} pecas sem "
+                  f"tras passa do teto do verso ({M.TETO_VERSO:g} mm de "
+                  f"ponta a ponta desde que a celula saiu de baixo da placa); "
+                  f"{len(sem_altura)} pecas sem "
                   f"altura conhecida")
 
     # -- IM1: os eixos do acelerometro --------------------------------------

@@ -6,7 +6,7 @@ lida com o contorno de ocupação, a altura e a face de cada peça) e da
 célula, pela mesma ideia do case do ciclocomputador: um gerador e um dry
 run próprio. O que ele é e o que decide está em [07-pod.md](../07-pod.md).
 
-**55,7 × 19,0 × 10,0 mm, 13,3 g estimados.** Nada foi impresso nem montado.
+**74,2 × 21,0 × 7,0 mm, 13,8 g estimados.** Nada foi impresso nem montado.
 
 | Arquivo | O que faz |
 |---|---|
@@ -46,7 +46,7 @@ Tudo em `make_pod.py`, em constantes com o motivo ao lado.
 |---|---|---|
 | Paredes | **2,0 mm** | eram 1,2; o sulco do anel O precisa de 0,5 mm de parede de cada lado além do próprio sulco de 1,05 (`PD13`) |
 | Fundo e tampa | 1,0 mm, raio 3 | escolha deste desenho |
-| Célula | **23 × 11 × 4,0 mm**, sob a placa | classe `401123`, ≥ 78 mAh, com fios e proteção integrada. Pôr a célula **ao lado** daria 72 mm de comprimento ou 27 de largura |
+| Célula | **15 × 14 × 5,0 mm**, **ao lado** da placa | ≥ 81 mAh (1.050 mm³ a 0,077 mAh/mm³), com fios e proteção integrada. Decisão do dono em 2026-09-30: ao lado, a célula sai da pilha e o pod cai de 10,0 para **7,0 mm** de altura; em troca o comprimento vai de 55,7 para 74,2 |
 | Vedação | anel O de cordão **0,80 mm** em sulco de 1,05 × 0,58 | **27,5 % de compressão**, dentro da faixa de 20 a 30 % para vedação estática |
 | Fechamento | **dois parafusos M1,6** autoatarraxantes, ressalto de 3,40, furo-guia de 1,35 | um deles passa **pelo furo da placa**, que é o que prende a placa no meio do vão |
 | Teto sobre a placa | 2,7 mm | `cad/make_dxf.TETO_TAMPA`; quem o fixa é o módulo, com 2,40 mais 0,3 de ar |
