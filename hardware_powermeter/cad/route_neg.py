@@ -63,13 +63,36 @@ HISTORICO = 1.0
 # The bigger board did not route worse - it never got the negotiated router.
 # The ceiling is now well clear of what the board needs; a round costs a few
 # seconds and the loop still leaves the moment nothing is contested.
-MAX_RODADAS = 30
+# 36. Com a grade de 0,10 e trilha e folga de 0,10 (2026-09-29) a
+# negociacao passou a CONVERGIR: as celulas disputadas cairam de umas 650,
+# que era o patamar da grade de 0,15, para 30 em 18 rodadas - e as 18 nao
+# deram tempo de chegar a zero, entao o resultado negociado foi recusado e a
+# placa caiu para o sequencial. Cada rodada custa mais nesta grade, mas o
+# numero de rodadas e o que faltava.
+MAX_RODADAS = 36
 # Trinta rodadas, medido: com 45 e com 60 o resultado PIORA (82 a 88
 # ligacoes, 28 desconectados e 2 erros de DRC contra 88 e 21 com zero).
 # A fase sem partilha do fim e quem entrega a rodada limpa, e depois de
 # um certo ponto a pressao acumulada so espalha conflito.
-# how often the whole board is ripped up instead of only the nets in the way
-RIPAGEM_TOTAL = 6
+# De quanto em quanto tempo a placa inteira e' desfeita, em vez de so' as
+# redes que estao no caminho. UM: toda rodada desfaz tudo, que e' o que o
+# PathFinder original faz.
+#
+# Medido em 2026-09-29, com 6: as celulas disputadas SOBEM dentro de cada
+# ciclo e caem a cada rodada total - 1.114, 1.217, 1.334, 1.344, 2.135,
+# 3.441 e, na rodada total seguinte, 798 de novo; num ciclo ruim chegaram a
+# 6.456. A negociacao nunca convergia, e as vinte ligacoes que morriam na
+# fase sem partilha eram o resto disso.
+#
+# A razao e' que a rodada incremental congela as redes inocentes: a rede
+# culpada nao tem para onde ir e o custo historico nao tem o que empurrar.
+# E a economia que o incremental prometia nao existe - as rodadas
+# incrementais desta placa refaziam 37 a 42 das 43 redes, praticamente
+# todas. Entao desfazer tudo custa o mesmo e negocia de verdade.
+RIPAGEM_TOTAL = 1
+
+
+R_CUSTO_CAMADA = (0.6, 0.0, 0.25)   # igual a route.CUSTO_CAMADA
 
 
 def _custo_passo(v, atual, ant, CUSTO_VIA, CUSTO_CURVA, CUSTO_CURVA_45):
@@ -78,6 +101,7 @@ def _custo_passo(v, atual, ant, CUSTO_VIA, CUSTO_CURVA, CUSTO_CURVA_45):
     if v[0] != c:
         return CUSTO_VIA
     passo = 2.2 if (v[1] != ix and v[2] != iy) else 1.0
+    passo += R_CUSTO_CAMADA[c]
     if ant is not None and v[0] == c and ant[0] == c:
         d1 = (ix - ant[1], iy - ant[2])
         d2 = (v[1] - ix, v[2] - iy)
@@ -89,7 +113,7 @@ def _custo_passo(v, atual, ant, CUSTO_VIA, CUSTO_CURVA, CUSTO_CURVA_45):
 
 
 def rotear(R, g, rede, inicio, alvos, uso, hist, campos_cel, larg_estreita,
-           so_camada=None, perto_de=None, orcamento=400000,
+           so_camada=None, perto_de=None, orcamento=900000,
            pressao=PRESENTE_0, duro=False, off_uso=((0, 0),),
            off_via_olha=((0, 0),), vias_postas=None):
     """A* that may cross another net, for a price.
@@ -319,7 +343,10 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
         # be asked again - a path that was fine while sharing was allowed
         # may not be now
         if duro and rodada == MAX_RODADAS - max(3, MAX_RODADAS // 4):
-            pendentes = list(ordem_redes)
+            # so' as redes que estao em celula disputada, e nao todas: ver a
+            # nota do `total` logo abaixo
+            if not pendentes:
+                pendentes = list(ordem_redes)
         # ... and every RIPAGEM_TOTAL rounds EVERYTHING is asked again, from
         # an empty board. Refining only the guilty nets makes the contested
         # cells rise on this board (420 -> 1588 in ten rounds, measured):
@@ -327,7 +354,16 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
         # go and the history cost has nothing to push. The full round
         # redistributes them, and rebuilding `uso` from nothing also clears
         # anything an incremental rip-up may have left behind.
-        total = (rodada % RIPAGEM_TOTAL) == 0
+        # ... MENOS na fase sem partilha. Ali a rodada total joga fora a
+        # negociacao inteira e reconstroi a placa com um passe guloso em que
+        # ninguem pode partilhar: as primeiras redes tomam os canais bons e
+        # as ultimas ficam sem nada. Medido em 2026-09-29 com a grade de
+        # 0,10: a negociacao chegava a apenas 30 CELULAS disputadas e a
+        # primeira rodada sem partilha devolvia 26 LIGACOES sem caminho -
+        # trinta celulas de conflito nao podem custar vinte e seis ligacoes.
+        # Sem partilha, entao, refaz-se so' quem esta no conflito, e o resto
+        # do trabalho negociado fica de pe.
+        total = (rodada % RIPAGEM_TOTAL) == 0 and not duro
         if total:
             pendentes = list(ordem_redes)
             uso = {}
@@ -485,13 +521,26 @@ def rodar(R, arv, numeros, todos, por_rede, caixa_fp, ordem_redes,
         # do `route.py`, que tira a trilha e a via culpadas; entregar
         # menos ligacoes para nao dar trabalho a ela e' trocar o que
         # importa pelo que e' automatico (medido em 2026-09-29).
-        # A chave e (disputadas, falhas): a rodada mais LIMPA ganha.
-        # Trocar para -n_ok primeiro fez o estagio escolher uma rodada
-        # com 107 ligacoes e 240 pares perto demais, e a limpeza do
-        # `route.py` so consegue tirar o que nao custa a placa inteira:
-        # deu 217 erros de DRC. A rodada limpa entrega 88 ligacoes e
-        # ZERO erro (medido em 2026-09-29).
-        chave = (len(disputadas), len(falhas))
+        # A chave PESA as duas coisas, e o peso tem origem: uma celula
+        # disputada sozinha nao custa nada; o que custa e' o CRUZAMENTO, e
+        # um cruzamento marca umas quatro celulas (o disco de folga em volta
+        # do ponto onde as duas trilhas se encontram). A limpeza geometrica
+        # do `route.py` resolve um cruzamento tirando UMA trilha, ou seja,
+        # perdendo uma ligacao. Entao quatro celulas disputadas valem mais
+        # ou menos uma ligacao que falta, e a conta e
+        # `falhas + disputadas / 4`.
+        #
+        # Os dois extremos ja foram medidos, e os dois sao ruins. So'
+        # disputadas primeiro: com a grade de 0,10 o estagio escolheu uma
+        # rodada com 2 celulas disputadas e 56 LIGACOES sem caminho, porque
+        # a fase sem partilha chega perto de zero disputa desmanchando a
+        # placa. So' ligacoes primeiro (`-n_ok`): com a grade de 0,15 ele
+        # escolheu 107 ligacoes com 240 pares perto demais e a placa saiu
+        # com 217 erros de DRC. Com o peso, a rodada de 107 ligacoes e 650
+        # celulas custa 163 e perde, e a de 107 ligacoes com 30 celulas
+        # custa 8,5 e ganha - que e o que se quer (medido em 2026-09-29).
+        chave = (len(falhas) + len(disputadas) / 4.0,
+                 len(disputadas), len(falhas))
         if melhor_saida is None or chave < melhor_saida[0]:
             # a COPY: caminhos_por_rede is mutated in place from now on,
             # and keeping a reference would let a later round rewrite the
