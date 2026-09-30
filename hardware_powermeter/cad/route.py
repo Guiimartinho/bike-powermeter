@@ -173,6 +173,9 @@ BLOQUEADO = "\x00"          # a net name no net can have: blocked for everyone
 # 50 ohm line and both are routed at the RF width on the front layer, even
 # though only one is ever fitted. The unfitted one ends at an open pad.
 NAO_ROTEAR: set[str] = set()
+# As redes que vivem num plano. So' elas sao proibidas dentro da area sem
+# plano do no de chaveamento - ver Grade.cabe_via.
+REDES_DE_PLANO: set[str] = {"GND"}
 # O par do USB tambem fica na frente: os 0,207 mm de 90 ohm foram
 # calculados para microstrip em F.Cu sobre o plano de terra a 0,10 mm. Em
 # In2.Cu a mesma trilha tem o plano a 0,46 mm de um lado e o despejo de B.Cu
@@ -415,6 +418,9 @@ class Grade:
         self.nx = int(M.W / PASSO) + 1
         self.ny = int(M.H / PASSO) + 1
         self.t: dict[tuple[int, int, int], str] = {}
+        # celulas onde a via de terra e proibida (area sem plano do no de
+        # chaveamento); as outras redes passam
+        self.sem_via_de_terra: set[tuple[int, int]] = set()
         self.v: dict[tuple[int, int, int], str] = {}
         self.fixo: set[tuple[int, int, int]] = set()   # a pad's own copper
         self.postas: set[tuple[int, int]] = set()      # via centres already used
@@ -630,6 +636,20 @@ class Grade:
             self._disco(self.v, c, x, y, raio, BLOQUEADO, respeitar_fixo=False)
 
     def cabe_via(self, ix: int, iy: int, rede: str) -> bool:
+        # A area sem plano do no de chaveamento proibe a via DE TERRA, e nao
+        # a via de qualquer rede. O motivo da regra e' que uma via de GND ali
+        # traz o plano de volta para debaixo do no mais barulhento da placa;
+        # uma via de 3V0 ou de um sinal nao traz plano nenhum.
+        #
+        # Estava proibindo todas, e o preco foi alto: o `U101` inteiro cai
+        # dentro dessa area - ela vai de (4,4; 5,4) a (9,4; 9,7) e o nPM1100
+        # esta em (8,3; 7,3) -, entao NENHUM dos seus 24 pinos podia ter via
+        # de fuga, em nenhuma direcao, nem numa placa vazia. Foi por isso que
+        # o Freerouting deixou as mesmas nove ligacoes abertas com tres
+        # estrategias de busca diferentes, e todas tocavam o U101
+        # (medido em 2026-09-30).
+        if rede in REDES_DE_PLANO and (ix, iy) in self.sem_via_de_terra:
+            return False
         # Two vias of the SAME net still may not share a hole. The ground
         # stubs put five pairs of vias exactly on top of each other, at
         # 0.000 mm, because the via map only ever asked about other nets.
@@ -952,10 +972,9 @@ def base(arv, todos):
         ys = [float(q[2]) - MP.ORIGEM[1] for q in fp_load.kids(pts, "xy")]
         ix0, iy0 = g.cel(min(xs), min(ys))
         ix1, iy1 = g.cel(max(xs), max(ys))
-        for c in range(NC):
-            for ix in range(ix0 - folga_v, ix1 + folga_v + 1):
-                for iy in range(iy0 - folga_v, iy1 + folga_v + 1):
-                    g.v[(c, ix, iy)] = BLOQUEADO
+        for ix in range(ix0 - folga_v, ix1 + folga_v + 1):
+            for iy in range(iy0 - folga_v, iy1 + folga_v + 1):
+                g.sem_via_de_terra.add((ix, iy))
 
     for nome, (x0, y0, x1, y1), _c, _s in M.ZONES:
         if nome not in MP.KEEPOUTS:
@@ -1665,14 +1684,17 @@ def toco_limpo(p0, p1, cam: int, rede: str, w: float,
             dy = max(ky0 - q[1], q[1] - ky1, 0.0)
             if math.hypot(dx, dy) < meia + FOLGA:
                 return f"entraria em {nome_z}"
-    orx2, ory2 = MP.ORIGEM
-    for nome, idx, px, py, hw, hh in todos:
-        if nome == rede or (idx >= 0 and idx != cam):
-            continue
-        d = _dist_seg_ret(p0, p1, px - orx2, py - ory2, hw, hh)
-        if d < meia + FOLGA_MASCARA:
-            return (f"a teia de mascara ate o pad {nome or '<sem rede>'} "
-                    f"ficaria com {d:.3f} mm")
+    # A teia de mascara entre uma TRILHA e um pad nao entra aqui.
+    #
+    # `FOLGA_MASCARA` (0,35 mm) foi medida para VIA contra pad: as duas
+    # aberturas crescem e a teia entre elas tem de sobreviver. Aplicada a uma
+    # trilha, ela e impossivel de cumprir onde mais importa - entre dois
+    # pinos de um QFN de 0,5 mm de passo o vao inteiro e 0,25 mm -, e foi ela
+    # que impediu os 24 pinos do `U101` de terem via de fuga, dizendo "a teia
+    # ficaria com 0,311 mm" numa placa vazia (2026-09-30).
+    #
+    # Quem julga teia de mascara e o DRC do KiCad, que tem `solder_mask_bridge`
+    # como erro e mede a abertura de verdade, nao a caixa do pad.
     return ""
 
 
