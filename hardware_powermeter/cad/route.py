@@ -73,13 +73,21 @@ import fp_load  # noqa: E402
 import make_dxf as M  # noqa: E402
 import make_pcb as MP  # noqa: E402
 
-PASSO = 0.15                # routing grid, mm. 0.3 does not fit between
-                            # the balls of the module's LGA: the free band
-                            # between two columns is 0.45 mm wide
-LARGURA = 0.15              # default track width
+# 0,10 e nao 0,15 (2026-09-29, decisao do dono: "diminua os valores ate
+# caber"). O que limita esta placa nao e a area livre - sao 23% de ocupacao
+# em tres camadas - e sim a SAIDA DOS PINOS: o negociado acha caminho para
+# 107 das 108 ligacoes e nao consegue separa-las, e toda falha e "sem
+# caminho ate (x; y) na camada 0". Com trilha 0,15 e folga 0,14 duas
+# trilhas precisam de 0,29 mm de eixo a eixo, o que da 2 celulas de 0,15 e
+# um canal util de 0,30 mm; com 0,10 e 0,10 sao 0,20 mm, 1,45 vez mais
+# trilhas no mesmo canal. Os numeros sao capacidade NORMAL de fabrica em 4
+# camadas (JLCPCB: 0,0889 mm de trilha e de isolamento, furo de 0,20 e via
+# de 0,40), e o `pmeter.kicad_pro` passou a cobrar 0,09 para sobrar margem.
+PASSO = 0.10                # routing grid, mm
+LARGURA = 0.10              # default track width
 LARGURA_ALIM = 0.4          # power track width
 LARGURA_USB = 0.2
-VIA_D, VIA_FURO = 0.45, 0.25
+VIA_D, VIA_FURO = 0.40, 0.20
 
 # The grid is marked for the NARROWEST track and the smallest clearance, and
 # a wider or better spaced net asks for the extra radius when it looks. The
@@ -92,7 +100,7 @@ VIA_D, VIA_FURO = 0.45, 0.25
 # The classes of pmeter.kicad_pro, read and not guessed: Default 0.127,
 # Alimentacao 0.127 (it differs by via size, not by clearance) and USB 0.2.
 # Treating USB as 0.127 is what put a ground track 0.075 mm from USB_DP.
-FOLGA = 0.14                # 0.127 of the class, plus the grid
+FOLGA = 0.10                # 0.09 da classe, mais a grade
 FOLGA_FURO = 0.21           # 0.2 do min_hole_clearance, mais a grade
 FOLGA_USB = FOLGA           # the USB class keeps the fabricator's 0,127 here
                             # (make_pro.py): at full speed on 3 cm of track
@@ -128,7 +136,17 @@ I_BCU = NC - 1
 # every part is on the front, because the cell lies under the board. At 6
 # the back face is used and twelve more connections closed; at 3 the board
 # filled with vias and it got worse again.
-CUSTO_VIA = 6.0             # in grid steps, about 0,9 mm
+# Quanto custa, a mais, UM PASSO em cada camada. F.Cu e' onde estao todas
+# as ilhas, entao e' por ali que toda rede tem de sair e chegar; uma rede
+# que so' ESTA DE PASSAGEM por cima ocupa o canal de que a fuga de um pino
+# precisava. Medido em 2026-09-29, na placa roteada: 302 segmentos em F.Cu
+# contra 118 em In2.Cu e 142 em B.Cu - a face cheia de pinos era tambem a
+# mais usada para atravessar. Com estes numeros um trecho de mais ou menos
+# 20 celulas (3 mm) ja paga as duas vias para descer e voltar, que e' como
+# se desenha uma placa densa a mao: sai do pino, desce, atravessa por
+# dentro, sobe no destino.
+CUSTO_CAMADA = (0.4, 0.0, 0.17)
+CUSTO_VIA = 9.0             # em passos de grade, uns 0,9 mm
 CUSTO_CURVA = 0.7             # virar 90 graus
 CUSTO_CURVA_45 = 0.2          # virar 45: meia virada, meio custo
 # A maze search that cannot get through explores everything it is allowed to
@@ -841,6 +859,8 @@ def a_estrela(g: Grade, rede: str, inicio: tuple[int, int, int],
                 passo = 2.2
             else:
                 passo = 1.0
+            if v[0] == c:
+                passo += CUSTO_CAMADA[c]
             if ant is not None and v[0] == c and ant[0] == c:
                 d1 = (ix - ant[1], iy - ant[2])
                 d2 = (v[1] - ix, v[2] - iy)
@@ -1549,7 +1569,7 @@ def uma_passagem(arv, numeros, todos, por_rede, caixa_fp, prioridade,
 
 
 def toco_limpo(p0, p1, cam: int, rede: str, w: float,
-               segmentos: list, todos) -> str:
+               segmentos: list, todos, vias=()) -> str:
     """O toco que se quer desenhar guarda distancia de tudo? Devolve o porque.
 
     A mesma geometria da `conferir`, mas de UM segmento contra o resto, para
@@ -1563,6 +1583,19 @@ def toco_limpo(p0, p1, cam: int, rede: str, w: float,
         d = _dist_seg_seg(p0, p1, q0, q1)
         if d < exigido:
             return (f"encostaria em {r2} a {d:.3f} mm, pede {exigido:.3f}")
+    # E as VIAS. Ate 2026-09-29 esta funcao media o toco contra trilhas e
+    # ilhas e nao contra vias, enquanto a `conferir` do fim media contra as
+    # tres: o toco passava aqui e o par aparecia la como "1 par perto
+    # demais", e no KiCad como um erro de isolamento. Duas medidas do mesmo
+    # fato tem de olhar as mesmas coisas.
+    for vx, vy, r2 in vias:
+        if r2 == rede:
+            continue
+        exigido = w / 2 + VIA_D / 2 + max(folga_de(rede), folga_de(r2)) - 0.01
+        d = _dist_seg_ponto(p0, p1, vx, vy)
+        if d < exigido:
+            return (f"encostaria na via de {r2} a {d:.3f} mm, "
+                    f"pede {exigido:.3f}")
     orx, ory = MP.ORIGEM
     for nome, idx, px, py, hw, hh in todos:
         if nome == rede or (idx >= 0 and idx != cam):
@@ -1627,7 +1660,14 @@ def encostar_nos_pads(segmentos: list, vias: list, todos: list,
         # the nearest end of this net, on ANY layer: a pad on the back with
         # its track on the front is the other half of this problem, and it
         # needs a via, not a stub
-        melhor = None
+        # TODOS os candidatos, do mais barato ao mais caro, e nao so' o
+        # primeiro. Ate 2026-09-29 este passe escolhia a ponta mais proxima,
+        # media' aquele unico toco e, se ele encostasse em alguma coisa,
+        # desistia do pino - mesmo havendo outra ponta da mesma rede meio
+        # milimetro adiante por onde o toco passava limpo. Sete dos vinte
+        # pinos em aberto da placa eram isso: um toco de 0,2 a 0,8 mm
+        # recusado com alternativas em cima da mesa.
+        candidatos = []
         for (cam, r), lista in por_camada.items():
             if r != nome:
                 continue
@@ -1638,37 +1678,49 @@ def encostar_nos_pads(segmentos: list, vias: list, todos: list,
                     # a stub on the pad's own layer is always preferred to
                     # one that costs a via
                     custo = d + (0.0 if mesma else 0.6)
-                    if d <= limite and (melhor is None or custo < melhor[0]):
-                        melhor = (custo, d, p, cam, w, mesma)
-        if melhor is None:
+                    if d <= limite:
+                        candidatos.append((custo, d, p, cam, w, mesma))
+        if not candidatos:
             continue
-        _c, _d, p, cam, w, mesma = melhor
-        # narrow, so the piece added at the end does not eat the clearance
-        # the netclass asks for: four clearance errors came from drawing it
-        # at the run's own width (2026-09-28)
-        wl = max(LARGURA, min(w, 2.0 * min(hw, hh) - 0.05))
-        destino = cam if mesma else (idx if idx >= 0 else cam)
-        if not mesma:
-            # A via is not free: it goes through every layer, so it has to
-            # clear every net on all of them. Measured on 2026-09-28: placed
-            # blind, one GND via landed on the module's 3V0_MOD pad and cost
-            # two shorts, a hole clearance and a mask bridge - four new DRC
-            # errors for a connection it did not even close. If there is no
-            # room, the pad stays open and says so, which is the truth.
-            if not via_cabe_aqui(p[0], p[1], nome, segmentos, vias, todos):
+        candidatos.sort(key=lambda q: q[0])
+        escolhido = None
+        porque = ""
+        for _c, _d, p, cam, w, mesma in candidatos[:24]:
+            # narrow, so the piece added at the end does not eat the
+            # clearance the netclass asks for: four clearance errors came
+            # from drawing it at the run's own width (2026-09-28)
+            wl = max(LARGURA, min(w, 2.0 * min(hw, hh) - 0.05))
+            destino = cam if mesma else (idx if idx >= 0 else cam)
+            if not mesma:
+                # A via is not free: it goes through every layer, so it has to
+                # clear every net on all of them. Measured on 2026-09-28: placed
+                # blind, one GND via landed on the module's 3V0_MOD pad and cost
+                # two shorts, a hole clearance and a mask bridge - four new DRC
+                # errors for a connection it did not even close. If there is no
+                # room, the pad stays open and says so, which is the truth.
+                if not via_cabe_aqui(p[0], p[1], nome, segmentos, vias, todos):
+                    porque = porque or "nao cabe via para subir ao pad"
+                    continue
+            # And MEASURE the stub itself. Until 2026-09-28 this pass narrowed
+            # the piece and checked the via, but never asked whether the SEGMENT
+            # cleared anything: a pad left open by 0,15 mm became a 1,4 mm track
+            # lying across someone else's pad. The router then printed "5 pairs
+            # too close" and wrote the board anyway, and those five were the
+            # four DRC errors of the day - three of them the same ground stub
+            # touching U101's SHPACT pad, counted as a short, as a clearance
+            # violation and as a mask bridge.
+            sujo = toco_limpo(p, (x, y), destino, nome, wl, segmentos,
+                              todos, vias)
+            if sujo:
+                porque = porque or sujo
                 continue
-        # And MEASURE the stub itself. Until 2026-09-28 this pass narrowed
-        # the piece and checked the via, but never asked whether the SEGMENT
-        # cleared anything: a pad left open by 0,15 mm became a 1,4 mm track
-        # lying across someone else's pad. The router then printed "5 pairs
-        # too close" and wrote the board anyway, and those five were the
-        # four DRC errors of the day - three of them the same ground stub
-        # touching U101's SHPACT pad, counted as a short, as a clearance
-        # violation and as a mask bridge.
-        porque = toco_limpo(p, (x, y), destino, nome, wl, segmentos, todos)
-        if porque:
-            recusados.append(f"{nome} em ({x:.1f}; {y:.1f}): {porque}")
+            escolhido = (p, destino, wl, mesma)
+            break
+        if escolhido is None:
+            recusados.append(f"{nome} em ({x:.1f}; {y:.1f}): {porque} "
+                             f"({len(candidatos)} candidato(s) tentado(s))")
             continue
+        p, destino, wl, mesma = escolhido
         if not mesma:
             vias.append((p[0], p[1], nome))
             vias_rede.setdefault(nome, []).append((p[0], p[1]))
@@ -2138,7 +2190,12 @@ def main() -> int:
             # o melhor resultado e o que FECHA mais, e a sujeira e
             # limpa depois
             chave_neg, caminhos, falhas_n, n_ok_n, rodadas = saida
-            n_disputa, n_falhas = chave_neg
+            # (custo, celulas disputadas, ligacoes sem caminho): ao
+            # trocar o criterio eu deixei o desempacotamento com os
+            # nomes trocados, e o log passou a dizer "36 sem
+            # caminho" quando eram 36 CELULAS. Numero com nome
+            # errado e pior que numero nenhum (2026-09-29).
+            _custo_neg, n_disputa, n_falhas = chave_neg
             # ACEITA o resultado negociado mesmo com celulas disputadas,
             # e LIMPA depois. O criterio antigo exigia zero disputa, e
             # por isso este estagio nunca foi aceito nesta placa: ele
@@ -2260,20 +2317,37 @@ def main() -> int:
     # sem trilha e uma falta visivel que o RT1 conta.
     import re as _re
     fora = 0
-    for _volta in range(40):
+    # 200 e nao 40: em 2026-09-29 a limpeza acabou as quarenta tentativas com
+    # tres pares ainda perto demais e a placa saiu com dois erros de DRC. Um
+    # erro de isolamento e um curto na placa fabricada; uma ligacao a menos e
+    # uma falta que o RT1 conta. O limite existe so para o laco nao ser
+    # infinito, entao ele tem de ficar acima do que a placa precisa.
+    for _volta in range(200):
         ruins = conferir(segmentos, vias, todos)
         alvo = None
         for texto_r in ruins:
             m = _re.match(r"^(\S+) e (\S+) na camada (\S+) a ", texto_r)
-            if not m:
-                continue
-            r1, r2 = m.group(1), m.group(2)
+            if m:
+                r1, r2 = m.group(1), m.group(2)
+            else:
+                # Trilha perto demais de um PAD. Ate 2026-09-29 a limpeza so'
+                # media trilha contra trilha, e o unico erro que sobrou na
+                # placa da grade de 0,10 foi deste tipo: uma trilha de VBUS a
+                # 0,065 mm da ilha 2 de C101, que pede 0,090. O pad nao se
+                # move, entao quem sai e' a trilha.
+                m = _re.match(r"^(\S+) na camada (\S+) a [\d.]+ mm do pad ",
+                              texto_r)
+                if not m:
+                    continue
+                r1 = r2 = m.group(1)
             # sai a do par que tiver MAIS cobre: ela tem mais por onde
             # voltar, e a que tem pouco provavelmente e uma ligacao unica
             n1 = sum(1 for s in segmentos if s[3] == r1)
             n2 = sum(1 for s in segmentos if s[3] == r2)
             escolhida = r1 if n1 >= n2 else r2
             mp = _re.search(r"\(em ([-\d.]+); ([-\d.]+)\)", texto_r)
+            if not mp:
+                mp = _re.search(r" em \(([-\d.]+); ([-\d.]+)\)", texto_r)
             if not mp:
                 continue
             px, py = float(mp.group(1)), float(mp.group(2))
