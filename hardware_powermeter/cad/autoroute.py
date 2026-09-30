@@ -86,7 +86,8 @@ def marcar_plano(dsn: pathlib.Path) -> int:
             n += 1
     texto, n_folga = folga_que_cobre_o_furo(texto)
     texto, n_rede = tirar_as_redes_de_plano(texto)
-    if n or n_folga or n_rede:
+    texto, n_desp = tirar_os_despejos(texto)
+    if n or n_folga or n_rede or n_desp:
         dsn.write_text(texto, encoding="utf-8", newline="\n")
     if n_rede:
         print(f"  {n_rede} rede(s) de plano tiradas do DSN: elas se ligam "
@@ -156,6 +157,51 @@ def tirar_as_redes_de_plano(texto: str) -> tuple[str, int]:
                        + re.escape(rede) + r"\b ?",
                        lambda m: m.group(1) + m.group(2), texto)
     return texto, n
+
+
+def tirar_os_despejos(texto: str) -> tuple[str, int]:
+    """Tira do DSN o despejo de cobre das camadas que se roteiam.
+
+    O KiCad exporta cada despejo como `(plane GND (polygon <camada> ...))`, e
+    sao tres: In1.Cu, que e o plano de verdade, e F.Cu e B.Cu, que sao as
+    faces onde o Freerouting desenha. Nessas duas o despejo so' atrapalha -
+    ele ja esta la, cobrindo tudo, antes de existir uma trilha, e as proprias
+    notas da v2.4.1 avisam que rotear sobre plano de cobre gera violacao de
+    isolamento (foi desenhando um deles que a interface grafica estourou).
+
+    O despejo volta depois, pelo `fill_zones.py`, que o derrama em volta do
+    cobre que ficou - que e a ordem certa: primeiro a trilha, depois o terra.
+    O plano da camada interna fica, porque nada e roteado nela.
+    """
+    import re
+    alvo = ("gnd",)                       # so' este sobrevive
+    n = 0
+    saida = []
+    i = 0
+    while True:
+        m = re.search(r"\(plane (\S+) \(polygon (\S+) ", texto[i:])
+        if not m:
+            saida.append(texto[i:])
+            break
+        ini = i + m.start()
+        # fim do bloco, por contagem de parenteses
+        p, j = 0, ini
+        while j < len(texto):
+            if texto[j] == "(":
+                p += 1
+            elif texto[j] == ")":
+                p -= 1
+                if p == 0:
+                    j += 1
+                    break
+            j += 1
+        if m.group(2) in alvo:
+            saida.append(texto[i:j])
+        else:
+            saida.append(texto[i:ini])
+            n += 1
+        i = j
+    return "".join(saida), n
 
 
 # A largura minima de trilha do projeto, em mm, e a que o `pmeter.kicad_pro`
