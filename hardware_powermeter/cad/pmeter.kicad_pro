@@ -249,55 +249,89 @@
   "net_settings": {
     "classes": [
       {
-        "bus_width": 12.0,
-        "clearance": 0.0889,
-        "diff_pair_gap": 0.2,
-        "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.2,
-        "line_style": 0,
-        "microvia_diameter": 0.2,
-        "microvia_drill": 0.1,
         "name": "Default",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
+        "clearance": 0.0889,
         "track_width": 0.09,
         "via_diameter": 0.4,
         "via_drill": 0.2,
-        "wire_width": 6.0
-      },
-      {
-        "bus_width": 12.0,
-        "clearance": 0.0889,
-        "diff_pair_gap": 0.2,
-        "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.2,
-        "line_style": 0,
         "microvia_diameter": 0.2,
         "microvia_drill": 0.1,
-        "name": "Alimentacao",
+        "diff_pair_width": 0.09,
+        "diff_pair_gap": 0.0889,
+        "diff_pair_via_gap": 0.0889,
+        "wire_width": 6,
+        "bus_width": 12,
+        "line_style": 0,
         "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.4,
-        "via_diameter": 0.6,
-        "via_drill": 0.3,
-        "wire_width": 6.0
+        "schematic_color": "rgba(0, 0, 0, 0.000)"
       },
       {
-        "bus_width": 12.0,
+        "name": "W110um",
         "clearance": 0.0889,
-        "diff_pair_gap": 0.2,
-        "diff_pair_via_gap": 0.25,
-        "diff_pair_width": 0.2,
-        "line_style": 0,
-        "microvia_diameter": 0.2,
-        "microvia_drill": 0.1,
-        "name": "USB",
-        "pcb_color": "rgba(0, 0, 0, 0.000)",
-        "schematic_color": "rgba(0, 0, 0, 0.000)",
-        "track_width": 0.2,
+        "track_width": 0.11,
         "via_diameter": 0.4,
         "via_drill": 0.2,
-        "wire_width": 6.0
+        "microvia_diameter": 0.2,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.11,
+        "diff_pair_gap": 0.0889,
+        "diff_pair_via_gap": 0.0889,
+        "wire_width": 6,
+        "bus_width": 12,
+        "line_style": 0,
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)"
+      },
+      {
+        "name": "W210um",
+        "clearance": 0.0889,
+        "track_width": 0.21,
+        "via_diameter": 0.4,
+        "via_drill": 0.2,
+        "microvia_diameter": 0.2,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.21,
+        "diff_pair_gap": 0.0889,
+        "diff_pair_via_gap": 0.0889,
+        "wire_width": 6,
+        "bus_width": 12,
+        "line_style": 0,
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)"
+      },
+      {
+        "name": "W320um",
+        "clearance": 0.0889,
+        "track_width": 0.32,
+        "via_diameter": 0.4,
+        "via_drill": 0.2,
+        "microvia_diameter": 0.2,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.32,
+        "diff_pair_gap": 0.0889,
+        "diff_pair_via_gap": 0.0889,
+        "wire_width": 6,
+        "bus_width": 12,
+        "line_style": 0,
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)"
+      },
+      {
+        "name": "W400um",
+        "clearance": 0.0889,
+        "track_width": 0.4,
+        "via_diameter": 0.4,
+        "via_drill": 0.2,
+        "microvia_diameter": 0.2,
+        "microvia_drill": 0.1,
+        "diff_pair_width": 0.4,
+        "diff_pair_gap": 0.0889,
+        "diff_pair_via_gap": 0.0889,
+        "wire_width": 6,
+        "bus_width": 12,
+        "line_style": 0,
+        "pcb_color": "rgba(0, 0, 0, 0.000)",
+        "schematic_color": "rgba(0, 0, 0, 0.000)"
       }
     ],
     "meta": {
@@ -307,28 +341,24 @@
     "netclass_assignments": null,
     "netclass_patterns": [
       {
-        "netclass": "Alimentacao",
-        "pattern": "GND"
-      },
-      {
-        "netclass": "Alimentacao",
-        "pattern": "VSYS"
-      },
-      {
-        "netclass": "Alimentacao",
+        "netclass": "W110um",
         "pattern": "VBAT"
       },
       {
-        "netclass": "Alimentacao",
+        "netclass": "W110um",
+        "pattern": "VSYS"
+      },
+      {
+        "netclass": "W210um",
+        "pattern": "BUCK_SW"
+      },
+      {
+        "netclass": "W320um",
         "pattern": "VBUS"
       },
       {
-        "netclass": "Alimentacao",
-        "pattern": "3V0*"
-      },
-      {
-        "netclass": "USB",
-        "pattern": "USB_D*"
+        "netclass": "W400um",
+        "pattern": "GND"
       }
     ]
   },

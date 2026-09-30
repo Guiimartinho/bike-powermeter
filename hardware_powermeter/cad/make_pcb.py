@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import pathlib
 import re
 import sys
@@ -147,6 +148,11 @@ ATRAS -= {
     # indutor e o nPM1100, e esse laco nao pode atravessar a placa
     "C104", "C105",
 }
+# Experimento reproduzivel: `PMETER_TUDO_NA_FRENTE=1` poe TODA peca na face
+# de cima, para comparar as duas topologias com o mesmo roteador e a mesma
+# colocacao. Nao e opcao de projeto - e o botao do teste A/B.
+if os.environ.get("PMETER_TUDO_NA_FRENTE") == "1":
+    ATRAS.clear()
 # Everything else stays on the front, and the reason is the cell: it lies
 # against the back over the first 25 mm, so a part whose chip is at that
 # end has nowhere underneath to go. The charger's resistors and the fuel
@@ -439,10 +445,35 @@ def _registra_ci(ref: str, x: float, y: float, ang: int, atras: bool) -> None:
     CIS_DA_FRENTE[ref] = (x + b[0], y + b[1], x + b[2], y + b[3])
 
 
+# O anel livre em volta de um CI de passo fino, em mm. Nao e folga estetica:
+# e a largura de UMA VIA com a folga dela (0,40/2 + 0,0889 + margem). Um
+# QFN24 de 4 x 4 tem os 24 pinos no perimetro e todos saem radialmente; se o
+# vizinho encosta no courtyard, nao ha onde a via de fuga pousar. Medido em
+# 2026-09-30 com o Freerouting: das ligacoes que sobraram abertas, o `U101`
+# aparecia em 14 das 40 pontas - mais que todas as outras pecas somadas.
+# E ele vale so' para quem tem pino demais para o tamanho que tem. Medido em
+# 2026-09-30: com o anel nos sete CIs finos a placa fechou uma ligacao a mais
+# (16 contra 17) e a `AL1` foi de 11 para 12 capacitores fora do limite, com
+# o `C105` a 15,6 mm do `U102` - a essa distancia ele nao desacopla nada. O
+# `U101` sozinho respondia por 14 das 40 pontas em aberto; os outros seis
+# nao precisam de anel, so' de nao ter peca por cima.
+# ZERO, medido. O anel de 0,45 em volta dos sete CIs finos fechava uma
+# ligacao a mais (16 contra 17) e levava a `AL1` de 11 para 12 capacitores
+# fora do limite, com o `C105` a 15,6 mm do `U102` - a essa distancia ele
+# nao desacopla nada. So' no `U101`, deu 18, pior que sem anel nenhum. As
+# tres medidas ficam dentro da variacao do proprio roteador, entao o que
+# decide e o que nao varia: a distancia do desacoplamento. Fica so' a regra
+# de nao ter peca POR CIMA do CI, que essa tem mecanismo (a via de fuga nao
+# cabe sob um passo de 0,5 mm) e nao custa nada.
+ANEL_DO_CI = 0.0
+COM_ANEL: set[str] = set()
+
+
 def sob_ci_fino(x0: float, y0: float, x1: float, y1: float) -> bool:
-    """A caixa encosta no contorno de um CI de passo fino da frente?"""
-    for _r, (kx0, ky0, kx1, ky1) in CIS_DA_FRENTE.items():
-        if x1 > kx0 and kx1 > x0 and y1 > ky0 and ky1 > y0:
+    """A caixa invade o contorno - ou o anel de fuga - de um CI fino?"""
+    for r, (kx0, ky0, kx1, ky1) in CIS_DA_FRENTE.items():
+        folga = ANEL_DO_CI if r in COM_ANEL else 0.0
+        if x1 + folga > kx0 and kx1 + folga > x0 and                 y1 + folga > ky0 and ky1 + folga > y0:
             return True
     return False
 
@@ -490,7 +521,7 @@ def livre(x: float, y: float, bx: tuple[float, float, float, float],
     # capacitor do verso tem de ficar logo FORA do contorno do CI, com a via
     # ao lado da ilha dele; e mais longe em desenho e mais perto em
     # eletricidade, que e o que conta.
-    if ref in ATRAS and sob_ci_fino(x0, y0, x1, y1):
+    if ref not in CIS_DA_FRENTE and sob_ci_fino(x0, y0, x1, y1):
         return False
     # The cell lies against the back face: a part with a body may stand on
     # the back anywhere the cell does not reach, and nowhere it does.

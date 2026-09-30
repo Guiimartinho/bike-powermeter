@@ -85,8 +85,12 @@ def marcar_plano(dsn: pathlib.Path) -> int:
             texto = texto.replace(alvo, f"(layer {nome}\n      (type power)", 1)
             n += 1
     texto, n_folga = folga_que_cobre_o_furo(texto)
-    if n or n_folga:
+    texto, n_rede = tirar_as_redes_de_plano(texto)
+    if n or n_folga or n_rede:
         dsn.write_text(texto, encoding="utf-8", newline="\n")
+    if n_rede:
+        print(f"  {n_rede} rede(s) de plano tiradas do DSN: elas se ligam "
+              "pelo despejo e pela costura, nao por trilha", flush=True)
     if n_folga:
         print(f"  folga do DSN subida para {FOLGA_DSN_UM} um em {n_folga} "
               "regra(s), por causa do furo", flush=True)
@@ -125,6 +129,33 @@ def folga_que_cobre_o_furo(texto: str) -> tuple[str, int]:
     novo = re.sub(r"\(clearance ([\d.]+)((?: \(type (?!smd_smd)[a-z_]+\))?)\)",
                   troca, texto)
     return novo, n
+
+
+# As redes que NAO se roteiam por trilha porque vivem num plano. Elas saem do
+# DSN inteiras: o que liga o pad delas e o despejo de cobre da propria face
+# mais a via de costura, e quem poe essa via e o `stitch_gnd.py`, depois.
+#
+# Nao e economia de detalhe. Medido em 2026-09-30: das 159 ligacoes desta
+# placa, 51 sao de GND - 32 %. Deixar o Freerouting tentar roteá-las gasta um
+# terco do espaco dele com o que ja esta resolvido pelo plano.
+REDES_DE_PLANO = ("GND",)
+
+
+def tirar_as_redes_de_plano(texto: str) -> tuple[str, int]:
+    """Remove do DSN a definicao e a filiacao de classe das redes de plano."""
+    import re
+    n = 0
+    for rede in REDES_DE_PLANO:
+        # o bloco `(net GND (pins ...))` da secao network
+        padrao = re.compile(
+            r"\n    \(net " + re.escape(rede) + r"\n(?:      .*\n)*?    \)")
+        texto, k = padrao.subn("", texto)
+        n += k
+        # e o nome dela na lista de membros de cada classe
+        texto = re.sub(r"(?m)^(      |    \(class [^\s]+ )(.*)\b"
+                       + re.escape(rede) + r"\b ?",
+                       lambda m: m.group(1) + m.group(2), texto)
+    return texto, n
 
 
 # A largura minima de trilha do projeto, em mm, e a que o `pmeter.kicad_pro`
