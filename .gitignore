@@ -45,3 +45,8 @@ hardware_powermeter/datasheets/*
 # progresso do roteador: uma linha por rodada, para acompanhar ao vivo
 hardware_powermeter/cad/_progresso.txt
 hardware_powermeter/cad/_drc_all.json
+
+# Intermediarios do Freerouting (autoroute.py): o DSN que sai do KiCad e a
+# sessao que volta. Sao gerados a cada execucao e nao entram no repositorio.
+hardware_powermeter/cad/_pmeter.dsn
+hardware_powermeter/cad/_pmeter.ses
