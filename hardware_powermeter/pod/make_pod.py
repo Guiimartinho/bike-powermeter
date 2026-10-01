@@ -297,6 +297,12 @@ TAMPA_MIN_PAREDE = 0.6
 # Largura minima de ombro que a junta da porta precisa para vedar.
 JUNTA_MIN_L = 0.5
 LED_FURO = 2.5
+# O furo quadrado que a chapa recebe e um pouco MAIOR que o circulo, e o anel
+# entre os dois devolve o redondo. Se o quadrado tivesse o lado igual ao
+# diametro, o circulo inscrito encostaria nele nos quatro meios de lado e o
+# anel teria largura zero ali: quatro quads degenerados, e a `PD26` pegou isso
+# na primeira execucao (1 de 85 primitivas da tampa nao fechava).
+LED_FURO_FOLGA = 0.1
 # The floor slot round the bridge's holes. 0,4 and not 0,5: at 0,5 the cut
 # ran 0,05 mm under the bottom ledge, which is what the board rests on
 # (PD7, measured 2026-09-27). 0,4 still leaves 0,35 mm of clearance round a
@@ -608,6 +614,23 @@ def menos_retangulos(r, buracos, minimo: float = 0.3) -> list:
 def poligono_regular(cx, cy, r, n=12):
     return [(cx + r * math.cos(2 * math.pi * k / n), cy + r * math.sin(2 * math.pi * k / n))
             for k in range(n)]
+
+
+def quadrado_amostrado(cx, cy, lado, n=16):
+    """Um quadrado amostrado nos MESMOS angulos do `poligono_regular`.
+
+    Serve para fazer um anel entre um quadrado e um circulo e assim CAVAR um
+    furo redondo numa chapa que `placa_com_furos` so sabe furar em retangulo.
+    Com n = 16 os quatro cantos caem exatos (45 graus e multiplo de 22,5).
+    """
+    pts = []
+    h = lado / 2.0
+    for k in range(n):
+        a = 2 * math.pi * k / n
+        c, s = math.cos(a), math.sin(a)
+        m = max(abs(c), abs(s))
+        pts.append((cx + h * c / m, cy + h * s / m))
+    return pts
 
 
 def triangular(pts):
@@ -1168,12 +1191,23 @@ class Pod:
         furos = [self.janela]
         if self.led:
             lx, ly = self.led
-            furos.append((lx - LED_FURO / 2, ly - LED_FURO / 2, lx + LED_FURO / 2, ly + LED_FURO / 2))
+            q = (LED_FURO + LED_FURO_FOLGA) / 2.0
+            furos.append((lx - q, ly - q, lx + q, ly + q))
+            # o furo e REDONDO: a chapa sai com um furo quadrado e os quatro
+            # cantos voltam como um anel entre o quadrado e o circulo. Ate
+            # 2026-10-01 o furo era quadrado de 2,5 x 2,5 = 6,25 mm2 onde o
+            # projeto anuncia e desenha um circulo de 2,5 = 4,91: 27 % a mais
+            # de area para a resina transparente encher, e o PDF mostrando
+            # uma coisa e o STL sendo outra
         # the two screw holes, clear for the screw's shank
         for cx, cy in PARAF_XY:
             r = PARAF_D / 2.0 + 0.15
             furos.append((cx - r, cy - r, cx + r, cy + r))
         m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, z0, z1, furos, COR_TAMPA)
+        if self.led:
+            lx, ly = self.led
+            m.anel(quadrado_amostrado(lx, ly, LED_FURO + LED_FURO_FOLGA, 16),
+                   poligono_regular(lx, ly, LED_FURO / 2.0, 16), z0, z1, COR_TAMPA)
         # O RESSALTO QUE COMPRIME A JUNTA, na face de baixo, em volta da
         # janela: ele desce do teto da cavidade ate `junta_aperta_em` e e o
         # que faz a vedacao da porta existir. Sem ele a junta era um anel
@@ -1317,7 +1351,7 @@ class Pod:
         jx0, jy0, jx1, jy1 = self.janela
         v_tampa = a_fora * TAMPA - (jx1 - jx0) * (jy1 - jy0) * TAMPA
         if self.led:
-            v_tampa -= LED_FURO ** 2 * TAMPA
+            v_tampa -= math.pi * (LED_FURO / 2.0) ** 2 * TAMPA
         ra = R_P - PAREDE - ABA_FOLGA
         a_aba_fora = (W_P - 2 * (PAREDE + ABA_FOLGA)) * (H_P - 2 * (PAREDE + ABA_FOLGA)) - (4 - math.pi) * ra ** 2
         rb = max(0.3, ra - ABA_LARG)

@@ -231,9 +231,13 @@ face não passa do topo nem fica abaixo do teto; a `PD24` mede, no sólido,
 que o ressalto existe e quanto ele comprime; a `PD29` mede que nenhuma
 outra abertura da tampa come a pegada da junta.
 
-Sobre o LED há um furo de 2,5 mm na tampa, a encher com resina
-transparente: o LED fica na placa, sob a tampa, e a luz sai por ali
-(regra `PD9`).
+Sobre o LED há um furo **redondo** de 2,5 mm na tampa, a encher com resina
+transparente: o LED fica na placa, sob a tampa, e a luz sai por ali. Ele é
+redondo desde 2026-10-01: a chapa recebe um furo quadrado de 2,6 e um anel
+entre o quadrado e um polígono de 16 lados devolve o círculo, porque
+`placa_com_furos` só sabe furar em retângulo. Antes o furo era um quadrado
+de 2,5 × 2,5 = 6,25 mm² onde o PDF desenhava e o texto anunciava um círculo
+de 4,91 — 27 % a mais de resina. A `PD9` mede a área **no sólido**.
 
 ## Vedação e envase
 

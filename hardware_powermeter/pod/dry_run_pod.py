@@ -388,11 +388,28 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
         bx = C.no_pod(d["caixa"])
         lx, ly = pod.led
         furo = (lx - C.LED_FURO / 2, ly - C.LED_FURO / 2, lx + C.LED_FURO / 2, ly + C.LED_FURO / 2)
+        # A AREA do furo, medida no solido. O PDF o desenha redondo e o texto o
+        # anuncia como "coluna de 2,5 de diametro", mas ate 2026-10-01 a chapa
+        # saia com um furo QUADRADO de 2,5 x 2,5 = 6,25 mm2 contra os 4,91 de um
+        # circulo: 27 % a mais de resina transparente para encher, e o desenho
+        # dizendo uma coisa e o STL sendo outra.
+        import numpy as _np9
+        g9 = ME.Grade(lx - 2.0, ly - 2.0, C.TAMPA_Z0 - 0.2,
+                      lx + 2.0, ly + 2.0, C.T_P + 0.2, 0.02)
+        v9 = g9.solido(pod.tampa())
+        k0, k1 = g9.faixa_k(C.TAMPA_Z0 + 0.3, C.T_P - 0.3)
+        area = float((~v9[:, :, k0:k1].any(axis=2)).sum()) * g9.area
+        ideal = math.pi * (C.LED_FURO / 2.0) ** 2
         if not _dentro(furo, bx, 0.0):
             r.falha("PD9", "o furo de luz sai do contorno do LED")
+        elif area > ideal * 1.05:
+            r.falha("PD9", f"o furo de luz desenhado tem {area:.2f} mm2 e um circulo "
+                           f"de {f2(C.LED_FURO)} tem {ideal:.2f}: ele nao e redondo")
         else:
             r.ok("PD9", f"furo de luz de {f2(C.LED_FURO)} sobre o LED, dentro do contorno de "
-                        f"{f2(bx[2] - bx[0])} x {f2(bx[3] - bx[1])}")
+                        f"{f2(bx[2] - bx[0])} x {f2(bx[3] - bx[1])}; medido no solido, "
+                        f"{area:.2f} mm2 contra {ideal:.2f} de um circulo perfeito "
+                        "(poligono de 16 lados inscrito)")
 
     # -- PD10: the envelope ------------------------------------------------------
     fora = []
