@@ -154,6 +154,163 @@ A combinação **B + A** — parede fina e placa mais quadrada — é a única q
 não troca capacidade por tamanho, e ela chega a cerca de **46 × 21**. Para ir
 além disso é preciso tirar função.
 
+## A fundo: o que prende o comprimento
+
+Pedido do dono em 2026-10-01: analisar a fundo os itens 1 (o alvo de
+envelope) e 2 (a parede de 2,0 mm). O item 2 está **feito** e vem no fim
+desta seção; o item 1 é esta análise.
+
+### A cadeia de restrições, medida
+
+```mermaid
+flowchart TB
+    BRACO["face interna do braço<br/>20,0 mm (pior caso da classe)"] --> LARG["pod até 20,0 de largura"]
+    LARG --> PLACA_L["placa até 20,0 menos 2 x (0,5 de folga + 1,5 de parede)<br/>= 16,0 de largura"]
+    PLACA_L --> COMP["800 mm2 de placa em 16,0 de largura<br/>pedem 50,0 de comprimento"]
+    ENERG["6 meses parado a 15 uA<br/>= 65,7 mAh"] --> CEL["célula de 70 mAh para cima"]
+    CEL --> ONDE{"onde ela cabe?"}
+    ONDE -->|ao lado| MAIS["mais 19,95 mm de comprimento"]
+    ONDE -->|embaixo| ALTO["mais 2,35 mm de altura<br/>e o verso tem de ser reagrupado"]
+```
+
+**A placa já está no limite da largura.** Com a parede em 1,5 mm (item 2,
+feito), uma placa de 16,0 é exatamente o que cabe num pod de 20,0. Não há como
+alargá-la para encurtá-la sem passar do braço.
+
+### As peças cabem em 31 mm; a placa tem 50
+
+Empacotando os contornos de ocupação reais por prateleiras numa tira de
+16,0 mm, com 0,25 de folga entre vizinhos:
+
+| Face | Peças | Courtyard | Empacota em | Ocupação |
+|---|---|---|---|---|
+| Frente | 15 | 325 mm² | **31,0 × 16,0** | 66 % |
+| Verso | 36 | 75 mm² | 7,1 × 16,0 | 65 % |
+
+Hoje a placa é **50 × 16**, com **41 % de ocupação na frente**. Os 19 mm entre
+os 31 do empacotamento e os 50 de hoje **não são peças**: são colocação,
+roteamento, a área livre da antena e as peças que têm de ficar onde estão (o
+`J301` sobre o rasgo, o `J101` na borda). O empacotamento é um **piso**, não um
+alvo — ele não roteia nada —, mas prova que o comprimento de hoje é escolha de
+colocação, e não necessidade da lista de peças.
+
+### A célula é o que decide, e o requisito que manda não é o que parece
+
+| Requisito | Carga que ele pede |
+|---|---|
+| ≥ 50 h pedalando a 0,68 mA | **34 mAh** |
+| **≥ 6 meses parado a 15 µA** | **65,7 mAh** |
+
+**É a guarda que manda, não a pedalada.** Com os 81 mAh de hoje são 7,4 meses,
+23 % de folga; abaixo de ~70 mAh a guarda de 6 meses deixa de fechar sem o ship
+mode, que depende de o dono acionar. Esse é o piso da célula.
+
+### Por que a célula não cabe embaixo da placa como ela está hoje
+
+O verso está **16 % ocupado** — 84 % livre — e mesmo assim **não cabe célula
+nenhuma lá**: as 43 peças e as ilhas estão **espalhadas**, e o maior retângulo
+livre mede **40,5 × 2,5 mm**. Uma célula de 3,5 mm ali daria 354 mm³, ou seja
+**27 mAh**: um terço do piso.
+
+Isso é achado de colocação, não de área. As 36 peças do verso com corpo
+empacotam em **7,1 × 16 mm**; agrupadas numa faixa, elas liberariam um bolso de
+cerca de 18 × 14 para a célula — à esquerda ou à direita do rasgo da ponte, que
+corta o verso ao meio, em x 21,4 a 31,7.
+
+### As três configurações, medidas
+
+| | Comprimento | Largura | Altura | Célula | Autonomia |
+|---|---|---|---|---|---|
+| **Hoje** (célula ao lado) | **73,45** | 20,0 | 7,20 | 15 × 14 × 5,0 ≈ 81 mAh | 119 h / 7,4 meses |
+| **Célula embaixo**, verso reagrupado, placa como está | **54,0** | 20,0 | 9,55 | ~18 × 14 × 3,5 ≈ 70 a 84 mAh | 103 a 123 h / 6,4 a 7,7 meses |
+| **Célula embaixo + placa recolocada** em ~35 × 16 | **39,0** | 20,0 | 9,55 | ~15 × 14 × 3,5 ≈ 57 a 70 mAh | 84 a 103 h / **5,2 a 6,4 meses** |
+
+A altura com a célula embaixo é `1,2 + 1,1 × espessura + 0,8 + 2,7 + 1,0`; com
+3,5 mm dá 9,55 e com 3,9 dá 9,99 — o teto de 10 mm é o que limita a espessura
+da célula a **3,9 mm**.
+
+**A leitura:** o alvo de 38 mm é alcançável, mas a 39 mm a guarda de 6 meses
+fica no fio ou abaixo dele, **dependendo da densidade real da célula comprada**.
+E ele custa duas coisas que não são pequenas: **2,35 mm de altura** e uma
+**recolocação completa da placa**, com o roteamento refeito — o que acabou de
+fechar com 0 erros.
+
+### O que é barato e o que é caro
+
+| Mudança | Ganho | Custo |
+|---|---|---|
+| **Parede 2,0 → 1,5** (item 2, **feito**) | largura 21,0 → **20,0**, massa 14,2 → 13,4 g | cordão de anel O de 0,60, requisito de compra |
+| Célula embaixo, verso reagrupado | comprimento **73,5 → 54,0** | +2,35 mm de altura, recolocação do verso, re-roteamento parcial |
+| Recolocar a placa para ~35 × 16 | comprimento **54,0 → 39,0** | recolocação completa e re-roteamento; guarda de 6 meses no limite |
+
+## O item 2, feito: a parede sai da vedação
+
+A parede era 2,0 mm porque o sulco do anel O precisa de 1,05 de sulco mais 0,5
+de terra de cada lado. Mas a parede estava escrita como número solto, e o sulco
+também: **ninguém tinha ligado um ao outro**, e a parede ficou em 2,0 depois que
+o cordão já podia ser menor.
+
+Agora ela **sai** da vedação:
+
+```
+JUNTA_CORDAO  = 0,60                      requisito de compra
+JUNTA_SULCO_L = 1,30 x cordão = 0,78      largura usual de sulco de face
+JUNTA_SULCO_P = 0,75 x cordão = 0,45      25 % de compressão
+JUNTA_TERRA   = 0,36                      terra de cada lado (a PD13 pede 0,35)
+PAREDE        = 0,78 + 2 x 0,36 = 1,50
+```
+
+| | Antes | Depois |
+|---|---|---|
+| Cordão | 0,80 | **0,60** |
+| Parede | 2,00 | **1,50** |
+| Largura do pod | 21,00 | **20,00** |
+| Comprimento | 74,45 | 73,45 |
+| Massa estimada | 14,2 g | **13,4 g** |
+| Compressão do anel, medida no sólido | 25,0 % | **23,3 %** |
+| `PD17`, largura contra o braço | **reprovava** | **cumpre** |
+
+O cordão de 0,60 é **requisito de compra**: ele existe nas séries de anel O em
+miniatura, mas não é item de prateleira como o de 1,0. **Se não for
+encontrado**, a saída é junta de face na tampa com parede de 1,2 — selo pior
+(não é captivo, extruda) e 0,6 mm a mais de folga.
+
+A `PD13` passou a medir o sulco numa **janela com grade de 0,02 mm**: com os
+0,1 mm da grade do pod inteiro, um sulco de 0,45 saía medido como 0,50 — meio
+voxel de viés — e a compressão calculada dava 16,7 % num sulco que o desenho faz
+em 25,0 %.
+
+## A célula: o que comprar
+
+As lojas brasileiras tentadas em 2026-10-01 — Baú da Eletrônica, Usinainfo,
+MakerHero (ex-FilipeFlop), Curto Circuito, Eletrogate, RoboCore, Solda Fria e
+Mercado Livre — **não serviram catálogo a esta máquina**: 404, 403 ou página
+montada por script. É o mesmo resultado de 2026-09-28. Então o que vai aqui é a
+**especificação**, não uma peça escolhida.
+
+| Requisito | Valor | De onde vem |
+|---|---|---|
+| Química | LiPo de bolsa, com **fios soldados e PCM integrado** | não há espaço na placa para proteção discreta |
+| Carga | **≥ 70 mAh**, e ≥ 81 preferível | 65,7 mAh é a guarda de 6 meses a 15 µA |
+| Envelope, arranjo de hoje | **15 × 14 × 5,0 mm** máximo | a baía ao lado da placa |
+| Envelope, se a célula for para baixo | **18 × 14 × 3,5 mm** máximo | o bolso que o verso reagrupado libera; 3,9 é o teto absoluto pela altura |
+| Tensão | 3,7 V nominal | nPM1100 |
+| Temperatura | −10 a +50 °C | o requisito do aparelho |
+
+**Códigos de tamanho para procurar.** O ramo nomeia a bolsa por
+`espessura·largura·comprimento` — o `401123` que estava nos documentos é
+4,0 × 11 × 23 mm. Para a baía de hoje servem os códigos que começam em `50` e
+cabem em 14 × 15: `501414`, `501415`, `501215`. Para o arranjo com a célula
+embaixo: `351418`, `351416`, `301420`.
+
+> [!WARNING]
+> **A densidade de energia deste projeto pode estar conservadora.** Os
+> documentos usam **0,077 mAh/mm³**, e as bolsas de varejo costumam ficar entre
+> 0,09 e 0,10. Se for 0,095, a baía de hoje vale **100 mAh** em vez de 81, e a
+> guarda vai de 7,4 para 9,1 meses. **Isto não foi conferido em ficha de
+> fabricante**, e é a primeira coisa a conferir quando uma célula real for
+> escolhida: ela muda o piso de tamanho de toda a análise acima.
+
 ## Apple Find My e Samsung Find
 
 > [!IMPORTANT]

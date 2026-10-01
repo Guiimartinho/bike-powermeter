@@ -463,8 +463,16 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     # lia `JUNTA_SULCO_P` e passaria igual com o sulco nao desenhado - e e por
     # isso que a aba atravessando tres nervuras nao aparecia aqui, embora o vao
     # real do O-ring virasse 1,58 contra um cordao de 0,80.
+    # Numa JANELA do sulco e com grade FINA. Com os 0,1 mm da grade do pod
+    # inteiro, um sulco de 0,45 sai medido como 0,50 - meio voxel de vies - e
+    # a compressao calculada a partir dele dava 16,7 % num sulco que o desenho
+    # faz em 25,0 % (visto em 2026-10-01, quando o cordao caiu para 0,60). A
+    # janela e um pedaco reto do sulco no meio de um lado longo; medir o pod
+    # inteiro a 0,02 seriam 1,5 bilhao de voxels.
     import numpy as _np13
-    g13 = ME.grade_do_pod(C)
+    jx = C.W_P / 2.0
+    g13 = ME.Grade(jx - 1.0, 0.0, C.TAMPA_Z0 - 2.0,
+                   jx + 1.0, C.PAREDE, C.TAMPA_Z0 + 0.2, 0.02)
     v13 = g13.solido(pod.concha())
     s_fora, s_dentro = pod.sulco()
     pegada = (g13.planta_poli(s_fora) & ~g13.planta_poli(s_dentro)
@@ -485,7 +493,7 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
                          "vedacao estatica de face")
     if not pegada.any():
         problemas.append("nao ha sulco desenhado: a pegada dele nao tem solido nenhum")
-    elif abs(prof_medida - C.JUNTA_SULCO_P) > 2 * ME.PASSO:
+    elif abs(prof_medida - C.JUNTA_SULCO_P) > 3 * g13.passo:
         problemas.append(f"o sulco desenhado tem {f2(prof_medida)} de fundo e "
                          f"`JUNTA_SULCO_P` diz {f2(C.JUNTA_SULCO_P)}")
     if a_sulco < a_cordao * 1.05:

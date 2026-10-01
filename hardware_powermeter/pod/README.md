@@ -6,7 +6,7 @@ lida com o contorno de ocupação, a altura e a face de cada peça) e da
 célula, pela mesma ideia do case do ciclocomputador: um gerador e um dry
 run próprio. O que ele é e o que decide está em [07-pod.md](../07-pod.md).
 
-**74,5 × 21,0 × 7,2 mm, 14,2 g estimados.** Nada foi impresso nem montado.
+**73,5 × 20,0 × 7,2 mm, 13,4 g estimados.** Nada foi impresso nem montado.
 
 | Arquivo | O que faz |
 |---|---|
@@ -91,12 +91,12 @@ Tudo em `make_pod.py`, em constantes com o motivo ao lado.
 
 | O quê | Valor | Por quê |
 |---|---|---|
-| Paredes | **2,0 mm** | eram 1,2; o sulco do anel O precisa de 0,5 mm de parede de cada lado além do próprio sulco de 1,05 (`PD13`) |
+| Paredes | **1,50 mm**, derivadas da vedação | a parede **sai** do selo: sulco de 0,78 mais 0,36 de terra de cada lado. Eram 2,0, escritas como número solto ao lado de um sulco também solto, e isso manteve a parede grande depois que o cordão já podia ser menor. Com cordão de 0,60 a largura do pod vai a **20,0 exatos** ([12](../12-comparacao-com-a-classe.md#o-item-2-feito-a-parede-sai-da-vedação)) |
 | Fundo | **1,2 mm**, tampa 1,0, raio 3 | o fundo subiu de 1,0 em 2026-10-01: fora da base de colagem a face de baixo está em `RELEVO`, e com 1,0 o piso ali daria 0,5 mm |
 | Célula | **15 × 14 × 5,0 mm**, **ao lado** da placa, em baía **cavada no piso** | ≥ 81 mAh (1.050 mm³ a 0,077 mAh/mm³). Decisão do dono em 2026-09-30: ao lado, a célula sai da pilha. A baía é cavada 0,5 mm para a reserva de inchaço não levantar o teto da cavidade |
 | Reserva de inchaço | **0,5 mm** (10 % da espessura) | uma bolsa de lítio engorda com ciclo e temperatura; era 0,000 mm, com igualdade exata, enquanto a `PD2` cobrava 0,30 de toda peça rígida |
 | Passagem dos fios | **3,4 mm** cortados nas nervuras e no piso | `CELULA_FIO_PASSO + CELULA_FIO_D`; até 2026-10-01 as nervuras iam do piso ao teto e a saída real era **0,000 mm** |
-| Vedação da caixa | anel O de cordão **0,80 mm** em sulco de 1,05 × 0,58 | **25 % de compressão medidos no sólido**, dentro da faixa de 20 a 30 % |
+| Vedação da caixa | anel O de cordão **0,60 mm** em sulco de 0,78 × 0,45 | **23,3 % de compressão medidos no sólido**, dentro da faixa de 20 a 30 %. O cordão de 0,60 é requisito de compra |
 | Vedação da porta | junta plana de **0,65 mm** no **ombro do conector**, comprimida 0,20 de 0,70 (28,6 %) por um ressalto da tampa | `docs/02`: "junta na face do conector". O lábio e o dreno saíram: o lábio ficava 0,40 acima da junta e o dreno 0,50 **acima** do fundo do poço |
 | Fechamento | **dois parafusos M1,6** autoatarraxantes, ressalto de 3,40, furo-guia de 1,35, cabeça **cilíndrica saliente sobre anilha vedante** de 4,0 comprimida 30 % | um deles passa **pelo furo da placa** por um pescoço de 2,00, que segue acima dela até passar o nível do envase. O tampão de resina sobre cabeça escareada não cabia: 0,96 de cabeça mais 0,80 de tampão contra 1,00 de tampa, e um escareado de 3,20 não entra num furo de 1,90 |
 | Assento da placa | **0,5 mm** por borda (`RESSALTO = FOLGA_PLACA + ASSENTO_MIN`) | eram 0,100 mm, a mesma medida da folga radial do pino: a placa saía do ressalto só deslizando |
@@ -115,13 +115,11 @@ pedivela do dono.
 | Regra | O que ela mede | Estado |
 |---|---|---|
 | `PD6` | todo metal contra a área da antena, nos três eixos | o braço de alumínio fica **4,0 mm** abaixo da antena. A ficha do ME54BS13 pede 3 a 5: está na faixa de risco, **a medir na bancada** |
-| `PD10` | o envelope contra `docs/02` | **74,5 × 21,0** contra **38 × 20**. O comprimento vem da placa de 50 mm mais a célula ao lado |
-| `PD17` | o pod contra a face interna do braço | **21,0** de largura contra os 20,0 do pior caso da classe |
+| `PD10` | o envelope contra `docs/02` | **73,5** de comprimento contra **38**; a largura e a altura cumprem. O comprimento vem da placa de 50 mm mais a célula ao lado ([12](../12-comparacao-com-a-classe.md#a-fundo-o-que-prende-o-comprimento)) |
 
 ## Massa
 
 Estimada por volume e densidade (página 3 do PDF e regra `PD11`), nada
 pesado: pod impresso 1,15 g/cm³, envase 1,0, FR-4 1,85, célula 2,0, peças
-2,5 sobre 70 % do contorno de ocupação vezes a altura. Dá **14,2 g** contra
-os 20 do alvo: concha 4,4, tampa 1,8, placa 1,2, peças 1,1, célula 2,1,
-envase 3,6.
+2,5 sobre 70 % do contorno de ocupação vezes a altura. Dá **13,4 g** contra
+os 20 do alvo.

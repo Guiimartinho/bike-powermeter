@@ -66,14 +66,31 @@ import make_dxf as MD         # noqa: E402
 import make_pcb as MP         # noqa: E402
 
 # ----------------------------------------------------------------- the pod
-# The wall is 2,0 and not 1,2 since 2026-09-28, and the reason is the
-# O-ring: the seal is a groove of 1,05 mm cut in the top face of the wall
-# (JUNTA_SULCO_L below), and 1,2 mm of wall cannot hold it. It is 2,0
-# EVERYWHERE and not only at the rim: a stepped wall would give back
-# 1,6 mm at the bottom, and the bottom is exactly where the pod is BONDED
-# to the crank arm, so the step would cost bonding area and stiffness to
-# buy a millimetre where it does not show.
-PAREDE, FUNDO, TAMPA = 2.0, 1.2, 1.0
+# A PAREDE SAI DA VEDACAO, e nao o contrario. O selo e um anel O num sulco
+# cortado na face de cima da parede, entao a parede e o sulco mais a terra de
+# cada lado - e nada mais. Escrever os dois como numeros soltos foi o que
+# manteve a parede em 2,0 depois que o cordao ja podia ser menor.
+#
+# Por que o cordao caiu de 0,80 para 0,60 em 2026-10-01. A largura do pod e
+# `placa + 2 x (folga + parede)`, e com parede de 2,0 ela dava 21,0 contra os
+# 20,0 que `docs/02` pede e que e a face interna do braco da classe: a `PD17`
+# reprovava por 1,0 mm. Com 0,60 de cordao a parede vai a 1,50 e a largura a
+# **20,0 exatos**, sem mexer na placa, sem perder o anel O por uma junta de
+# face (que nao e captiva e extruda) e sem parede fina demais para imprimir.
+# O cordao de 0,60 e REQUISITO DE COMPRA: ele existe nas series de anel O em
+# miniatura, mas nao e item de prateleira como o de 1,0, e se nao for
+# encontrado a saida e junta de face na tampa, com a parede em 1,2.
+#
+# A parede e 1,50 EM TODA A ALTURA e nao so na borda: uma parede escalonada
+# devolveria milimetro no fundo, e o fundo e exatamente onde o pod e COLADO ao
+# braco - o degrau custaria area de colagem e rigidez para comprar um
+# milimetro onde ele nao aparece.
+JUNTA_CORDAO = 0.60           # o cordao do anel O: requisito de compra
+JUNTA_SULCO_L = 1.30 * JUNTA_CORDAO    # 0,78: a largura usual de sulco de face
+JUNTA_SULCO_P = 0.75 * JUNTA_CORDAO    # 0,45: 25 % de compressao
+JUNTA_TERRA = 0.36            # a terra de cada lado do sulco (`PD13` pede 0,35)
+PAREDE_VEDA = JUNTA_SULCO_L + 2.0 * JUNTA_TERRA
+PAREDE, FUNDO, TAMPA = PAREDE_VEDA, 1.2, 1.0
 # O `FUNDO` subiu de 1,0 para 1,2 em 2026-10-01 porque o RELEVO passou a ser
 # CAVADO e nao acrescentado (ver `RELEVO`): fora da base de colagem a face de
 # baixo esta em z = RELEVO, logo a espessura do piso ali e FUNDO - RELEVO. Com
@@ -429,17 +446,6 @@ DENS_POD, DENS_ENVASE, DENS_FR4, DENS_CELULA, DENS_PECAS = 1.15, 1.0, 1.85, 2.0,
 # against 2,4, and it lands where there is clearance to the frame instead of
 # against the arm.
 #
-# The cord is 0,80 mm. The groove is 1,05 wide and 0,58 deep, which squeezes
-# it to 0,58 of its 0,80 - 27,5 % of compression, inside the 20 to 30 % a
-# static face seal asks for. The wall at the rim is 2,0 mm: 1,05 of groove
-# plus 0,45 of material outside and 0,50 inside.
-JUNTA_CORDAO = 0.80           # the O-ring's cord diameter
-JUNTA_SULCO_L = 1.05          # groove width
-JUNTA_SULCO_P = 0.58          # groove depth: 27,5 % of compression
-PAREDE_VEDA = 2.00            # the wall the groove needs (see PAREDE)
-if PAREDE < PAREDE_VEDA:
-    raise SystemExit(f"a parede e {PAREDE} e o sulco do anel O pede "
-                     f"{PAREDE_VEDA}: sem isso nao ha vedacao por anel O")
 
 # --------------------------------------------- closing screws (2026-09-28)
 # The lid is bonded and the pod is potted, and a bonded lid still has to be

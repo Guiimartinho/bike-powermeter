@@ -64,13 +64,13 @@ VERIFICACOES = [
 
     ("dry run do pod: 31 regras, 11 delas medindo o sólido",
      [PY, "hardware_powermeter/pod/dry_run_pod.py"],
-     lambda c, s: "3 violadas" in s and "0 nao medidas" in s,
-     "PD6, PD10 e PD17 ficam abertas, e as três são decisão do dono, não "
-     "defeito de geometria: o braço de alumínio fica 4,0 mm abaixo da "
-     "antena (a ficha do ME54BS13 pede 3 a 5: faixa de risco, a medir na "
-     "bancada); o pod tem 74,5 x 21,0 contra o alvo de 38 x 20 de docs/02, "
-     "porque a placa tem 50 mm e a célula ficou ao lado dela; e a largura "
-     "sobra 0,5 mm de cada lado da face do braço da classe"),
+     lambda c, s: "2 violadas" in s and "0 nao medidas" in s,
+     "PD6 e PD10 ficam abertas, e as duas são decisão do dono, não defeito "
+     "de geometria: o braço de alumínio fica 4,0 mm abaixo da antena (a "
+     "ficha do ME54BS13 pede 3 a 5: faixa de risco, a medir na bancada), e "
+     "o pod tem 73,5 de comprimento contra o alvo de 38 de docs/02, porque "
+     "a placa tem 50 mm e a célula ficou ao lado dela. A largura passou a "
+     "cumprir em 2026-10-01: a parede caiu de 2,0 para 1,5"),
 
     ("mapa de pinos × silício × docs/02 × esquemático",
      [PY, "tools/fw/board_check.py"], lambda c, s: c == 0, ""),
