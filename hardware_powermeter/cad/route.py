@@ -2094,10 +2094,13 @@ def via_cabe_aqui(vx: float, vy: float, rede: str,
             return False
     for wx, wy, r in vias:
         if r == rede:
-            # its own net still may not have two vias in the same hole:
-            # KiCad calls that "holes co-located" and the fabricator drills
-            # the same spot twice (seen on 2026-09-28)
-            if perto(math.hypot(wx - vx, wy - vy), VIA_D * 0.5):
+            # Duas vias da mesma rede nao partilham o furo - e nem chegam
+            # perto dele. O `min_hole_to_hole` do projeto e 0,2 mm entre as
+            # BORDAS, o que com furo de 0,20 da 0,40 entre centros; a conta
+            # antiga usava VIA_D/2 = 0,20 e deixava passar duas vias a 0,2 mm
+            # uma da outra, que o KiCad reprova como `hole_near_hole`
+            # (medido em 2026-10-01, uma de cada vez).
+            if perto(math.hypot(wx - vx, wy - vy), VIA_FURO + 0.2):
                 return False
             continue
         f = max(folga_de(rede), folga_de(r))

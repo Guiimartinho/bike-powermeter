@@ -205,6 +205,18 @@ def main() -> int:
         import re as _re
         culpado = None
         for texto_r in ruins:
+            # So' o que o FABRICANTE reprova, nao o que a nossa medida
+            # reprova. A `conferir` e de proposito mais estrita que o DRC
+            # (ela usa a FOLGA do roteador, 0,10, contra os 0,0889 da
+            # classe), e tirar tudo o que ela acusa custou a COSTURA DA
+            # BORDA inteira: 105 itens removidos de uma vez e a `GN2`
+            # dizendo "so 1 via de terra a menos de 3 mm da borda: nao ha
+            # costura" (2026-10-01). Um plano de terra sem costura a 2,4 GHz
+            # nao e um plano. Entao sai so' o que esta abaixo do minimo do
+            # fabricante; a margem a mais fica para o relatorio.
+            m_d = _re.search(r" a ([\d.]+) mm", texto_r)
+            if m_d and float(m_d.group(1)) >= 0.0889:
+                continue
             mp = _re.search(r"\(em ([-\d.]+); ([-\d.]+)\)", texto_r)
             if not mp:
                 mp = _re.search(r" em \(([-\d.]+); ([-\d.]+)\)", texto_r)

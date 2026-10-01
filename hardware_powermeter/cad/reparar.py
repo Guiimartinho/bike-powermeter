@@ -266,6 +266,13 @@ def main() -> int:
 
     cobre_cel = celulas_do_cobre(g, segmentos, vias)
 
+    # quantos pares a placa JA tem pela nossa medida, antes de qualquer
+    # conserto: e a linha de base contra a qual cada conserto e julgado
+    antes_ruins = len(R.conferir(segmentos, vias, todos))
+    if antes_ruins:
+        print(f"a placa ja tem {antes_ruins} par(es) que a nossa medida acusa "
+              "e o DRC do KiCad aceita; o conserto e julgado contra isso",
+              flush=True)
     fechadas, falhas = 0, []
     for rede, a, b in pares:
         if rede == "GND":
@@ -330,10 +337,17 @@ def main() -> int:
         # the same place - from 4 real DRC violations to 13. A pass that
         # repairs by breaking is worse than one that leaves the gap, because
         # the gap is visible and the short is not.
-        ruins = R.conferir(segmentos + s, vias + v, todos)
-        if ruins:
-            falhas.append(f"{rede}: o conserto criaria {len(ruins)} problema(s) de "
-                          f"geometria ({ruins[0][:70]}); nao foi desenhado")
+        # O que importa e o que o conserto ACRESCENTA, nao o que a placa ja
+        # tinha. Comparando o total, este passe recusava um caminho perfeito
+        # porque a placa ja carregava 62 pares que a nossa medida (mais
+        # estrita que o DRC) acusa e o KiCad aceita - medido em 2026-10-01,
+        # com a ultima ligacao da placa, o `CHG_N`.
+        depois = R.conferir(segmentos + s, vias + v, todos)
+        if len(depois) > antes_ruins:
+            novos = len(depois) - antes_ruins
+            falhas.append(f"{rede}: o conserto criaria {novos} problema(s) de "
+                          f"geometria a mais ({depois[-1][:70]}); nao foi "
+                          "desenhado")
             continue
         segmentos += s
         vias += v
