@@ -109,15 +109,16 @@ def main() -> int:
         if regiao:
             k = 1 - regiao[0]
             px, py, pc = pontas[k]
-            posto = _via_perto(px, py, pc, rede, segmentos, vias, todos, larg)
+            posto, caminho = _via_perto(px, py, pc, rede, segmentos, vias,
+                                        todos, larg)
             if posto is None:
                 falhou.append(f"{rede}: nao cabe via ao lado de "
                               f"({px:.1f}; {py:.1f}) para alcancar o plano")
                 continue
             vias.append((posto[0], posto[1], rede))
-            p0 = _borda_do_pad(px, py, posto[0], posto[1], todos)
-            if math.hypot(posto[0] - p0[0], posto[1] - p0[1]) > 1e-9:
-                segmentos.append((p0, posto, pc, rede, larg))
+            for a, b in zip(caminho, caminho[1:]):
+                if math.hypot(b[0] - a[0], b[1] - a[1]) > 1e-9:
+                    segmentos.append((a, b, pc, rede, larg))
             fechadas += 1
             print(f"  {rede}: via ao lado de ({px:.1f}; {py:.1f}) ate o plano",
                   flush=True)
@@ -145,11 +146,16 @@ def main() -> int:
                 vy = (ay + by) / 2.0 + raio * math.sin(ang)
                 if not R.via_cabe_aqui(vx, vy, rede, segmentos, vias, todos):
                     continue
-                if R.toco_limpo((ax, ay), (vx, vy), ca, rede, larg, segmentos,
-                                todos, vias, estrito=True):
+                # cada lado pode VIRAR: reto, L ou L de 45. Um toco reto
+                # de cada lado e o que deixava a ultima ligacao da placa em
+                # aberto, com 2.271 lugares bons para a via em volta dela.
+                ca_cam = _primeiro_limpo((ax, ay), (vx, vy), ca, rede, larg,
+                                         segmentos, todos, vias)
+                if ca_cam is None:
                     continue
-                if R.toco_limpo((vx, vy), (bx, by), cb, rede, larg, segmentos,
-                                todos, vias, estrito=True):
+                cb_cam = _primeiro_limpo((vx, vy), (bx, by), cb, rede, larg,
+                                         segmentos, todos, vias)
+                if cb_cam is None:
                     continue
                 posto = (vx, vy)
                 break
@@ -159,8 +165,10 @@ def main() -> int:
                           f"na camada {ca} e ({bx:.1f}; {by:.1f}) na {cb}")
             continue
         vias.append((posto[0], posto[1], rede))
-        segmentos.append(((ax, ay), posto, ca, rede, larg))
-        segmentos.append((posto, (bx, by), cb, rede, larg))
+        for cam_, camada_ in ((ca_cam, ca), (cb_cam, cb)):
+            for a_, b_ in zip(cam_, cam_[1:]):
+                if math.hypot(b_[0] - a_[0], b_[1] - a_[1]) > 1e-9:
+                    segmentos.append((a_, b_, camada_, rede, larg))
         fechadas += 1
         print(f"  {rede}: via em ({posto[0]:.1f}; {posto[1]:.1f}) entre as "
               f"camadas {ca} e {cb}", flush=True)
@@ -179,6 +187,40 @@ def main() -> int:
     return 0
 
 
+def _primeiro_limpo(p0, p1, cam, rede, larg, segmentos, todos, vias):
+    """O primeiro caminho de p0 a p1 que passa limpo, ou None."""
+    for caminho in _caminhos(p0, p1):
+        if all(not R.toco_limpo(a, b, cam, rede, larg, segmentos, todos,
+                                vias, estrito=True)
+               for a, b in zip(caminho, caminho[1:])):
+            return caminho
+    return None
+
+
+def _caminhos(p0, p1):
+    """As formas de ir de p0 a p1: reta, dois Ls e dois Ls de 45 graus.
+
+    Um toco reto nao basta. A ilha 36 do modulo tinha 2.271 lugares bons para
+    a via em volta dela e NENHUM alcancavel em linha reta: a trilha do CHG_N
+    passa no meio. Virar uma vez resolve, e virar e' o que se faz a mao
+    (medido em 2026-10-01).
+    """
+    import math as _m
+    (ax, ay), (bx, by) = p0, p1
+    dx, dy = bx - ax, by - ay
+    m = min(abs(dx), abs(dy))
+    sx = 1.0 if dx > 0 else -1.0
+    sy = 1.0 if dy > 0 else -1.0
+    saida = [[p0, p1]]
+    if abs(dx) > 1e-9 and abs(dy) > 1e-9:
+        saida.append([p0, (bx, ay), p1])          # primeiro em x
+        saida.append([p0, (ax, by), p1])          # primeiro em y
+        if m > 1e-9:
+            saida.append([p0, (ax + sx * m, ay + sy * m), p1])   # 45 e reto
+            saida.append([p0, (bx - sx * m, by - sy * m), p1])   # reto e 45
+    return saida
+
+
 def _via_perto(px, py, pc, rede, segmentos, vias, todos, larg):
     """Lugar para uma via junto do pino, medido contra o cobre que ha.
 
@@ -191,21 +233,48 @@ def _via_perto(px, py, pc, rede, segmentos, vias, todos, larg):
     dela, ja estava ligada (medido em 2026-10-01).
     """
     raio = 0.0
-    while raio <= 2.0:
+    while raio <= 4.0:
         n_p = 1 if raio < 1e-9 else max(8, int(2 * math.pi * raio / PASSO_BUSCA))
         for k in range(n_p):
             ang = 2.0 * math.pi * k / n_p
             vx, vy = px + raio * math.cos(ang), py + raio * math.sin(ang)
             if not R.via_cabe_aqui(vx, vy, rede, segmentos, vias, todos):
                 continue
-            p0 = _borda_do_pad(px, py, vx, vy, todos)
-            if raio > 1e-9 and R.toco_limpo(p0, (vx, vy), pc, rede,
-                                            larg, segmentos, todos, vias,
-                                            estrito=True):
-                continue
-            return (vx, vy)
+            if raio < 1e-9:
+                return (vx, vy), [(px, py), (vx, vy)]
+            # VARIOS pontos de partida ao longo da borda do pad, nao um so.
+            # O pad do modulo tem 1,0 x 0,8 mm: sair pelo canto de cima ou
+            # pelo de baixo da' caminhos completamente diferentes, e o unico
+            # ponto "mais proximo" nem sempre e o que passa.
+            for p0 in _partidas(px, py, vx, vy, todos):
+                cam = _primeiro_limpo(p0, (vx, vy), pc, rede, larg,
+                                      segmentos, todos, vias)
+                if cam is not None:
+                    return (vx, vy), cam
+            continue
         raio += PASSO_BUSCA
-    return None
+    return None, None
+
+
+def _partidas(px, py, vx, vy, todos):
+    """Pontos do pad de onde o toco pode sair, do mais proximo ao mais longe."""
+    orx, ory = R.MP.ORIGEM
+    for nome, idx, qx, qy, hw, hh in todos:
+        if abs(qx - orx - px) < 0.01 and abs(qy - ory - py) < 0.01:
+            cx = min(max(vx, px - hw), px + hw)
+            cy = min(max(vy, py - hh), py + hh)
+            saida = [(cx, cy)]
+            for f in (0.5, 1.0, -0.5, -1.0):
+                saida.append((cx, min(max(py + f * hh, py - hh), py + hh)))
+                saida.append((min(max(px + f * hw, px - hw), px + hw), cy))
+            vistos, limpos = set(), []
+            for q in saida:
+                k = (round(q[0], 3), round(q[1], 3))
+                if k not in vistos:
+                    vistos.add(k)
+                    limpos.append(q)
+            return limpos
+    return [(px, py)]
 
 
 def _borda_do_pad(px, py, vx, vy, todos):
