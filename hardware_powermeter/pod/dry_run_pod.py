@@ -5,35 +5,25 @@ make_pod.py draws the pod from numbers; this file asks whether those numbers
 work with the board that actually came out of the CAD chain - the real
 courtyards, the real heights, the real face of every part - and with the
 cell's envelope. Nothing here is asserted: every rule reads make_pod's
-constants and the placed board, and a rule with nothing to measure FAILS
-saying so (the bike computer's dry runs passed for days on empty boards).
+constants, the placed board or THE DRAWN SOLID, and a rule with nothing to
+measure FAILS saying so (the bike computer's dry runs passed for days on
+empty boards).
 
-The rules, with their source:
-  PD1  the board fits the cavity with its play (make_pod.FOLGA_PLACA and
-       CANAL_FIO)
-  PD2  every part of the front face stays under the lid's underside with
-       air (make_dxf.TETO_TAMPA; heights from the datasheets)
-  PD3  the connector goes through the lid's window: the window covers its
-       courtyard with play, and its face sits in the well, below the lid's
-       top and above the lid's underside
-  PD4  the back face is flat: a part with a body on the back would stand on
-       the cell (docs/02, Pod: the cell under the board)
-  PD5  the cell fits between the ledges and under the board with the air of
-       CELULA_VAO, short of the rib, the posts and the slot
-  PD6  the cell (a metal pouch) stays 5 mm from the module's antenna area
-       (ME54BS13 V1.0.0, 7.4: no metal 3 to 5 mm round the antenna)
-  PD7  the slot in the floor lies straight under the bridge's holes, inside
-       the floor and clear of the ledges and the cell
-  PD8  the posts and the ledges touch the board only where its back has no
-       pad (the test points are on the back)
-  PD9  the LED's light hole sits over the LED's body
-  PD10 the outside stays within the envelope target of docs/02 (60 x 20 x
-       8,5) - the height is measured and reported against it
-  PD11 the estimated mass stays under 20 g (docs/02, Requisitos)
-  PD12 the lid's lip clears every part near the board's edge
+PD1 to PD20 live here; PD21 to PD31, which rasterise the drawn solid, live
+in regras_medidas.py. The list of what each one measures is in
+../07-pod.md#as-regras-do-dry-run - keeping a second copy here is how this
+docstring ended up listing twelve rules and describing criteria three
+revisions old.
 
-Run: python hardware_powermeter/pod/dry_run_pod.py (after make_pcb.py: it
-reads cad/pmeter.kicad_pcb through make_pod.ler_placa)
+Ten of the thirty-one rules measure the SOLID and not the constant that drew
+it. That distinction is the whole point: on 2026-10-01 ten reviewers found
+seven interferences that stopped the pod closing while this file reported 18
+of 20 rules met, because seven rules read the constant and a rule like that
+passes whether the feature was drawn or not.
+
+Run: python hardware_powermeter/pod/make_pod.py, then
+python hardware_powermeter/pod/dry_run_pod.py (it reads cad/pmeter.kicad_pcb
+through make_pod.ler_placa, and the two STL that make_pod writes)
 """
 
 from __future__ import annotations
@@ -757,9 +747,10 @@ def pd19_aberturas(pod, r) -> None:
     for i, (px, py) in enumerate(C.PARAF_XY):
         aberturas.append((
             f"furo do parafuso {i + 1} em ({f2(px)}; {f2(py)})", "tampa",
-            f"tampao de resina de {f2(getattr(C, 'PARAF_TAMPAO_P', 0.0))} "
-            "sobre a cabeca",
-            getattr(C, "PARAF_TAMPAO_P", 0.0) >= 0.5))
+            f"anilha vedante de {f2(C.PARAF_ANILHA_D)} sob a cabeca, "
+            f"{f2(C.PARAF_ANILHA_ESP)} livre, comprimida {f2(C.PARAF_ANILHA_APERTO)}",
+            C.PARAF_ANILHA_APERTO > 0.0
+            and C.PARAF_ANILHA_D > C.PARAF_CABECA_D))
 
     # 5. o rasgo dos fios da ponte, no fundo
     if pod.rasgo:
@@ -848,8 +839,8 @@ def pd20_caminho_da_agua(pod, r) -> None:
     # 5. pelos furos dos parafusos
     for i, (px, py) in enumerate(C.PARAF_XY):
         caminhos.append((f"pelo furo do parafuso {i + 1}", [
-            ("o tampao de resina sobre a cabeca",
-             getattr(C, "PARAF_TAMPAO_P", 0.0) >= 0.5),
+            ("a anilha vedante sob a cabeca, comprimida",
+             C.PARAF_ANILHA_APERTO > 0.0 and C.PARAF_ANILHA_D > C.PARAF_CABECA_D),
             ("a rosca no ressalto, acima do envase",
              C.TAMPA_Z0 >= C.ENVASE_NIVEL - 1e-9),
         ]))

@@ -11,9 +11,9 @@ run próprio. O que ele é e o que decide está em [07-pod.md](../07-pod.md).
 | Arquivo | O que faz |
 |---|---|
 | `make_pod.py` | desenha o pod: concha e tampa em STL, `pmeter-pod.pdf` com planta, cortes e a página das decisões, e **seis vistas** em `docs/img/hardware/`: `pod-3d-aberta`, `pod-3d-fechada`, `pod-3d-explodida`, `pod-3d-tampa-por-dentro`, `pod-3d-celula-no-berco` e `pod-3d-por-baixo` |
-| `dry_run_pod.py` | mede o pod contra a placa: **30 regras** (`PD1` a `PD30`), cada uma com a fonte, e **uma regra que não acha o que medir falha dizendo isso** |
+| `dry_run_pod.py` | mede o pod contra a placa: **31 regras** (`PD1` a `PD31`), cada uma com a fonte, e **uma regra que não acha o que medir falha dizendo isso** |
 | `medir.py` | rasteriza em voxels as primitivas que a `Malha` registrou ao desenhar, e lê as arestas dos STL: é o que permite medir o sólido em vez da constante |
-| `regras_medidas.py` | as dez regras que medem o sólido (`PD21` a `PD30`) |
+| `regras_medidas.py` | as onze regras que medem o sólido (`PD21` a `PD31`) |
 | `make_conjunto.py` | o pod no braço do pedivela: `conjunto-3d-montado`, `conjunto-3d-aberto`, `conjunto-3d-extensometros`, `conjunto-3d-produto` e `conjunto-3d-produto-lateral` |
 | `pod-concha.stl`, `pod-tampa.stl` | união de sólidos fechados para o fatiador, não sólido de CAD |
 | `pmeter-pod.pdf` | 3 páginas: planta, cortes, decisões e lugares reservados |
@@ -25,7 +25,7 @@ run próprio. O que ele é e o que decide está em [07-pod.md](../07-pod.md).
 flowchart LR
     PCB["cad/make_pcb.py → route.py<br/>→ fill_zones.py → dry_run_pcb.py"] --> GLB["cad/make_3d.py<br/>exporta o GLB"]
     GLB --> POD["pod/make_pod.py<br/>PDF, STL, 6 vistas"]
-    PCB --> DRY["pod/dry_run_pod.py<br/>30 regras"]
+    PCB --> DRY["pod/dry_run_pod.py<br/>31 regras"]
     POD --> CONJ["pod/make_conjunto.py<br/>o pod no pedivela"]
     POD --> DRY
 ```
@@ -81,6 +81,9 @@ defeito volta ao gerador e a regra tem de reprovar.
 | `PD24` | a junta da porta não é comprimida | ressalto removido: "comprimida 0,0 %" |
 | `PD25` | fio ou matriz dentro da linha de cola | canaleta de 0,2: 96,7 mm² sem cola; canaleta nenhuma: "não mede nada" |
 | `PD14` | o que atravessa a placa não cabe no furo | pescoço em diâmetro cheio: 3,40 contra 2,20; sem pescoço: "não há sólido nenhum" |
+| `PD9` | o furo de luz não é redondo | furo quadrado: 6,25 mm² contra 4,91 |
+| `PD27` | uma constante de geometria não é usada | constante nova sem uso: pega pelo nome |
+| `PD31` | a anilha não veda a cabeça | anilha de 3,0 sob cabeça de 3,2: "ela não veda" |
 
 ## O que é decisão deste desenho
 
@@ -95,7 +98,7 @@ Tudo em `make_pod.py`, em constantes com o motivo ao lado.
 | Passagem dos fios | **3,4 mm** cortados nas nervuras e no piso | `CELULA_FIO_PASSO + CELULA_FIO_D`; até 2026-10-01 as nervuras iam do piso ao teto e a saída real era **0,000 mm** |
 | Vedação da caixa | anel O de cordão **0,80 mm** em sulco de 1,05 × 0,58 | **25 % de compressão medidos no sólido**, dentro da faixa de 20 a 30 % |
 | Vedação da porta | junta plana de **0,65 mm** no **ombro do conector**, comprimida 0,20 de 0,70 (28,6 %) por um ressalto da tampa | `docs/02`: "junta na face do conector". O lábio e o dreno saíram: o lábio ficava 0,40 acima da junta e o dreno 0,50 **acima** do fundo do poço |
-| Fechamento | **dois parafusos M1,6** autoatarraxantes, ressalto de 3,40, furo-guia de 1,35 | um deles passa **pelo furo da placa** por um pescoço de 2,00, que segue acima dela até passar o nível do envase |
+| Fechamento | **dois parafusos M1,6** autoatarraxantes, ressalto de 3,40, furo-guia de 1,35, cabeça **cilíndrica saliente sobre anilha vedante** de 4,0 comprimida 30 % | um deles passa **pelo furo da placa** por um pescoço de 2,00, que segue acima dela até passar o nível do envase. O tampão de resina sobre cabeça escareada não cabia: 0,96 de cabeça mais 0,80 de tampão contra 1,00 de tampa, e um escareado de 3,20 não entra num furo de 1,90 |
 | Assento da placa | **0,5 mm** por borda (`RESSALTO = FOLGA_PLACA + ASSENTO_MIN`) | eram 0,100 mm, a mesma medida da folga radial do pino: a placa saía do ressalto só deslizando |
 | Teto sobre a placa | 2,7 mm | `cad/make_dxf.TETO_TAMPA`; quem o fixa é o módulo, com 2,40 mais 0,3 de ar |
 | Base de colagem | **14 mm** de largura, com relevo de **0,5 mm** cavado em volta | a face do braço só é plana em 15 dos 20 mm, e a base guarda 0,5 de margem por lado. O relevo era **acrescentado** onde queria cavar: 100 % das tiras externas era face maciça em z = 0 |

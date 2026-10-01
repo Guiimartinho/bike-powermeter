@@ -51,6 +51,7 @@ def corpos_do_pod(pod, g):
         "placa": ME.corpo_da_placa(C, pod.pecas, MD),
         "junta": pod.junta_3d(),
         "oring": pod.anel_oring(),
+        "anilhas": pod.anilhas_3d(),
     }
     return malhas, {k: g.solido(m) for k, m in malhas.items()}
 
@@ -394,10 +395,23 @@ def pd27_constantes_mortas(pod, r) -> None:
             v = getattr(C, n, None)
             if isinstance(v, (int, float)) and not isinstance(v, bool):
                 nomes.append(n)
+    # Conta TOKENS de codigo, nao ocorrencias no texto: o `PARAF_CABECA_D`
+    # passou esta regra na primeira execucao porque o nome dele aparece no
+    # comentario logo acima, citado como exemplo de constante morta. Uma
+    # meta-regra que a propria documentacao engana nao mede nada.
+    import io
+    import tokenize
+    usos: dict = {}
+    for fonte in fontes.values():
+        try:
+            for tok in tokenize.generate_tokens(io.StringIO(fonte).readline):
+                if tok.type == tokenize.NAME:
+                    usos[tok.string] = usos.get(tok.string, 0) + 1
+        except tokenize.TokenError:
+            pass
     mortas = []
     for n in sorted(set(nomes)):
-        usos = sum(len(re.findall(r"\b" + n + r"\b", s)) for s in fontes.values())
-        if usos <= 1:
+        if usos.get(n, 0) <= 1:
             mortas.append(f"{n} = {getattr(C, n)}")
     if mortas:
         r.falha("PD27", f"{len(mortas)} constante(s) de geometria sem uso nenhum: "
@@ -488,6 +502,55 @@ def pd29_aberturas_da_tampa(pod, r) -> None:
                      + "; ".join(medidas))
 
 
+def pd31_cabeca_do_parafuso(pod, r, g, corpos) -> None:
+    """A cabeca do parafuso e a vedacao dela cabem onde estao.
+
+    A revisao de 2026-10-01: `PARAF_CABECA_D = 3,20` tinha UMA unica ocorrencia
+    em todo o repositorio, a propria definicao. Se a cabeca fosse desenhada
+    onde estava declarada - escareada na tampa - ela entraria 0,15 x 1,65 na
+    janela do conector, e a pilha escareado mais tampao daria 1,60 contra os
+    1,00 de tampa. A cabeca passou a ser CILINDRICA e SALIENTE, sobre uma
+    anilha vedante, e esta regra mede o que isso ocupa.
+    """
+    problemas = []
+    # a anilha tem de ser maior que a cabeca, e as duas cabem na face da tampa
+    if C.PARAF_ANILHA_D <= C.PARAF_CABECA_D:
+        problemas.append(f"a anilha de {f2(C.PARAF_ANILHA_D)} nao e maior que a "
+                         f"cabeca de {f2(C.PARAF_CABECA_D)}: ela nao veda")
+    aperto = 100.0 * C.PARAF_ANILHA_APERTO / C.PARAF_ANILHA_ESP
+    if not (20.0 - 1e-9 <= aperto <= 35.0 + 1e-9):
+        problemas.append(f"a anilha e comprimida {aperto:.1f} %, fora da faixa de "
+                         "20 a 35 %")
+    # e nada da tampa fica sob a anilha alem da propria face
+    topo = g.topo(corpos["tampa"])
+    for i, (cx, cy) in enumerate(C.PARAF_XY):
+        m = (g.planta_rect(cx - C.PARAF_ANILHA_D / 2, cy - C.PARAF_ANILHA_D / 2,
+                           cx + C.PARAF_ANILHA_D / 2, cy + C.PARAF_ANILHA_D / 2)
+             & ~np.isnan(topo))
+        if not m.any():
+            problemas.append(f"nao ha tampa sob a anilha do parafuso {i + 1}")
+            continue
+        alto = float(np.nanmax(np.where(m, topo, np.nan)))
+        baixo = float(np.nanmin(np.where(m, topo, np.nan)))
+        if alto - baixo > 2 * g.passo:
+            problemas.append(f"a face da tampa sob a anilha do parafuso {i + 1} "
+                             f"varia de {baixo:.2f} a {alto:.2f}: a anilha nao "
+                             "assenta plana")
+    # a saliencia entra na altura do pod
+    alturas = C.T_P + C.PARAF_ANILHA_ESP - C.PARAF_ANILHA_APERTO + C.PARAF_CABECA_K
+    if alturas > C.ALVO[2] + 1e-9:
+        problemas.append(f"com a cabeca e a anilha o pod chega a {f2(alturas)} e o "
+                         f"alvo de altura e {C.ALVO[2]:g}")
+    if problemas:
+        r.falha("PD31", "; ".join(problemas))
+    else:
+        r.ok("PD31", f"cabeca cilindrica de {f2(C.PARAF_CABECA_D)} x "
+                     f"{f2(C.PARAF_CABECA_K)} sobre anilha vedante de "
+                     f"{f2(C.PARAF_ANILHA_D)} comprimida {aperto:.1f} %, numa face "
+                     f"plana medida no solido; o pod chega a {f2(alturas)} nos dois "
+                     f"parafusos, contra o alvo de {C.ALVO[2]:g}")
+
+
 def pd30_assento_da_placa(pod, r) -> None:
     """A placa assenta numa borda mais larga que a folga do pino.
 
@@ -531,3 +594,4 @@ def todas(pod, r) -> None:
     pd28_furo_cego(pod, r, g, corpos)
     pd29_aberturas_da_tampa(pod, r)
     pd30_assento_da_placa(pod, r)
+    pd31_cabeca_do_parafuso(pod, r, g, corpos)

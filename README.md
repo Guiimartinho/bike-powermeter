@@ -191,7 +191,7 @@ flowchart TB
 | [07 · Status](docs/07-status.md) | o que existe, o que foi verificado e como, o que falta |
 | [Hardware](hardware_powermeter/README.md) | o esquemático, a placa, o pod, os dry runs e o que falta antes de fabricar |
 | [CAD](hardware_powermeter/cad/README.md) | os geradores, as regras e as armadilhas medidas |
-| [Pod](hardware_powermeter/pod/README.md) | o gerador do invólucro, as 30 regras do dry run e o que é decisão do desenho |
+| [Pod](hardware_powermeter/pod/README.md) | o gerador do invólucro, as 31 regras do dry run e o que é decisão do desenho |
 | [Módulo de rádio](hardware_powermeter/09-modulo-de-radio.md) | o HOLYIOT-26001-A: por que entrou, o que o nRF54L15 muda, pinagem, mecânica, a antena |
 | [CHANGELOG](CHANGELOG.md) | histórico de mudanças |
 

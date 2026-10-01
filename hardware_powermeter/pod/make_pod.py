@@ -254,10 +254,21 @@ POCO_MAX = 0.80
 # Ele e' um furo passante de 2,5 mm na tampa, sobre o LED, e sem enchimento
 # e' o maior buraco do pod.
 LED_RESINA = True
-# O tampao sobre a cabeca do parafuso: a cabeca e' escareada na tampa e o
-# furo atravessa, entao sobra um poco de 0,8 mm sobre ela que se enche de
-# resina depois de apertar. Tambem trava o parafuso.
-PARAF_TAMPAO_P = 0.8
+# A vedacao do furo de cada parafuso. Ate 2026-10-01 era um tampao de resina
+# de 0,8 mm sobre uma cabeca escareada, e a conta nunca tinha sido feita: uma
+# cabeca escareada M1,6 tem 0,96 de altura, 0,96 + 0,80 = 1,76 contra os 1,00
+# de tampa - e o escareado de 3,20 nao entra num furo de 1,90. Engrossar a
+# tampa ate caber a pilha custaria altura em todo o pod por causa de dois
+# pontos, e um ressalto na face de baixo bateria no colar do pescoco.
+#
+# O que fecha e uma ANILHA VEDANTE sob uma cabeca cilindrica: peca de
+# prateleira, veda por compressao do elastomero contra a face da tampa, e a
+# cabeca fica SALIENTE em vez de escareada. Custa altura nos dois pontos, e a
+# `PD10` mede a caixa delimitadora incluindo-a.
+PARAF_CABECA_K = 1.10         # altura da cabeca cilindrica M1,6 (DIN 7985)
+PARAF_ANILHA_D = 4.00         # diametro externo da anilha vedante
+PARAF_ANILHA_ESP = 0.50       # espessura dela, livre
+PARAF_ANILHA_APERTO = 0.15    # quanto a cabeca a comprime: 30 %
 # O colar em volta do rasgo dos fios da ponte, no FUNDO. O rasgo e' por onde
 # os fios do extensometro sobem do braco, e e' a unica abertura do lado de
 # baixo. O colar sobe 1,5 mm dentro da cavidade: ele segura o envase (que
@@ -426,6 +437,9 @@ JUNTA_CORDAO = 0.80           # the O-ring's cord diameter
 JUNTA_SULCO_L = 1.05          # groove width
 JUNTA_SULCO_P = 0.58          # groove depth: 27,5 % of compression
 PAREDE_VEDA = 2.00            # the wall the groove needs (see PAREDE)
+if PAREDE < PAREDE_VEDA:
+    raise SystemExit(f"a parede e {PAREDE} e o sulco do anel O pede "
+                     f"{PAREDE_VEDA}: sem isso nao ha vedacao por anel O")
 
 # --------------------------------------------- closing screws (2026-09-28)
 # The lid is bonded and the pod is potted, and a bonded lid still has to be
@@ -440,7 +454,7 @@ PAREDE_VEDA = 2.00            # the wall the groove needs (see PAREDE)
 PARAF_D = 1.60                # M1,6 self-tapping
 PARAF_BOSS_D = 3.40           # boss outside diameter
 PARAF_FURO_D = 1.35           # the pilot hole a self-tapping M1,6 wants
-PARAF_CABECA_D = 3.20         # head diameter, countersunk into the lid
+PARAF_CABECA_D = 3.20         # diametro da cabeca cilindrica
 
 # ------------------------------------------------- retention (2026-09-28)
 # The cell used to be held by "the potting", which is not a design. Four ribs
@@ -1316,6 +1330,22 @@ class Pod:
         z0 = self.ombro_z + dz
         z1 = z0 + JUNTA_ESP - JUNTA_APERTO
         m.placa_com_furos(jx0, jy0, jx1, jy1, z0, z1, [(wx0, wy0, wx1, wy1)], COR_JUNTA)
+        return m
+
+    def anilhas_3d(self, dz: float = 0.0) -> Malha:
+        """As anilhas vedantes sob as cabecas dos parafusos, ja comprimidas.
+
+        Desenhadas na espessura COMPRIMIDA, que e como ficam no pod fechado,
+        apoiadas na face de FORA da tampa. Sao o que veda os dois furos que
+        atravessam a tampa por dentro do anel O - um furo ali e caminho direto
+        para a cavidade.
+        """
+        m = Malha()
+        z0 = T_P + dz
+        for cx, cy in PARAF_XY:
+            m.anel(poligono_regular(cx, cy, PARAF_ANILHA_D / 2.0, 16),
+                   poligono_regular(cx, cy, PARAF_D / 2.0 + 0.15, 16),
+                   z0, z0 + PARAF_ANILHA_ESP - PARAF_ANILHA_APERTO, COR_JUNTA)
         return m
 
     def celula_3d(self, dz: float = 0.0) -> Malha:

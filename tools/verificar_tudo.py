@@ -62,7 +62,7 @@ VERIFICACOES = [
      [PY, "hardware_powermeter/cad/dry_run_pcb.py"], lambda c, s: True,
      "relata quantas mediu, cumpriu e não pôde medir"),
 
-    ("dry run do pod: 30 regras, 10 delas medindo o sólido",
+    ("dry run do pod: 31 regras, 11 delas medindo o sólido",
      [PY, "hardware_powermeter/pod/dry_run_pod.py"],
      lambda c, s: "3 violadas" in s and "0 nao medidas" in s,
      "PD6, PD10 e PD17 ficam abertas, e as três são decisão do dono, não "

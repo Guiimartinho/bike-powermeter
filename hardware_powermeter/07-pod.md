@@ -251,7 +251,7 @@ cobra **duas barreiras em série** em cada um.
 | Pela costura concha-tampa | o anel O de 0,80 num sulco de 1,05 × 0,58, 25 % de compressão **medidos no sólido** | a aba da tampa colada por dentro das paredes |
 | Pelo rasgo dos fios da ponte | a cola ao braço em volta do rasgo | o colar que represa o envase, em quatro barras |
 | Pelo furo de luz do LED | a resina transparente enchendo a espessura da tampa | o envase sob o furo |
-| Pelo furo de cada parafuso | o tampão de resina sobre a cabeça | a rosca no ressalto, acima do envase |
+| Pelo furo de cada parafuso | a anilha vedante sob a cabeça, comprimida 30 % | a rosca no ressalto, acima do envase |
 
 O **nível do envase** passou a ser um número: ele para 0,4 mm abaixo do
 teto da cavidade. Antes não havia nenhum — todo texto dizia "até a face de
@@ -277,7 +277,8 @@ da conta.
 ## As regras do dry run
 
 `python hardware_powermeter/pod/dry_run_pod.py` mede o pod contra a placa
-colocada e contra os STL que o gerador grava. Uma regra que não acha o que
+colocada e contra os STL que o gerador grava. **Onze delas medem o sólido
+desenhado**, não a constante que o gerou. Uma regra que não acha o que
 medir **falha dizendo isso**.
 
 | Regra | O que mede |
@@ -312,6 +313,7 @@ medir **falha dizendo isso**.
 | PD28 | todo furo cego tem a boca acima do envase e proporção viável |
 | PD29 | as aberturas da tampa não se comem nem comem a junta |
 | PD30 | o assento da placa é mais largo que a folga do pino |
+| PD31 | a cabeça do parafuso e a anilha que a veda cabem onde estão |
 
 ## Medir o sólido, não a constante
 
