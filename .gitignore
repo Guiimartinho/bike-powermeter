@@ -51,3 +51,6 @@ hardware_powermeter/cad/_drc_all.json
 hardware_powermeter/cad/_pmeter.dsn
 hardware_powermeter/cad/_pmeter.ses
 hardware_powermeter/cad/_*.json
+hardware_powermeter/cad/_antes_*.kicad_pcb
+hardware_powermeter/cad/_*.dsn
+hardware_powermeter/cad/_*.ses
