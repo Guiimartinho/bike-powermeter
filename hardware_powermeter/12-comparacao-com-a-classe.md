@@ -280,28 +280,97 @@ A `PD13` passou a medir o sulco numa **janela com grade de 0,02 mm**: com os
 voxel de viés — e a compressão calculada dava 16,7 % num sulco que o desenho faz
 em 25,0 %.
 
-## A célula: o que comprar
+## A célula: o levantamento nas lojas e o que comprar
 
-As lojas brasileiras tentadas em 2026-10-01 — Baú da Eletrônica, Usinainfo,
-MakerHero (ex-FilipeFlop), Curto Circuito, Eletrogate, RoboCore, Solda Fria e
-Mercado Livre — **não serviram catálogo a esta máquina**: 404, 403 ou página
-montada por script. É o mesmo resultado de 2026-09-28. Então o que vai aqui é a
-**especificação**, não uma peça escolhida.
+### O `401125` não serve mais
+
+O `401125` — 4,0 × 11 × **25** mm — era a célula indicada para a case antiga,
+quando ela ficava **sob** a placa e o pod tinha 55,7 mm. Com a célula ao lado,
+a baía passou a ser **15 × 14 × 5,0**, e o lado de 25 mm não entra em nenhuma
+das duas direções dela.
+
+E aceitá-lo seria um mau negócio mesmo que coubesse:
+
+| | Volume | Carga (0,077 a 0,095) | Comprimento do pod |
+|---|---|---|---|
+| Baía de hoje, cheia | 1.050 mm³ | 81 a 100 mAh | **73,45** |
+| `401125`, com a baía alongada para 25 | 1.100 mm³ | 85 a 104 mAh | **83,45** |
+
+**+5 % de carga por +10 mm de pod.** O lado de 25 mm só cabe ao longo do
+comprimento, e cada milímetro ali é um milímetro do aparelho.
+
+### O que cabe na baía de hoje
+
+Códigos `espessura·largura·comprimento`, medidos contra os 15 × 14 × 5,0:
+
+| Código | mm | Volume | 0,077 | 0,095 | Cabe? |
+|---|---|---|---|---|---|
+| **`501415`** | 5,0 × 14 × 15 | 1.050 mm³ | **81** | **100** | **sim, é a baía inteira** |
+| **`501414`** | 5,0 × 14 × 14 | 980 mm³ | **75** | 93 | **sim** |
+| `501215` | 5,0 × 12 × 15 | 900 mm³ | 69 | 86 | sim, no fio do piso |
+| `401415` | 4,0 × 14 × 15 | 840 mm³ | 65 | 80 | sim, mas **abaixo do piso** a 0,077 |
+| `401214` | 4,0 × 12 × 14 | 672 mm³ | 52 | 64 | sim, e **não fecha a guarda** |
+| `401125` | 4,0 × 11 × 25 | 1.100 mm³ | 85 | 104 | **não**: o lado de 25 |
+| `401123` | 4,0 × 11 × 23 | 1.012 mm³ | 78 | 96 | **não**: o lado de 23 |
+| `351418` | 3,5 × 14 × 18 | 882 mm³ | 68 | 84 | **não** na baía; serve se a célula for para baixo |
+
+Contra o piso de **65,7 mAh** (a guarda de 6 meses a 15 µA), e com a densidade
+conservadora de 0,077, só **`501415` e `501414`** fecham com folga. Esses dois
+são o alvo de compra.
+
+### O levantamento: seis lojas lidas, nenhuma tem
+
+Em 2026-10-01, com o catálogo aberto e lido:
+
+| Loja | O que ela tem de lítio | Bolsa LiPo pequena? |
+|---|---|---|
+| [Curto Circuito](https://curtocircuito.com.br/acessorios/pilhas-e-baterias) | CR2032, 9 V, suportes | **não** |
+| [Usinainfo](https://www.usinainfo.com.br/baterias-699) | CR2025/2016/2430/1620/1616/1025, 18650, 9 V | **não** |
+| [Baú da Eletrônica](https://www.baudaeletronica.com.br/acessorios/pilhas-e-baterias) | CR2025, 9 V, suportes, TP4056 | **não** |
+| [Huinfinito](https://www.huinfinito.com.br/11-baterias-acessorios) | 18650, 9 V recarregável, pilhas | **não** |
+| [Eletrogate](https://www.eletrogate.com/baterias-e-pilhas) | CR2032 (220 mAh, R$ 1,60), CR2025, 9 V | **não** |
+| [Vida de Silício](https://vidadesilicio.com.br/categoria/prototipagem-e-ferramentas/alimentacao/pilhas-e-baterias/) | 9 V, suportes | **não** |
+
+E mais duas que **não serviram catálogo** a esta máquina: MakerHero
+(ex-FilipeFlop) e Solda Fria com 403/404, Mercado Livre com 403 tanto na busca
+quanto na API pública. É o mesmo resultado de 2026-09-28.
+
+**A conclusão é um fato de mercado, não uma falha da busca:** o varejo
+brasileiro de eletrônica estoca pilha-botão, 18650 e 9 V, e **não estoca bolsa
+LiPo de 100 mAh**. Quem as vende aqui são os anunciantes de marketplace
+(Mercado Livre, Shopee) e os importadores — e é por ali, ou por importação
+direta, que a `501415` vai ser comprada. O código de tamanho é o termo de busca.
+
+### A especificação de compra
 
 | Requisito | Valor | De onde vem |
 |---|---|---|
 | Química | LiPo de bolsa, com **fios soldados e PCM integrado** | não há espaço na placa para proteção discreta |
 | Carga | **≥ 70 mAh**, e ≥ 81 preferível | 65,7 mAh é a guarda de 6 meses a 15 µA |
-| Envelope, arranjo de hoje | **15 × 14 × 5,0 mm** máximo | a baía ao lado da placa |
-| Envelope, se a célula for para baixo | **18 × 14 × 3,5 mm** máximo | o bolso que o verso reagrupado libera; 3,9 é o teto absoluto pela altura |
+| Envelope, arranjo de hoje | **15 × 14 × 5,0 mm** máximo — `501415` ou `501414` | a baía ao lado da placa |
+| Envelope, se a célula for para baixo | **18 × 14 × 3,5 mm** máximo — `351418` | o bolso que o verso reagrupado libera; 3,9 é o teto absoluto pela altura |
 | Tensão | 3,7 V nominal | nPM1100 |
 | Temperatura | −10 a +50 °C | o requisito do aparelho |
 
-**Códigos de tamanho para procurar.** O ramo nomeia a bolsa por
-`espessura·largura·comprimento` — o `401123` que estava nos documentos é
-4,0 × 11 × 23 mm. Para a baía de hoje servem os códigos que começam em `50` e
-cabem em 14 × 15: `501414`, `501415`, `501215`. Para o arranjo com a célula
-embaixo: `351418`, `351416`, `301420`.
+### De lambuja: a pilha-botão que caberia
+
+Com a parede em 1,5 a cavidade tem **17,0 mm** de largura, e isso decide quais
+pilhas-botão entram:
+
+| | Diâmetro × altura | Típico | Cabe na cavidade? | Pedalando |
+|---|---|---|---|---|
+| CR2032 | 20,0 × 3,2 | 220 mAh | **não**: 20,0 contra 17,0 | — |
+| CR2025 | 20,0 × 2,5 | 160 mAh | **não** | — |
+| **CR1632** | 16,0 × 3,2 | 140 mAh | **sim** | **206 h** |
+| CR1620 | 16,0 × 2,0 | 75 mAh | sim | 110 h |
+| CR1220 | 12,5 × 2,0 | 40 mAh | sim | 59 h |
+
+Uma CR1632 daria **206 h contra as 119 h de hoje**, custaria quase nada e está
+em qualquer prateleira — mas acaba com a recarga, e com ela o conector
+magnético, o USB e o SWD pelo cabo, que foi **decisão do dono em 2026-09-27**.
+Fica registrado como medida, não como proposta. E note que o 4iiii usa
+justamente uma CR2032 — que no nosso pod **não caberia**, porque ele é mais
+estreito que o deles.
 
 > [!WARNING]
 > **A densidade de energia deste projeto pode estar conservadora.** Os
