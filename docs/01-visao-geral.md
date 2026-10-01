@@ -44,7 +44,7 @@ O piso deste projeto é o que um módulo de braço comercial da mesma classe pub
 | O que a classe publica | Requisito deste projeto |
 |---|---|
 | 20 g com bateria | ≤ 20 g; o pod desenhado está em 17,0 g estimados |
-| máximo de 52 h de uso contínuo por carga | ≥ 50 h; com a ponte de 5 kΩ **e o conversor em duty-cycle** são 0,68 mA, e a célula de 78 mAh que cabe no pod dá **114 h** ([02](02-hardware.md#orçamento-de-consumo)) |
+| máximo de 52 h de uso contínuo por carga | ≥ 50 h; com a ponte de 5 kΩ **e o conversor em duty-cycle** são 0,68 mA, e a célula de 81 mAh que cabe no pod dá **119 h** ([02](02-hardware.md#orçamento-de-consumo)) |
 | ±2,5 % de precisão | ±2 % na fase 1, ±1,5 % como meta da fase 2 |
 | 0 a 2000 W, 10 a 200 rpm | os mesmos |
 | −5 a +50 °C | −10 a +50 °C |

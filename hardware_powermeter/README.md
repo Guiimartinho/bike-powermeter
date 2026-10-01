@@ -67,6 +67,8 @@ regera a placa se você esquecer o `--como-esta`.
 | [08 · Dry run de 2026-09-27](08-dry-run-2026-09-27.md) | a primeira medida completa da placa e do pod |
 | [09 · Módulo de rádio](09-modulo-de-radio.md) | o HOLYIOT-26001-A: por que ele entrou, o que o nRF54L15 muda, pinagem, mecânica, a antena |
 | [10 · Dry run de 2026-09-28](10-dry-run-2026-09-28.md) | a medida completa depois da troca do módulo, da célula real e da vedação |
+| [11 · Revisão de 2026-10-01](pod/11-revisao-2026-10-01.md) | dez revisores sobre o pod: sete bloqueantes, e por que o dry run não os via |
+| [12 · A classe medida](12-comparacao-com-a-classe.md) | o 4iiii Precision 3+ e o U2e V4 contra o nosso, pelo que publicam; o que custaria chegar ao alvo de envelope; Apple Find My e Samsung Find |
 | [CAD](cad/README.md) | os geradores, o que muda em relação ao ciclocomputador, as regras e as armadilhas |
 
 ## Os dry runs

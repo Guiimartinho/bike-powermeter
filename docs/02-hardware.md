@@ -41,7 +41,7 @@ flowchart LR
     end
     subgraph EN["Energia"]
         P["nPM1100<br/>carga + buck 3,0 V"]
-        BAT["LiPo 78 mAh<br/>23 × 11 × 4,0, com proteção"]
+        BAT["LiPo 81 mAh<br/>15 × 14 × 5,0, com proteção"]
         F["MAX17048<br/>I2C"]
         P --- BAT
         BAT --- F
@@ -82,7 +82,7 @@ Estimativas de projeto a partir dos datasheets; nenhuma medida ainda.
 | Pedalando | TMP117 a 1 Hz | 0,004 mA | 3,5 µA |
 | Pedalando | nRF54L15 com BLE a 1 Hz e ANT+ a 4 Hz | 0,3 mA | estimativa de projeto; medir no DK |
 | Pedalando | MAX17048 | 0,003 mA | 3 µA em hibernate |
-| **Pedalando, total** | | **≈ 1,5 mA** em conversão contínua, **0,68 mA** com o conversor em duty-cycle | a célula que cabe no pod é 23 × 11 × 4,0 e vale **~78 mAh**: 52 h contínuo, **114 h em duty-cycle**, que é o modo decidido. Com a ponte de 1 kΩ eram 3,9 mA e 20 h |
+| **Pedalando, total** | | **≈ 1,5 mA** em conversão contínua, **0,68 mA** com o conversor em duty-cycle | a célula que cabe no pod é 15 × 14 × 5,0 e vale **~81 mAh**: 54 h contínuo, **119 h em duty-cycle**, que é o modo decidido. Com a ponte de 1 kΩ eram 3,9 mA e 20 h |
 | Parado | BMA400 a 100 Hz, ADS1220 em power-down entre rajadas de 8 amostras a cada 10 s, MCU em System ON dormindo, nPM1100 | ≈ 20 µA | 3,5 + 0,4 + a média das rajadas + ~10 + 0,8 µA |
 | Dormindo (10 min parado) | BMA400 em low-power a 25 Hz com a interrupção de despertar, ADS1220 em power-down, rádio anunciando a cada 2 s | ≈ 15 µA | 0,85 + 0,4 + ~10 + 0,8 µA |
 | Guardado | ship mode do nPM1100 | 0,46 µA | PS v1.5 |
@@ -100,12 +100,12 @@ O maior consumidor pedalando é a ponte, e a primeira versão desta tabela a con
 
 **A combinação que esta tabela não tinha, e que decide o produto:**
 
-| Ponte | Modo | Ponte | ADS1220 | Rádio | **Total** | Com 78 mAh |
+| Ponte | Modo | Ponte | ADS1220 | Rádio | **Total** | Com 81 mAh |
 |---|---|---|---|---|---|---|
-| 5 kΩ | contínuo | 0,600 | 0,585 | 0,300 | **1,50 mA** | **52 h** |
-| **5 kΩ** | **duty-cycle 30 %** | **0,180** | **0,190** | 0,300 | **0,68 mA** | **114 h** |
-| 1 kΩ | duty-cycle 30 % | 0,900 | 0,190 | 0,300 | 1,40 mA | 56 h |
-| 1 kΩ | contínuo | 3,000 | 0,585 | 0,300 | 3,90 mA | 20 h |
+| 5 kΩ | contínuo | 0,600 | 0,585 | 0,300 | **1,50 mA** | **54 h** |
+| **5 kΩ** | **duty-cycle 30 %** | **0,180** | **0,190** | 0,300 | **0,68 mA** | **119 h** |
+| 1 kΩ | duty-cycle 30 % | 0,900 | 0,190 | 0,300 | 1,40 mA | 58 h |
+| 1 kΩ | contínuo | 3,000 | 0,585 | 0,300 | 3,90 mA | 21 h |
 
 **Decidido pelo dono em 2026-09-28: modo duty-cycle com a ponte de 5 kΩ.** A versão anterior desta página tinha os dois números do modo duty-cycle soltos — o conversor cai de 0,585 para 0,190 mA, e a ponte fica ligada 30 % do tempo porque o `PSW` que a alimenta abre junto (SBAS501D 8.3.9) — mas **nunca multiplicou os dois com a ponte de 5 kΩ**: a tabela só testava duty-cycle com 1 kΩ, de quando a ponte ainda era 1 kΩ. Juntos, eles cortam **55 % do consumo**, sem trocar uma peça e sem um milímetro a mais.
 
@@ -205,7 +205,7 @@ O primeiro desenho fechou em 65,4 × 19,4 × 10,5 mm, acima do alvo em comprimen
 
 | Onde | De | Para | Como |
 |---|---|---|---|
-| Espessura da célula | 4,0 mm | ~~2,5 mm~~ **4,0 mm** | **esta linha estava errada e foi refeita em 2026-09-28**: em 23 × 11 × 2,5 uma LiPo de bolsa vale cerca de 49 mAh, não 100. A célula real é de classe `401123` (4,0 × 11 × 23, ≥ 78 mAh), e a 0,68 mA ela dá 114 h |
+| Espessura da célula | 5,0 mm | ~~2,5 mm~~ ~~4,0 mm~~ **5,0 mm** | **esta linha estava errada e foi refeita duas vezes**: em 2026-09-28, porque em 23 × 11 × 2,5 uma LiPo de bolsa vale cerca de 49 mAh e não 100; e em 2026-09-30, quando a célula saiu de baixo da placa e passou a ficar AO LADO dela, o que mudou o envelope de 23 × 11 × 4,0 para **15 × 14 × 5,0 (≥ 81 mAh)**. A 0,68 mA ela dá **119 h** |
 | Teto sobre a placa | 3,2 mm | 2,7 mm | quem obrigava os 3,2 era o conector da célula; a célula passa a ser soldada por fio, que num pod envasado é mais robusto que conector |
 | **Altura total** | **10,5 mm** | **10,0 mm** | com a célula de 4,0 mm de verdade, é o alvo, exatamente |
 | Comprimento da placa | 60 mm | cerca de 55 mm | passivos baixos na face de trás **fora da sombra da célula**: ela cobre 23 a 25 mm dos 60, e os outros 35 ficam sobre o fundo do pod. Um passivo 0402 pede 0,6 mm de vão, contra os 2,5 da célula, então não custa altura |

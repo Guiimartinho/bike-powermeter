@@ -60,7 +60,7 @@ largura, porque a placa precisa deles, e a cola só toca metal plano. A regra
 > | Saída do consumo | Efeito no pod |
 > |---|---|
 > | Extensômetros de **5 kΩ** | **nenhum**: a ponte cai de 3,0 para 0,6 mA e o total pedalando de 3,9 para cerca de 1,5 mA sem tocar na célula |
-> | Modo **duty-cycle** do ADS1220 | nenhum: é firmware. Junto com a ponte de 5 kΩ o total cai para **0,68 mA**, e é essa combinação que fez a célula de 78 mAh valer 114 h |
+> | Modo **duty-cycle** do ADS1220 | nenhum: é firmware. Junto com a ponte de 5 kΩ o total cai para **0,68 mA**, e é essa combinação que faz a célula de 81 mAh valer 119 h |
 > | Célula de **200 mAh** | **piora**: a célula fica sob a placa, então cresce na altura, que é o número que fechou mais apertado, e provavelmente no comprimento |
 >
 > Com 0,68 mA a célula de 200 mAh deixou de ser necessária, e é por isso que
