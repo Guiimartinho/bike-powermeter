@@ -465,6 +465,13 @@ def _registra_ci(ref: str, x: float, y: float, ang: int, atras: bool) -> None:
 # decide e o que nao varia: a distancia do desacoplamento. Fica so' a regra
 # de nao ter peca POR CIMA do CI, que essa tem mecanismo (a via de fuga nao
 # cabe sob um passo de 0,5 mm) e nao custa nada.
+# ZERO, medido DUAS VEZES em cadeias diferentes. Com 0,45 nos sete CIs
+# finos a placa fechou uma ligacao a mais e a `AL1` piorou de 11 para 12
+# capacitores fora do limite, com o `C105` a 15,6 mm do `U102`. So' no
+# `U101`, que e quem aparece em 12 das 32 pontas em aberto: 18 na cadeia
+# antiga e 19 na do Freerouting, contra 16 sem anel nenhum. Afastar o
+# vizinho nao e o que falta - o que falta e lugar para a VIA de fuga, e o
+# vizinho afastado leva junto o desacoplamento, que e o que se perde.
 ANEL_DO_CI = 0.0
 COM_ANEL: set[str] = set()
 

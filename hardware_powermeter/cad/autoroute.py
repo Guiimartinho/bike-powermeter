@@ -127,7 +127,18 @@ def folga_que_cobre_o_furo(texto: str) -> tuple[str, int]:
         n += 1
         return f"(clearance {FOLGA_DSN_UM:g}{m.group(2)})"
 
-    novo = re.sub(r"\(clearance ([\d.]+)((?: \(type (?!smd_smd)[a-z_]+\))?)\)",
+    # TODAS as regras de folga, inclusive `smd_smd`.
+    #
+    # Deixar a `smd_smd` de fora foi um erro caro. O KiCad exporta
+    # `(clearance 22.225 (type smd_smd))` - 0,022 mm - que e a tolerancia de
+    # ILHA contra ILHA do proprio encapsulamento, e eu a preservei achando
+    # que subi-la fecharia a porta de pinos ja apertados. O Freerouting usa
+    # esse numero para espremer TRILHA em vao de ilha vizinha: medido em
+    # 2026-10-01, ele entregou "0 violations" pelas regras dele e o KiCad
+    # achou 119 erros na mesma placa - 56 curtos, 59 pontes de mascara e 4
+    # de isolamento. Uma folga que o roteador usa e o fabricante nao aceita
+    # nao e folga, e economia de espaco que vira sucata.
+    novo = re.sub(r"\(clearance ([\d.]+)((?: \(type [a-z_]+\))?)\)",
                   troca, texto)
     return novo, n
 
@@ -139,7 +150,18 @@ def folga_que_cobre_o_furo(texto: str) -> tuple[str, int]:
 # Nao e economia de detalhe. Medido em 2026-09-30: das 159 ligacoes desta
 # placa, 51 sao de GND - 32 %. Deixar o Freerouting tentar roteá-las gasta um
 # terco do espaco dele com o que ja esta resolvido pelo plano.
-REDES_DE_PLANO = ("GND",)
+# VAZIO desde 2026-10-01, e a medida que fechou o assunto: tirar o GND do
+# DSN economizava 32 % do trabalho do roteador (51 das 159 ligacoes) e
+# custava a VISIBILIDADE de 51 ilhas. Sem a rede, cada pad de terra vira
+# pad sem rede, e o Freerouting passa por cima deles - a placa saiu com 56
+# curtos, e o jeito de ver foi achar uma trilha de 3V0 terminando no ponto
+# exato (58,725; 33,0), que e a ilha 2 do C203, de GND.
+#
+# O plano de terra continua protegido do jeito certo: a In1.Cu e declarada
+# `(type power)` e nada e roteado nela, e o despejo de F.Cu e B.Cu sai do
+# DSN para o roteador receber cobre livre. O que volta e so' a REDE, para
+# as ilhas dela existirem aos olhos dele.
+REDES_DE_PLANO: tuple = ()
 
 
 def tirar_as_redes_de_plano(texto: str) -> tuple[str, int]:

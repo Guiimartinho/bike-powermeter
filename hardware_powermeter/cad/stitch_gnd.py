@@ -23,6 +23,7 @@ furo, corredor livre ate o pad, vao maximo da costura).
 """
 from __future__ import annotations
 
+import math
 import pathlib
 import sys
 
@@ -125,17 +126,133 @@ def main() -> int:
     if len(falhas) > 4:
         print(f"  ... e mais {len(falhas) - 4}", flush=True)
 
+    # Pad de terra que NAO conseguiu via: liga por um toco ao cobre de terra
+    # mais perto, na propria camada.
+    #
+    # A `terra()` so sabe por via, e via precisa de lugar. Quando nao ha, o
+    # pad fica aberto - e sete das dezesseis ligacoes em aberto da placa de
+    # 2026-10-01 eram isso, inclusive DOIS PINOS DE TERRA VIZINHOS do mesmo
+    # `U101` que nao se tocavam. Dois pinos a 0,5 mm um do outro nao precisam
+    # de via nenhuma: precisam de meio milimetro de cobre. E se um deles
+    # alcanca o plano, o outro alcanca junto.
+    n_toco = 0
+    orx, ory = R.MP.ORIGEM
+    gnd = [q for q in todos if q[0] == "GND" and q[1] >= 0]
+    por_camada: dict = {}
+    for s in segmentos:
+        por_camada.setdefault(s[2], []).append(s)
+
+    def ligado(x, y, hw, hh, idx) -> bool:
+        for vx, vy, rede in vias:
+            if rede == "GND" and abs(vx - x) <= hw + R.VIA_D / 2 and                     abs(vy - y) <= hh + R.VIA_D / 2:
+                return True
+        for s in por_camada.get(idx, ()):
+            if s[3] != "GND":
+                continue
+            for q in (s[0], s[1]):
+                if abs(q[0] - x) <= hw + s[4] / 2 + 0.02 and                         abs(q[1] - y) <= hh + s[4] / 2 + 0.02:
+                    return True
+        return False
+
+    for nome, idx, px, py, hw, hh in gnd:
+        x, y = px - orx, py - ory
+        if ligado(x, y, hw, hh, idx):
+            continue
+        # o cobre de terra mais perto na MESMA camada: outro pad ou uma ponta
+        alvos = []
+        for n2, i2, qx, qy, h2, k2 in gnd:
+            if (n2, i2, qx, qy) == (nome, idx, px, py) or i2 != idx:
+                continue
+            if ligado(qx - orx, qy - ory, h2, k2, i2):
+                alvos.append((math.hypot(qx - orx - x, qy - ory - y),
+                              (qx - orx, qy - ory)))
+        for s in por_camada.get(idx, ()):
+            if s[3] != "GND":
+                continue
+            for q in (s[0], s[1]):
+                alvos.append((math.hypot(q[0] - x, q[1] - y), q))
+        alvos = [a for a in alvos if a[0] <= 2.5]
+        alvos.sort()
+        larg = max(R.LARGURA, min(R.LARGURA_ALIM, 2 * hw, 2 * hh))
+        for _d, q in alvos[:12]:
+            if R.toco_limpo((x, y), q, idx, "GND", larg, segmentos, todos,
+                            vias):
+                continue
+            segmentos.append(((x, y), q, idx, "GND", larg))
+            por_camada.setdefault(idx, []).append(segmentos[-1])
+            n_toco += 1
+            break
+    if n_toco:
+        print(f"{n_toco} pad(s) de terra ligados por toco ao cobre vizinho",
+              flush=True)
+
     # E MEDIR o que foi acrescentado, contra tudo o que ja estava la. A
     # `terra()` decide pela grade, e a grade e uma aproximacao: quem julga
     # geometria e a `conferir`, que mede cobre contra cobre.
+    # E RETIRAR o que saiu sujo. Ate 2026-10-01 esta parte media, imprimia
+    # "89 pares perto demais" e gravava a placa assim mesmo: o Freerouting
+    # entregava ZERO erro de DRC e este arquivo devolvia 123, sendo 59
+    # curtos. Deteccao sem consequencia nao e verificacao.
+    #
+    # Sai sempre o que ESTE arquivo desenhou, nunca o que veio do roteador:
+    # a costura e' dispensavel item a item (o pad alcanca o plano pelo
+    # despejo da propria face), e um curto na placa fabricada nao e.
+    n_fora = 0
+    for _volta in range(400):
+        ruins = R.conferir(segmentos, vias, todos)
+        if not ruins:
+            break
+        import re as _re
+        culpado = None
+        for texto_r in ruins:
+            mp = _re.search(r"\(em ([-\d.]+); ([-\d.]+)\)", texto_r)
+            if not mp:
+                mp = _re.search(r" em \(([-\d.]+); ([-\d.]+)\)", texto_r)
+            if not mp:
+                continue
+            px, py = float(mp.group(1)), float(mp.group(2))
+            # a via de costura mais perto do ponto, entre as que nos pusemos
+            melhor, dmin = None, 1e9
+            for k in range(len(via_ja), len(vias)):
+                d = math.hypot(vias[k][0] - px, vias[k][1] - py)
+                if d < dmin:
+                    melhor, dmin = ("v", k), d
+            for k in range(len(seg_ja), len(segmentos)):
+                s = segmentos[k]
+                d = min(math.hypot(s[0][0] - px, s[0][1] - py),
+                        math.hypot(s[1][0] - px, s[1][1] - py))
+                if d < dmin:
+                    melhor, dmin = ("s", k), d
+            if melhor is not None:
+                culpado = melhor
+                break
+        if culpado is None:
+            break
+        if culpado[0] == "v":
+            vias.pop(culpado[1])
+        else:
+            segmentos.pop(culpado[1])
+        n_fora += 1
+    if n_fora:
+        print(f"  {n_fora} item(ns) da costura RETIRADO(s) por ficarem perto "
+              "demais do cobre do roteador", flush=True)
     ruins = R.conferir(segmentos, vias, todos)
     if ruins:
-        print(f"  {len(ruins)} par(es) perto demais depois da costura:",
-              flush=True)
+        print(f"  ainda {len(ruins)} par(es) perto demais, e nenhum deles e "
+              "da costura:", flush=True)
         for r in ruins[:4]:
             print("    " + r, flush=True)
 
-    segmentos = em_45_graus(segmentos)
+    # O `em_45_graus` vale SO' para o que este arquivo desenhou, nunca para
+    # o que o roteador desenhou. Passado em tudo, ele reescrevia as trilhas
+    # do Freerouting - que produz trechos fora de 45 graus, como ele mesmo
+    # avisa ("Invalid traces after autoroute: N traces not 45 degree") - e
+    # cada uma virava um "L" que ia parar noutro lugar. Medido em 2026-10-01:
+    # a placa saia do Freerouting com ZERO erro e deste arquivo com 123,
+    # sendo 59 curtos e 59 pontes de mascara, quase todos de trilhas de 3V0
+    # no verso cruzando pad alheio.
+    novos = segmentos[len(seg_ja):]
+    segmentos = seg_ja + em_45_graus(novos)
     R.escrever(PLACA, texto, numeros, segmentos, vias)
     print(f"{PLACA.name}: {len(segmentos)} trilhas e {len(vias)} vias",
           flush=True)
