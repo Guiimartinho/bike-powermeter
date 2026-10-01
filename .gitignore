@@ -50,3 +50,4 @@ hardware_powermeter/cad/_drc_all.json
 # sessao que volta. Sao gerados a cada execucao e nao entram no repositorio.
 hardware_powermeter/cad/_pmeter.dsn
 hardware_powermeter/cad/_pmeter.ses
+hardware_powermeter/cad/_*.json
