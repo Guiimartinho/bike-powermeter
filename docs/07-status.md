@@ -90,7 +90,7 @@ são lugares reservados.
 | Placa | **47 × 14 mm**, 4 camadas, 58 peças colocadas sem uma sobrando mais um furo M1,6, 43 redes ([`hardware_powermeter/04`](../hardware_powermeter/04-placa.md)) |
 | Pod | **55,7 × 19,0 × 10,0 mm** dentro do alvo de 60 × 20 × 10, **13,3 g** estimados contra 20; vedado por anel O e fechado por dois parafusos M1,6; dois STL |
 | Dry run da placa | `dry_run_pcb.py`, regras das fichas e da IPC-2221B medidas no arquivo |
-| Dry run do pod | `dry_run_pod.py`, **18 regras: 17 cumpridas, 1 violada**. A violada é a `PD17`, e ela é um requisito sobre a **bicicleta**, não um defeito do pod: a pilha cola + pod é 10,5 mm e a folga de quadro reservada é 10,0. Só sai com um paquímetro na bicicleta do dono |
+| Dry run do pod | `dry_run_pod.py`, **30 regras: 27 cumpridas, 3 violadas** (2026-10-01). As três violadas são decisões do dono, não defeitos de geometria: `PD6` mede o braço de alumínio 4,0 mm abaixo da antena (a ficha pede 3 a 5: faixa de risco, a medir na bancada), `PD10` mede 74,5 × 21,0 contra os 38 × 20 de [02](02-hardware.md#requisitos), e `PD17` mede 21,0 de largura contra os 20,0 do pior caso da classe. Dez das regras medem o **sólido desenhado**, por voxel, e cada uma foi testada por mutação |
 | Vistas | **15 renders**: a placa (frente, verso, ângulo, montagem), o pod (fechado, aberto, explodido, tampa por dentro, célula no berço, por baixo) e o conjunto (montado no braço, aberto, extensômetros, produto e produto de lado) |
 
 O tamanho da placa é decidido pelo **módulo de rádio**, e não pelos passivos:
@@ -111,6 +111,7 @@ encosta na borda e o roteador ainda acha lugar para via
 | 2026-09-28 | a célula estreita de 15 para 13 mm (13 % de volume) para o rasgo dos fios da ponte passar ao lado dela, em vez de afastar o `J301` do conversor |
 | 2026-09-28 | a placa cresce de 48 para 51 mm: o que faltava ao roteador era lugar para via, e 3 mm dão 36 % mais. **Revertido no mesmo dia** pela troca do módulo, que levou a placa a 47 × 14 |
 | 2026-09-28 | a case passa a ser **vedada de verdade**: anel O em sulco na parede (27,5 % de compressão), dois parafusos M1,6, berço da célula, placa prensada entre pilares e dedos da tampa, e dreno no lábio do conector |
+| 2026-10-01 | revisão de dez revisores acha **sete interferências** que o dry run não via, porque sete regras liam a constante em vez de medir a geometria. O gerador ganha registro das primitivas, o dry run ganha um voxelizador e dez regras novas, e os sete bloqueantes fecham; o lábio e o dreno do conector saem, e a vedação da porta passa a ser uma junta no ombro dele ([07-pod](../hardware_powermeter/07-pod.md#medir-o-sólido-não-a-constante)) |
 | 2026-09-28 | o módulo de rádio vira o **HOLYIOT-26001-A** (nRF54L15). Ele era 26 % da área da placa numa peça só, mais que as 37 peças pequenas somadas, e é a única alavanca de tamanho. Custa o USB, que este SoC não tem: a serial dos comandos e a recuperação do MCUboot vão por UART nos contatos `D+`/`D−` do conector, e um divisor no `VBUS` num GPIO diz que o cabo entrou ([`09`](../hardware_powermeter/09-modulo-de-radio.md)) |
 
 ## Em aberto

@@ -49,9 +49,50 @@ sys.path.insert(0, str(HERE.parent / "cad"))
 
 import make_pod as C          # noqa: E402
 import make_dxf as MD         # noqa: E402
+import medir as ME            # noqa: E402
+import regras_medidas as RM   # noqa: E402
 
 FOLGA_TAMPA = 0.3        # air between a part's top and the lid's underside
 FOLGA_ANTENA = 5.0       # ME54BS13 V1.0.0, 7.4
+
+
+def raio_do_solido(malha, cx: float, cy: float, z0: float, z1: float,
+                   limite: float = 3.0) -> float:
+    """O maior raio que a MALHA ocupa em volta de (cx, cy), entre z0 e z1.
+
+    Mede o triangulo desenhado, nao a constante que o gerou. Uma regra que
+    le `PARAF_PESCOCO_D` passa com o pescoco desenhado ou sem ele, e foi
+    exatamente o que aconteceu ate 2026-10-01: a constante existia desde
+    sempre, o ressalto saia em diametro cheio pela placa toda, e as vinte
+    regras do dry run disseram que estava certo.
+
+    Tres cuidados, todos medidos em 2026-10-01:
+
+    - `limite` e a janela em volta do ponto. Sem ela a medida pega a parede
+      do pod e devolve 105,8 mm para um pescoco de 2,0: o maior raio da
+      concha e o canto oposto. 3,0 mm cobre qualquer ressalto deste pod
+      (o maior tem 3,4 de diametro) e nao alcanca parede nenhuma. Se um dia
+      uma nervura entrar nessa janela, a regra passa a reprovar - que e o
+      lado certo para errar.
+    - a banda z e ESTRITA, com 0,05 de margem: a tampa do ressalto de baixo
+      fica exatamente em `PLACA_Z0`, e um triangulo plano nessa altura
+      entrava na conta e media 3,4 mesmo com o pescoco desenhado.
+    - devolve 0,0 quando nao achou nada, e quem chama tem de tratar isso
+      como falha: um parafuso que atravessa a placa sem solido nenhum na
+      altura dela nao esta desenhado.
+    """
+    import numpy as _np
+    margem = 0.05
+    maior = 0.0
+    for tri in malha.tris:
+        zs = tri[:, 2]
+        if zs.max() <= z0 + margem or zs.min() >= z1 - margem:
+            continue
+        d = _np.hypot(tri[:, 0] - cx, tri[:, 1] - cy)
+        if d.max() > limite:
+            continue
+        maior = max(maior, float(d.max()))
+    return maior
 
 
 def _cruza(a, b, folga=0.0) -> bool:
@@ -140,9 +181,20 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     else:
         caixa = C.no_pod(j["caixa"])
         face = C.PLACA_Z1 + j["altura"]
+        # O BARRILETE, nao o corpo: desde 2026-10-01 a vedacao da porta e uma
+        # junta plana apoiada no OMBRO do conector, entao a janela passa o
+        # barrilete com folga e a tampa cobre o ombro de proposito. Ate aqui
+        # esta regra cobrava `janela >= corpo + folga`, o que e exatamente o que
+        # deixava um anel aberto de 16,61 mm2 em volta da peca.
+        barrilete = (caixa[0] + C.CONECTOR_OMBRO_L, caixa[1] + C.CONECTOR_OMBRO_L,
+                     caixa[2] - C.CONECTOR_OMBRO_L, caixa[3] - C.CONECTOR_OMBRO_L)
         problemas = []
-        if not _dentro(caixa, pod.janela, C.JANELA_FOLGA):
-            problemas.append("a janela nao cobre o contorno do conector com a folga")
+        if barrilete[2] <= barrilete[0] or barrilete[3] <= barrilete[1]:
+            problemas.append(f"o corpo de {f2(caixa[2] - caixa[0])} x "
+                             f"{f2(caixa[3] - caixa[1])} nao sobra barrilete nenhum "
+                             f"depois dos {f2(C.CONECTOR_OMBRO_L)} de ombro")
+        elif not _dentro(barrilete, pod.janela, C.JANELA_FOLGA):
+            problemas.append("a janela nao passa o barrilete do conector com a folga")
         if face > C.T_P + 1e-9:
             problemas.append(f"a face do conector ({f2(face)}) passa do topo da tampa ({f2(C.T_P)})")
         if face < C.TAMPA_Z0 - 1e-9:
@@ -151,9 +203,12 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
         if problemas:
             r.falha("PD3", "; ".join(problemas))
         else:
-            r.ok("PD3", f"o conector de {f2(j['altura'])} atravessa a janela de "
-                        f"{f2(pod.janela[2] - pod.janela[0])} x {f2(pod.janela[3] - pod.janela[1])} e a "
-                        f"face dele fica {f2(pod.poco)} abaixo do topo da tampa (o poco)")
+            r.ok("PD3", f"o barrilete de {f2(barrilete[2] - barrilete[0])} x "
+                        f"{f2(barrilete[3] - barrilete[1])} do conector de "
+                        f"{f2(j['altura'])} atravessa a janela de "
+                        f"{f2(pod.janela[2] - pod.janela[0])} x {f2(pod.janela[3] - pod.janela[1])} "
+                        f"com {f2(C.JANELA_FOLGA)} de folga, e a face dele fica "
+                        f"{f2(pod.poco)} abaixo do topo da tampa")
 
     # -- PD4: what a back-face body has under it ------------------------------
     # This rule used to fail on ANY body on the back, which is not what the
@@ -162,26 +217,23 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     # 2026-09-28: the blunt rule was reporting the module's own decoupling,
     # which sits over the recessed floor with 2,0 mm of air, as standing on
     # the cell. It now measures the air under each body.
-    sob = [(celula, C.CELULA_Z1, "a celula"),
-           ((pod.nervura[0], C.PAREDE + C.RESSALTO, pod.nervura[1],
-             C.H_P - C.PAREDE - C.RESSALTO), C.CELULA_Z1 - 0.5, "a nervura")]
-    sob += [((cx - C.PILAR_D / 2, cy - C.PILAR_D / 2, cx + C.PILAR_D / 2, cy + C.PILAR_D / 2),
-             C.PLACA_Z0, "um pilar") for cx, cy in pod.pilares]
-    sob += [(a, C.PLACA_Z0, "um ressalto") for a in
-            ((C.PAREDE, C.PAREDE, C.W_P - C.PAREDE, C.PAREDE + C.RESSALTO),
-             (C.PAREDE, C.H_P - C.PAREDE - C.RESSALTO, C.W_P - C.PAREDE, C.H_P - C.PAREDE),
-             (C.W_P - C.PAREDE - C.RESSALTO, C.PAREDE, C.W_P - C.PAREDE, C.H_P - C.PAREDE))]
+    # O ar vem MEDIDO do solido desenhado - a altura da face de cima da concha
+    # e da celula em cada coluna sob a peca -, e nao de uma lista de zonas
+    # escrita aqui. A lista escrita a mao nao tinha o COLAR do rasgo, e foi por
+    # isso que esta regra imprimiu "as 36 pecas cabem no ar que tem sob elas"
+    # com o colar atravessando o R302 e o C304 (revisao de 2026-10-01).
+    import numpy as _np
+    g4 = ME.grade_do_pod(C)
+    sob_solido = g4.topo(g4.solido(pod.concha()) | g4.solido(pod.celula_3d()))
     corpos_tras = [(ref, p) for ref, p in tras.items() if p["altura"] > 1e-9]
     batem = []
     for ref, p in corpos_tras:
         caixa = C.no_pod(p["caixa"])
-        topo, quem = C.FUNDO, "o fundo"
-        for zona, z, nome in sob:
-            if _cruza(caixa, zona) and z > topo:
-                topo, quem = z, nome
+        m = g4.planta_rect(*caixa) & ~_np.isnan(sob_solido)
+        topo = float(_np.nanmax(_np.where(m, sob_solido, _np.nan))) if m.any() else C.FUNDO
         ar = C.PLACA_Z0 - topo
         if p["altura"] > ar + 1e-9:
-            batem.append((ref, p["altura"], ar, quem))
+            batem.append((ref, p["altura"], ar, f"o solido em z = {f2(topo)}"))
     if not tras:
         r.falha("PD4", "nao mede nada: a placa nao tem peca na face de tras")
     elif batem:
@@ -228,15 +280,49 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
                     f"sob o teto da cavidade e "
                     f"{f2(C.H_P - C.PAREDE - celula[3])} da parede de cima")
 
-    # -- PD6: the cell away from the antenna ----------------------------------
+    # -- PD6: a antena longe de TODO metal, nos tres eixos --------------------
+    # Ate 2026-10-01 esta regra media uma distancia em X e contra UM objeto, a
+    # celula, e imprimia 50,9 - enquanto o braco de aluminio, que e a maior
+    # chapa de metal do conjunto, fica 4,0 mm abaixo da antena em Z e a faixa
+    # inteira da antena cai sobre a base de colagem. `make_dxf` proibe cobre,
+    # componente ou metal sobre a area da antena; o aluminio do pedivela nao
+    # era medido por regra nenhuma.
     if not pod.antena:
         r.falha("PD6", "nao mede nada: o modulo de radio nao esta na placa")
     else:
-        d = max(pod.antena[0] - celula[2], celula[0] - pod.antena[2], 0.0)
-        if d < FOLGA_ANTENA:
-            r.falha("PD6", f"a celula fica a {f2(d)} da area da antena; a ficha pede {FOLGA_ANTENA:g}")
+        ax0, ay0, ax1, ay1 = pod.antena
+        az0 = C.PLACA_Z1          # a antena esta na face de cima da placa
+        metais = [("a celula (bolsa de litio)", celula[0], celula[1], C.CELULA_Z0,
+                   celula[2], celula[3], C.CELULA_Z1),
+                  # o braco: a face interna fica COLA abaixo do pod e ocupa
+                  # toda a planta dele
+                  ("o braco de aluminio", 0.0, 0.0, -C.COLA - C.BRACO_ESP,
+                   C.W_P, C.H_P, -C.COLA)]
+        for i, (px, py) in enumerate(C.PARAF_XY):
+            rr = C.PARAF_BOSS_D / 2.0
+            metais.append((f"o parafuso {i + 1} (aco)", px - rr, py - rr, C.FUNDO,
+                           px + rr, py + rr, C.T_P))
+        medidas = []
+        for nome, mx0, my0, mz0, mx1, my1, mz1 in metais:
+            dx = max(mx0 - ax1, ax0 - mx1, 0.0)
+            dy = max(my0 - ay1, ay0 - my1, 0.0)
+            dz = max(mz0 - C.T_P, az0 - mz1, 0.0)
+            medidas.append((math.sqrt(dx * dx + dy * dy + dz * dz), nome,
+                            f"x {f2(dx)}, y {f2(dy)}, z {f2(dz)}"))
+        medidas.sort()
+        perto = [(d, n, c) for d, n, c in medidas if d < FOLGA_ANTENA - 1e-9]
+        if perto:
+            r.falha("PD6", f"{len(perto)} metal(is) a menos de {FOLGA_ANTENA:g} mm da "
+                           "area da antena: " + "; ".join(
+                               f"{n} a {f2(d)} ({c})" for d, n, c in perto)
+                    + ". A ficha do ME54BS13 (V1.0.0, 7.4) pede 3 a 5 mm; o que "
+                      "estiver entre 3 e 5 e risco a medir na bancada, abaixo de "
+                      "3 e defeito")
         else:
-            r.ok("PD6", f"a celula fica a {f2(d)} da area da antena do modulo ({FOLGA_ANTENA:g} pedidos)")
+            r.ok("PD6", f"os {len(metais)} metais do conjunto ficam a "
+                        f"{f2(medidas[0][0])} ou mais da area da antena "
+                        f"({FOLGA_ANTENA:g} pedidos); o mais perto e "
+                        f"{medidas[0][1]} ({medidas[0][2]})")
 
     # -- PD7: the slot under the bridge's holes -------------------------------
     j3 = pecas.get("J301")
@@ -249,8 +335,20 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
         problemas = []
         if fora:
             problemas.append(f"{len(fora)} dos {len(furos)} furos nao ficam sobre o rasgo")
-        if not _dentro(pod.rasgo, entre_ressaltos, 0.0):
-            problemas.append("o rasgo entra nos ressaltos ou na parede")
+        # O rasgo tem de ficar dentro do PISO - entre as paredes - e pode no
+        # maximo passar por baixo da BEIRADA de um ressalto: o ressalto nasce
+        # no piso e e colado na parede, entao um balanco pequeno dele sobre o
+        # rasgo nao cai. Ate 2026-10-01 a regra exigia o rasgo inteiramente
+        # fora dos ressaltos, e isso virou falsa falha quando o `RESSALTO`
+        # cresceu de 0,6 para 1,0 para dar assento a placa (`PD30`): sobrava
+        # 0,35 mm de beirada sobre o rasgo, que nao e problema nenhum.
+        if not _dentro(pod.rasgo, cavidade, 0.0):
+            problemas.append("o rasgo passa da parede")
+        balanco = max(entre_ressaltos[0] - pod.rasgo[0], entre_ressaltos[1] - pod.rasgo[1],
+                      pod.rasgo[2] - entre_ressaltos[2], pod.rasgo[3] - entre_ressaltos[3], 0.0)
+        if balanco > C.RESSALTO_BALANCO + 1e-9:
+            problemas.append(f"o rasgo entra {f2(balanco)} no ressalto, e a beirada "
+                             f"em balanco nao pode passar de {f2(C.RESSALTO_BALANCO)}")
         if any(not q["smd"] for q in j3["pads"]) is False:
             problemas.append("os pads da ponte nao sao furos: o fio nao tem por onde subir")
         if problemas:
@@ -353,8 +451,22 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
                      "peca nenhuma da borda")
 
     # -- PD13: the O-ring groove ----------------------------------------------
+    # A PROFUNDIDADE do sulco vem medida no solido: a altura da face de cima da
+    # concha dentro da pegada do sulco, contra o teto. Ate 2026-10-01 esta regra
+    # lia `JUNTA_SULCO_P` e passaria igual com o sulco nao desenhado - e e por
+    # isso que a aba atravessando tres nervuras nao aparecia aqui, embora o vao
+    # real do O-ring virasse 1,58 contra um cordao de 0,80.
+    import numpy as _np13
+    g13 = ME.grade_do_pod(C)
+    v13 = g13.solido(pod.concha())
+    s_fora, s_dentro = pod.sulco()
+    pegada = (g13.planta_poli(s_fora) & ~g13.planta_poli(s_dentro)
+              & ~_np13.isnan(g13.topo(v13)))
+    piso_sulco = (float(_np13.nanmin(_np13.where(pegada, g13.topo(v13), _np13.nan)))
+                  if pegada.any() else C.TAMPA_Z0)
+    prof_medida = C.TAMPA_Z0 - piso_sulco
     terra_fora = (C.PAREDE - C.JUNTA_SULCO_L) / 2.0
-    compr = (C.JUNTA_CORDAO - C.JUNTA_SULCO_P) / C.JUNTA_CORDAO * 100.0
+    compr = (C.JUNTA_CORDAO - prof_medida) / C.JUNTA_CORDAO * 100.0
     a_sulco = C.JUNTA_SULCO_L * C.JUNTA_SULCO_P
     a_cordao = math.pi * (C.JUNTA_CORDAO / 2.0) ** 2
     problemas = []
@@ -364,13 +476,18 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     if not (20.0 <= compr <= 30.0):
         problemas.append(f"a compressao do anel e {compr:.1f} %, fora dos 20 a 30 % de uma "
                          "vedacao estatica de face")
+    if not pegada.any():
+        problemas.append("nao ha sulco desenhado: a pegada dele nao tem solido nenhum")
+    elif abs(prof_medida - C.JUNTA_SULCO_P) > 2 * ME.PASSO:
+        problemas.append(f"o sulco desenhado tem {f2(prof_medida)} de fundo e "
+                         f"`JUNTA_SULCO_P` diz {f2(C.JUNTA_SULCO_P)}")
     if a_sulco < a_cordao * 1.05:
         problemas.append(f"o sulco tem {a_sulco:.2f} mm2 de secao e o cordao {a_cordao:.2f}: "
                          "o anel nao cabe quando esmagado")
     if problemas:
         r.falha("PD13", "; ".join(problemas))
     else:
-        r.ok("PD13", f"sulco de {f2(C.JUNTA_SULCO_L)} x {f2(C.JUNTA_SULCO_P)} numa parede de "
+        r.ok("PD13", f"sulco de {f2(C.JUNTA_SULCO_L)} x {f2(prof_medida)} MEDIDO no solido numa parede de "
                      f"{f2(C.PAREDE)}, cordao de {f2(C.JUNTA_CORDAO)}: {compr:.1f} % de compressao, "
                      f"{f2(terra_fora)} de parede de cada lado, secao {a_sulco:.2f} contra "
                      f"{a_cordao:.2f} mm2")
@@ -387,6 +504,43 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
         if _cruza(b, placa) and not atravessa:
             problemas.append(f"o ressalto em ({f2(cx)}; {f2(cy)}) invade a placa")
         if atravessa:
+            # ATRAVESSAR NAO E PASSE LIVRE: o que atravessa tem de CABER no
+            # furo. Ate 2026-10-01 esta regra desligava o teste de
+            # interferencia quando `atravessa` era verdade e imprimia
+            # "livres da placa", enquanto o ressalto de 3,40 passava por um
+            # furo de 2,20 - 0,600 mm de interferencia no raio, em todo
+            # angulo, que impedia a placa de assentar e, por tabela, o
+            # O-ring de comprimir. Dez revisores acharam isso; a regra que
+            # devia te-lo achado olhava para o outro lado.
+            #
+            # E o numero vem MEDIDO do solido, nao da constante: o maior
+            # raio que a concha ocupa em volta do parafuso dentro da faixa
+            # z da placa, vezes dois. Ler `PARAF_PESCOCO_D` daria o mesmo
+            # numero com o pescoco desenhado ou sem ele.
+            d_na_placa = 2.0 * raio_do_solido(pod.concha(), cx, cy,
+                                              C.PLACA_Z0, C.PLACA_Z1)
+            folga_furo = (C.PARAF_FURO_PLACA - d_na_placa) / 2.0
+            if d_na_placa <= 1e-9:
+                problemas.append(
+                    f"o parafuso em ({f2(cx)}; {f2(cy)}) atravessa a placa e "
+                    "nao ha solido nenhum desenhado na altura dela: nao ha "
+                    "pescoco, so a constante")
+            elif d_na_placa > C.PARAF_FURO_PLACA - 1e-9:
+                problemas.append(
+                    f"o que atravessa a placa em ({f2(cx)}; {f2(cy)}) tem "
+                    f"{f2(d_na_placa)} de diametro e o furo dela tem "
+                    f"{f2(C.PARAF_FURO_PLACA)}")
+            elif folga_furo < 0.05:
+                problemas.append(
+                    f"so {f2(folga_furo)} de folga no raio entre o pescoco de "
+                    f"{f2(d_na_placa)} e o furo de {f2(C.PARAF_FURO_PLACA)}")
+            # e o que passa pelo furo nao pode passar da reserva do furo na
+            # placa, que e o que garante que nao ha peca em volta dele
+            reserva = 2.0 * C.MD.FURO_RESERVA_R
+            if d_na_placa > reserva + 1e-9:
+                problemas.append(
+                    f"o pescoco de {f2(d_na_placa)} passa da reserva de "
+                    f"{f2(reserva)} que a placa guarda em volta do furo")
             # it pierces the board on purpose, and then the BOARD has to
             # carry the hole for it - if it does not, the post has nowhere
             # to pass and nothing else would say so
@@ -405,9 +559,14 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     if problemas:
         r.falha("PD14", "; ".join(problemas))
     else:
+        medidos = ", ".join(
+            f"{f2(2.0 * raio_do_solido(pod.concha(), cx, cy, C.PLACA_Z0, C.PLACA_Z1))}"
+            for (cx, cy), na in zip(C.PARAF_XY, C.PARAF_NA_PLACA) if na)
         r.ok("PD14", f"{len(C.PARAF_XY)} parafusos M{C.PARAF_D:g} com ressalto de "
                      f"{f2(C.PARAF_BOSS_D)} e furo-guia de {f2(C.PARAF_FURO_D)} "
-                     f"({f2(paredinha)} de parede), livres da placa e da celula")
+                     f"({f2(paredinha)} de parede); o que atravessa a placa mede "
+                     f"{medidos} de diametro no solido, contra o furo de "
+                     f"{f2(C.PARAF_FURO_PLACA)}")
 
     # -- PD15: the cell and the board are HELD --------------------------------
     ribs = pod.berco()
@@ -443,24 +602,32 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
                      f"que ela encosta, e a placa entre {len(pod.pilares)} pilares e os dedos da "
                      f"tampa, com {f2(C.APERTO_PAD)} de pastilha")
 
-    # -- PD16: the connector's well drains ------------------------------------
-    barras = pod.labio()
-    jx0, jy0, jx1, jy1 = pod.janela
-    L = C.POCO_LABIO_L
-    volta = 2 * ((jx1 - jx0) + 2 * L) + 2 * ((jy1 - jy0) + 2 * L)
-    coberto = sum(max(b[2] - b[0], b[3] - b[1]) for b in barras)
+    # -- PD16: nada represa agua em volta da porta ----------------------------
+    # Ate 2026-10-01 esta regra media um labio em volta da janela e um dreno
+    # para a borda. As duas coisas sairam do projeto, e por medida: o labio
+    # ficava 0,40 ACIMA do topo da junta e 0,55 por fora do corpo do conector,
+    # e o "dreno" tinha a soleira 0,50 mm ACIMA do fundo do poco, com queda
+    # zero em 2,65 mm - a agua do poco so tinha para onde ir para DENTRO. Um
+    # canal de dreno numa tampa de 1,0 mm teria de passar abaixo da face de
+    # baixo dela, virando um furo para a cavidade. O que veda a porta e a junta
+    # plana no ombro do conector (`PD24`); o que esta regra cobra e que nada
+    # fique em pe na face de fora da tampa para represar agua ali.
+    alto = max((C.PLACA_Z1 + p["altura"] for ref, p in pecas.items()
+                if not p["atras"] and ref != "J101"), default=0.0)
     problemas = []
-    if not barras:
-        problemas.append("nao ha labio em volta da janela: a agua fica sobre os contatos")
-    elif coberto >= volta - 1e-6:
-        problemas.append("o labio e fechado: ele segura a agua em vez de deixar escorrer")
-    if C.DRENO_L < 0.8:
-        problemas.append(f"o dreno tem {f2(C.DRENO_L)} e entope; pede 0,8")
+    if C.T_P <= C.TAMPA_Z0:
+        problemas.append("a tampa nao tem espessura")
+    for nome, valor in (("POCO_LABIO", None), ("DRENO_L", None)):
+        if hasattr(C, nome):
+            problemas.append(f"{nome} voltou a existir: o labio represa agua "
+                             "sobre os contatos")
     if problemas:
         r.falha("PD16", "; ".join(problemas))
     else:
-        r.ok("PD16", f"labio de {f2(C.POCO_LABIO)} de altura em {len(barras)} trechos em volta da "
-                     f"janela, com um dreno de {f2(C.DRENO_L)} para a borda mais proxima")
+        r.ok("PD16", f"a face de fora da tampa e plana em z = {f2(C.T_P)}: nao ha "
+                     f"labio nem canal que represe agua em volta da porta, e o "
+                     f"barrilete do conector sai dela ({f2(pod.poco)} de poco). A "
+                     f"vedacao da porta e a junta no ombro, medida na PD24")
 
     # -- PD17: the pod fits the crank arm it is bonded to ---------------------
     # Nobody has measured the owner's crank, so these are the numbers of the
@@ -468,14 +635,27 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     # taper, the TIGHT end of road frame clearance). Treating them as a
     # requirement the pod must meet is the only way a reserved number means
     # anything: the alternative is a comment that never fails.
+    # A face do braco MEDIDA ao longo da faixa x do pod, e nao um escalar: o
+    # cone do pedivela vai de 27,29 mm em x = 0 a 22,93 em x = 74,2, e o
+    # `BRACO_LARG = 20,0` que esta regra cobrava so ocorre no eixo do pedal,
+    # quase 40 mm depois do fim do pod. Os dois numeros valem: o 20,0 e o pior
+    # caso da classe tomado como requisito, e a largura sob o pod e o que o
+    # modelo do braco realmente da. A regra diz os dois.
+    import make_conjunto as _MC
+    larguras = [2.0 * _MC.meia_largura(C.W_P * k / 40.0) for k in range(41)]
+    sob_o_pod = min(larguras)
     util = C.BRACO_LARG - 2.0 * C.RAIO_CONC
     pilha = C.COLA + C.T_P
     problemas = []
     if C.H_P > C.BRACO_LARG:
         problemas.append(f"o pod tem {f2(C.H_P)} de largura e a face interna do braco da classe "
-                         f"tem {f2(C.BRACO_LARG)}: ele sobra pelos lados")
-    if C.BASE_COLA > util + 1e-9:
-        problemas.append(f"a base de colagem tem {f2(C.BASE_COLA)} e so {f2(util)} da face sao "
+                         f"tem {f2(C.BRACO_LARG)}: ele sobra pelos lados (no modelo do braco a "
+                         f"face sob o pod mede de {f2(sob_o_pod)} a {f2(max(larguras))}, mas o "
+                         f"{f2(C.BRACO_LARG)} e o pior caso da classe, e e ele que vale ate o "
+                         "pedivela do dono ser medido)")
+    if C.BASE_COLA + 2.0 * C.COLA_MARGEM > util + 1e-9:
+        problemas.append(f"a base de colagem tem {f2(C.BASE_COLA)} mais "
+                         f"{f2(C.COLA_MARGEM)} de margem por lado e so {f2(util)} da face sao "
                          f"planos (a concordancia come {f2(C.RAIO_CONC)} de cada lado): a cola "
                          "apoiaria no raio")
     if C.RELEVO < 0.5:
@@ -489,8 +669,10 @@ def regras(pod: C.Pod, r: Relatorio) -> None:
     if problemas:
         r.falha("PD17", "; ".join(problemas))
     else:
-        r.ok("PD17", f"o pod tem {f2(C.H_P)} de largura mas cola so pela base de {f2(C.BASE_COLA)}, "
-                     f"que cabe nos {f2(util)} planos da face interna de um braco da classe; fora "
+        r.ok("PD17", f"o pod tem {f2(C.H_P)} de largura mas cola so pela base de {f2(C.BASE_COLA)} "
+                     f"mais {f2(C.COLA_MARGEM)} de margem por lado, "
+                     f"que cabe nos {f2(util)} planos da face interna de um braco da classe "
+                     f"(o modelo do braco da de {f2(sob_o_pod)} a {f2(max(larguras))} sob o pod); fora "
                      f"dela o fundo sobe {f2(C.RELEVO)} e livra a concordancia de {f2(C.RAIO_CONC)}. "
                      f"A pilha cola + pod de {f2(pilha)} cabe nos {f2(C.QUADRO)} do quadro. "
                      "NUMEROS DA CLASSE, nao do braco do dono")
@@ -534,19 +716,17 @@ def pd19_aberturas(pod, r) -> None:
         f"{f2(C.JUNTA_SULCO_P)}",
         C.JUNTA_SULCO_P > 0.0 and C.JUNTA_CORDAO > C.JUNTA_SULCO_P))
 
-    # 2. a janela do conector magnetico
-    jx0, jy0, jx1, jy1 = pod.janela
-    gx0, gy0, gx1, gy1 = pod.junta
-    folga_junta = min(jx0 - gx0, jy0 - gy0, gx1 - jx1, gy1 - jy1)
+    # 2. a janela do conector magnetico. Quem MEDE a vedacao dela no solido e
+    #    a `PD24`; aqui ela so entra na lista de aberturas, apontando para a
+    #    junta que a fecha, e o criterio e o mesmo numero que a PD24 mede.
     aberturas.append((
         "janela do conector magnetico", "tampa",
-        f"junta plana de {f2(folga_junta)} em volta, rebaixo de "
-        f"{f2(C.JUNTA_REBAIXO)}, labio de {f2(C.POCO_LABIO)} e dreno de "
-        f"{f2(C.DRENO_L)}",
-        # o minimo, e nao a largura nominal: a junta e grampeada na parede
-        # onde o conector fica rente a borda, e ai ela e' menor de proposito
-        folga_junta >= C.JUNTA_MIN - 1e-9 and C.JUNTA_REBAIXO > 0.0
-        and C.POCO_LABIO > 0.0 and C.DRENO_L > 0.0))
+        f"junta plana de {f2(pod.junta_larg)} apoiada no ombro do conector em "
+        f"z = {f2(pod.ombro_z)}, comprimida {f2(C.JUNTA_APERTO)} de "
+        f"{f2(C.JUNTA_ESP)} por um ressalto da tampa",
+        pod.junta_larg >= C.JUNTA_MIN_L - 1e-9
+        and C.JUNTA_APERTO > 0.0
+        and pod.junta_aperta_em < C.TAMPA_Z0 - 1e-9))
 
     # 3. o furo de luz do LED
     if pod.led:
@@ -569,19 +749,22 @@ def pd19_aberturas(pod, r) -> None:
         # medido no DESENHO: o colar tem de cercar o rasgo pelos quatro
         # lados e subir. Uma regra que le so a constante passa mesmo quando
         # a peca nao foi desenhada.
-        colar_alt = getattr(C, "RASGO_COLAR_ALT", 0.0)
-        cerca = False
-        if getattr(pod, "colar", None):
-            cx0, cy0, cx1, cy1 = pod.colar
-            rx0, ry0, rx1, ry1 = pod.rasgo
-            larg = min(rx0 - cx0, ry0 - cy0, cx1 - rx1, cy1 - ry1)
-            cerca = larg >= getattr(C, "RASGO_COLAR_L", 0.0) - 1e-9
+        # As quatro barras COMO FORAM DESENHADAS, cada uma com a altura que
+        # cabe nela: desde 2026-10-01 a barra que passa sob uma peca do verso
+        # para `COLAR_FOLGA` abaixo dela em vez de prensa-la (a barra y+ subia
+        # 1,5 e esmagava o R302 e o C304, dois 0402 de 0,55). Entao o criterio
+        # nao e mais uma altura unica: e haver as quatro barras, cada uma com
+        # altura util, e o colar nao passar da cavidade.
+        barras = pod.colar_barras()
+        alturas = [z1 - C.FUNDO for _r, z1 in barras]
+        cerca = len(barras) >= 4 and min(alturas, default=0.0) >= 0.5
         aberturas.append((
             "rasgo dos fios da ponte", "fundo",
-            f"colar de {f2(getattr(C, 'RASGO_COLAR_L', 0.0))} cercando os "
-            f"quatro lados e subindo {f2(colar_alt)} para o envase segurar, "
+            f"colar de {f2(getattr(C, 'RASGO_COLAR_L', 0.0))} em {len(barras)} "
+            f"barras de {f2(min(alturas, default=0.0))} a "
+            f"{f2(max(alturas, default=0.0))} de altura, represando o envase, "
             "mais a cola ao braco",
-            cerca and colar_alt >= 1.0))
+            cerca))
 
     sem = [f"{nome} ({onde}): {como}" for nome, onde, como, ok in aberturas
            if not ok]
@@ -595,39 +778,76 @@ def pd19_aberturas(pod, r) -> None:
 
 
 def pd20_caminho_da_agua(pod, r) -> None:
-    """A agua que entra no poco do conector sai para FORA, nunca para dentro.
+    """Entre a agua de fora e a cavidade ha sempre DUAS barreiras em serie.
 
-    O conector magnetico e' a unica coisa que fica exposta de proposito: os
-    seis contatos tem de ser alcancaveis pelo cabo. Entao o poco em volta
-    deles enche de agua, e o que decide se isso e' um problema nao e' o
-    poco - e' para onde ele drena. O dreno tem de apontar para a BORDA do
-    pod, e a junta plana tem de ficar entre o poco e a cavidade.
+    O conector magnetico e' a unica coisa exposta de proposito: os contatos
+    tem de ser alcancaveis pelo cabo, molhados ou nao. O que decide se isso e
+    um problema nao e o poco - e o que existe entre ele e a placa. Esta regra
+    conta as barreiras de cada caminho de agua, uma por uma, e cobra duas.
+
+    Ate 2026-10-01 ela calculava a largura da junta pelos quatro lados
+    nominais, lia `JUNTA_REBAIXO > 0` e imprimia "comprimida 0,3" - sem uma
+    unica conta em z, num desenho em que a junta estava 0,30 enterrada no
+    solido e 0,55 por fora do corpo do conector.
     """
-    problemas = []
-    jx0, jy0, jx1, jy1 = pod.janela
-    gx0, gy0, gx1, gy1 = pod.junta
-    # a junta cerca a janela por inteiro?
-    if not (gx0 < jx0 and gy0 < jy0 and gx1 > jx1 and gy1 > jy1):
-        problemas.append("a junta plana nao cerca a janela por inteiro")
-    # o dreno sai para a borda mais proxima, e nao para o meio do pod
-    if min(gy0 - C.PAREDE, C.H_P - C.PAREDE - gy1,
-           gx0 - C.PAREDE, C.W_P - C.PAREDE - gx1) < -1e-9:
-        problemas.append("a junta plana passa da parede")
-    # e a largura que sobra em cada lado, que e o que veda
-    largs = (jx0 - gx0, jy0 - gy0, gx1 - jx1, gy1 - jy1)
-    if min(largs) < C.JUNTA_MIN - 1e-9:
-        problemas.append(f"a junta plana tem so {f2(min(largs))} no lado mais "
-                         f"estreito, e o minimo e {f2(C.JUNTA_MIN)}")
-    # e a placa nao pode ficar sob o poco sem a junta no meio
-    if C.JUNTA_REBAIXO <= 0.0:
-        problemas.append("a junta plana nao tem rebaixo: ela nao comprime")
-    if problemas:
-        r.falha("PD20", "; ".join(problemas))
+    caminhos = []
+
+    # 1. pela porta: a agua chega a face do conector por projeto
+    caminhos.append(("pela porta do conector", [
+        ("a junta plana no ombro, comprimida",
+         pod.junta_aperta_em < C.TAMPA_Z0 - 1e-9
+         and C.JUNTA_APERTO > 0.0
+         and pod.junta_larg >= C.JUNTA_MIN_L - 1e-9),
+        ("o envase da cavidade, que para abaixo do teto",
+         C.ENVASE_NIVEL < C.TAMPA_Z0 - 1e-9),
+    ]))
+
+    # 2. pela costura concha-tampa
+    caminhos.append(("pela costura concha-tampa", [
+        ("o O-ring no sulco, comprimido",
+         C.JUNTA_CORDAO > C.JUNTA_SULCO_P and C.JUNTA_SULCO_P > 0.0),
+        ("a aba da tampa colada dentro da parede",
+         bool(pod.aba()) and C.ABA_ALT > 0.0),
+    ]))
+
+    # 3. pelo rasgo do fundo, a unica abertura inferior
+    if pod.rasgo:
+        caminhos.append(("pelo rasgo dos fios da ponte", [
+            ("a cola ao braco em volta do rasgo",
+             pod.rasgo[1] >= pod.base_cola()[1] - 1e-9
+             or pod.rasgo[3] <= pod.base_cola()[3] + 1e-9),
+            ("o colar que represa o envase, em quatro barras",
+             len(pod.colar_barras()) >= 4),
+        ]))
+
+    # 4. pelo furo de luz do LED
+    if pod.led:
+        caminhos.append(("pelo furo de luz do LED", [
+            ("a resina transparente enchendo a espessura da tampa",
+             getattr(C, "LED_RESINA", False)),
+            ("o envase sob o furo", C.ENVASE_NIVEL > 0.0),
+        ]))
+
+    # 5. pelos furos dos parafusos
+    for i, (px, py) in enumerate(C.PARAF_XY):
+        caminhos.append((f"pelo furo do parafuso {i + 1}", [
+            ("o tampao de resina sobre a cabeca",
+             getattr(C, "PARAF_TAMPAO_P", 0.0) >= 0.5),
+            ("a rosca no ressalto, acima do envase",
+             C.TAMPA_Z0 >= C.ENVASE_NIVEL - 1e-9),
+        ]))
+
+    fracos = [f"{nome}: so {sum(1 for _d, ok in bs if ok)} barreira(s) "
+              f"({', '.join(d for d, ok in bs if not ok)} nao fecha)"
+              for nome, bs in caminhos if sum(1 for _d, ok in bs if ok) < 2]
+    if fracos:
+        r.falha("PD20", f"{len(fracos)} de {len(caminhos)} caminhos de agua com "
+                        "menos de duas barreiras: " + "; ".join(fracos))
     else:
-        r.ok("PD20", f"o poco do conector drena por um canal de "
-                     f"{f2(C.DRENO_L)} x {f2(C.DRENO_P)} ate a borda, e entre "
-                     f"ele e a cavidade ha a junta plana de {f2(min(largs))} "
-                     f"no lado mais estreito, comprimida {f2(C.JUNTA_REBAIXO)}")
+        r.ok("PD20", f"os {len(caminhos)} caminhos de agua tem duas barreiras em "
+                     "serie cada: " + "; ".join(
+                         f"{nome} ({' + '.join(d for d, _ok in bs)})"
+                         for nome, bs in caminhos))
 
 
 def main() -> int:
@@ -637,6 +857,7 @@ def main() -> int:
           f"{C.PLACA_H:g} com {len(pecas)} pecas\n")
     r = Relatorio()
     regras(pod, r)
+    RM.todas(pod, r)
     return r.imprimir()
 
 

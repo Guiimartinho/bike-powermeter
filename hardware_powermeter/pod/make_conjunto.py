@@ -68,7 +68,7 @@ FIOS = (
 # Placeholder geometry, from the class and not from a measured crank.
 EIXO_X = -46.0          # spindle axis, in the pod's frame (pod x starts at 0)
 PEDAL_X = 124.0         # pedal axis: the two are 170 mm apart
-BRACO_ESP = 14.0        # body thickness
+BRACO_ESP = PD.BRACO_ESP   # do make_pod: a `PD6` mede a antena contra ela
 BOSS_EIXO_R, BOSS_PEDAL_R = 17.0, 11.0
 MEIA_LARG_EIXO, MEIA_LARG_PEDAL = 15.0, 10.0
 
@@ -76,14 +76,23 @@ FACE_Z = -PD.COLA       # the arm's inner face, under the pod's glue line
 FUNDO_Z = FACE_Z - BRACO_ESP
 
 
+def meia_largura(x: float) -> float:
+    """Metade da largura da face interna do braco em x, no cone do pedivela.
+
+    Fica fora do `braco()` para a `PD17` poder MEDIR a face ao longo da faixa
+    x do pod em vez de comparar com um escalar: a face vai de 27,29 mm em x = 0
+    a 22,93 em x = 74,2, e o 20,0 que a regra cobrava so ocorre no eixo do
+    pedal, quase 40 mm depois do fim do pod (revisao de 2026-10-01).
+    """
+    t = (x - EIXO_X) / (PEDAL_X - EIXO_X)
+    t = min(1.0, max(0.0, t))
+    return MEIA_LARG_EIXO + t * (MEIA_LARG_PEDAL - MEIA_LARG_EIXO)
+
+
 def braco(m: PD.Malha) -> None:
     """The arm body plus its two bosses, tapered along x, centred on the pod."""
     cy = PD.H_P / 2.0
-
-    def meia(x: float) -> float:
-        t = (x - EIXO_X) / (PEDAL_X - EIXO_X)
-        t = min(1.0, max(0.0, t))
-        return MEIA_LARG_EIXO + t * (MEIA_LARG_PEDAL - MEIA_LARG_EIXO)
+    meia = meia_largura
 
     passos = 24
     xs = [EIXO_X + (PEDAL_X - EIXO_X) * k / passos for k in range(passos + 1)]
@@ -101,15 +110,20 @@ def braco(m: PD.Malha) -> None:
 # ONE piece, not four: the S5229 full bridge, N2K-13-S5229A-50C/DG/E3.
 # Every number below is off its page in the transducer-class databook
 # (2622-EN, rev. 12-Aug-2019, p. 58), in millimetres.
-MATRIZ_W, MATRIZ_H = 4.0, 3.7    # the carrier, the thing that gets bonded
+# As cotas da matriz e o lugar dela vem do `make_pod`, nao daqui: e o POD que
+# reserva esse lugar - um bolso na face de baixo sobre a matriz e uma canaleta
+# sobre o feixe de fios -, e as duas coisas tem de usar o mesmo numero. Ate
+# 2026-10-01 o lugar estava escrito aqui e o pod nao sabia dele: os cinco fios
+# corriam ate 44,83 mm dentro da linha de cola de 0,50 mm.
+MATRIZ_W, MATRIZ_H = PD.GAUGE_W, PD.GAUGE_H
 GRADE_L, GRADE_W = 0.71, 1.13    # one grid: length along its own axis, width
 GRADE_ESP = 0.05                 # foil plus carrier
 ILHA = 0.55                      # the four gold solder tabs (DG)
-CENTRO_X = 14.0                  # toward the spindle, before the bridge's pads
+CENTRO_X = PD.GAUGE_X
 # Across the arm the bridge sits OFF the middle: the middle line of the face
 # is the neutral axis, where bending strain is zero. How far off is still
 # open and it is what sets the slope (docs/06).
-DESLOC_Y = 4.5
+DESLOC_Y = PD.GAUGE_DESLOC_Y
 
 
 def _ret(cx, cy, w, h):
@@ -164,31 +178,57 @@ def ilhas_da_ponte(pecas) -> list:
     return [(cx - meia + 2.0 * k * meia / 4.0, cy) for k in range(5)]
 
 
-def fios(m: PD.Malha, centros: list, ilhas: list, z_topo: float) -> None:
-    """Five wires from the gauges to the five plated holes of the board.
+def fios(m: PD.Malha, pod: PD.Pod, centros: list, ilhas: list, z_topo: float) -> None:
+    """Five wires from the gauge to the five plated holes of the board.
 
-    Each one runs on the arm from its gauge to the point under its own pad,
-    then rises through the slot in the pod's floor and into the hole, where
-    the solder is the strain relief. Drawn square so the picture reads; the
-    real one is round, about 30 AWG, in the load-cell colours.
+    They leave the tabs as a BUNDLE, run along the arm inside the pod's wire
+    channel, turn up its leg to the slot and only there fan out to the five
+    holes, where the solder is the strain relief. Routed through the channel
+    and not straight to each pad because the straight route crossed up to
+    44,83 mm of glued floor (revision of 2026-10-01); the channel's two legs
+    come from `Pod.canaleta_fios()`, so the groove and the wires cannot drift
+    apart. Drawn with the real OUTSIDE diameter, insulation included.
     """
-    d = 0.32
+    d = PD.FIO_PONTE_D
+    trechos = pod.canaleta_fios()
+    if not trechos:
+        return
+    (_a0, cy0, xa1, cy1), (xb0, _b1, xb2, yb3) = trechos
+    cy = (cy0 + cy1) / 2.0
+    xf = (xb0 + xb2) / 2.0
     for k, (nome, cor) in enumerate(FIOS):
         ax, ay = centros[min(k, len(centros) - 1)]
         px, py = ilhas[k]
-        # along the arm, in two straight runs: across, then along
-        m.caixa(min(ax, px) - d / 2, ay - d / 2, FACE_Z,
-                max(ax, px) + d / 2, ay + d / 2, FACE_Z + d, cor)
-        m.caixa(px - d / 2, min(ay, py) - d / 2, FACE_Z,
-                px + d / 2, max(ay, py) + d / 2, FACE_Z + d, cor)
-        # then straight up through the slot into the hole
+        o = (k - (len(FIOS) - 1) / 2.0) * PD.FIO_PONTE_PASSO
+        # 1. da ilha da matriz ate a linha do feixe, em DOIS trechos retos e nao
+        #    numa caixa unica: a caixa unica cobria o retangulo inteiro entre os
+        #    dois pontos e saia da canaleta por 0,075 mm ao longo de 35 mm, o que
+        #    a `PD25` mediu como 14,9 mm2 de fio sem cola por cima.
+        m.caixa(ax - d / 2, min(ay, cy + o) - d / 2, FACE_Z,
+                ax + d / 2, max(ay, cy + o) + d / 2, FACE_Z + d, cor)
+        m.caixa(min(ax, xf + o) - d / 2, cy + o - d / 2, FACE_Z,
+                max(ax, xf + o) + d / 2, cy + o + d / 2, FACE_Z + d, cor)
+        # 2. pela perna da canaleta, ate dentro do rasgo
+        m.caixa(xf + o - d / 2, cy + o - d / 2, FACE_Z,
+                xf + o + d / 2, max(py, yb3) + d / 2, FACE_Z + d, cor)
+        # 3. dentro do rasgo, abrindo para o furo de cada um
+        m.caixa(min(xf + o, px) - d / 2, py - d / 2, FACE_Z,
+                max(xf + o, px) + d / 2, py + d / 2, FACE_Z + d, cor)
+        # 4. e para cima, pelo furo metalizado
         m.caixa(px - d / 2, py - d / 2, FACE_Z, px + d / 2, py + d / 2,
                 z_topo, cor)
 
 
-def cola(m: PD.Malha) -> None:
-    """The adhesive film between the arm's face and the pod's floor."""
-    m.caixa(0.6, 0.6, FACE_Z, PD.W_P - 0.6, PD.H_P - 0.6, 0.0, COR_COLA)
+def cola(m: PD.Malha, pod: PD.Pod) -> None:
+    """The adhesive film: the bonding land, minus everything carved out of it.
+
+    It was the whole footprint until 2026-10-01, which said the pod was glued
+    over 21,0 mm of a face only 15,0 mm wide and glued over the slot, the
+    gauge and the wires as well.
+    """
+    vazios = [pod.rasgo, pod.bolso_gauge()] + pod.canaleta_fios()
+    for a, b, c, d in PD.menos_retangulos(pod.base_cola(), vazios, minimo=0.0):
+        m.caixa(a, b, FACE_Z, c, d, 0.0, COR_COLA)
 
 
 def main() -> int:
@@ -206,9 +246,9 @@ def main() -> int:
     # assembled: the pod closed on the arm, the way it is ridden. The wires
     # end at the board's underside, which is where the holes are.
     m_cola = PD.Malha()
-    cola(m_cola)
+    cola(m_cola, pod)
     m_fios = PD.Malha()
-    fios(m_fios, centros, ilhas, PD.PLACA_Z0)
+    fios(m_fios, pod, centros, ilhas, PD.PLACA_Z0)
     t, c = PD.juntar(base, m_cola, m_fios, concha, celula, placa, tampa,
                      pod.junta_3d())
     PD.renderizar(t, c, "conjunto-3d-montado.png", 1900, 1000, 205.0, 34.0)
@@ -217,7 +257,7 @@ def main() -> int:
     # into, so the path gauge -> slot -> hole is one continuous thing
     dz = 26.0
     m_fios2 = PD.Malha()
-    fios(m_fios2, centros, ilhas, PD.PLACA_Z0 + dz)
+    fios(m_fios2, pod, centros, ilhas, PD.PLACA_Z0 + dz)
     t, c = PD.juntar(base, m_fios2,
                      PD.deslocar(PD.juntar(concha, celula, placa), dz),
                      PD.deslocar(PD.juntar(tampa, pod.junta_3d()), dz + 16.0))
@@ -226,7 +266,7 @@ def main() -> int:
     # close up on the arm alone: the bridge and the five wires standing where
     # they enter the pod, which is the part nobody had seen
     m_fios3 = PD.Malha()
-    fios(m_fios3, centros, ilhas, FACE_Z + 5.0)
+    fios(m_fios3, pod, centros, ilhas, FACE_Z + 5.0)
     t, c = PD.juntar(base, m_fios3)
     PD.renderizar(t, c, "conjunto-3d-extensometros.png", 1700, 900, 210.0, 46.0)
 
@@ -235,7 +275,7 @@ def main() -> int:
     # board, the O-ring and the lid. Every piece someone has to hold during
     # assembly is in this one picture, in the order they are held.
     m_fios4 = PD.Malha()
-    fios(m_fios4, centros, ilhas, PD.PLACA_Z0 + 30.0)
+    fios(m_fios4, pod, centros, ilhas, PD.PLACA_Z0 + 30.0)
     t, c = PD.juntar(
         base, m_fios4,
         PD.deslocar(PD.juntar(concha, celula), 22.0),

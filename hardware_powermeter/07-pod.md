@@ -7,7 +7,7 @@ e medido por [`pod/dry_run_pod.py`](pod/dry_run_pod.py), pela mesma ideia
 do case do ciclocomputador: um gerador, um dry run, e nenhum número que
 não venha de um documento ou de uma medida.
 
-**Nesta página:** [O envelope](#o-envelope) · [A pilha de alturas](#a-pilha-de-alturas) · [O que segura cada peça](#o-que-segura-cada-peça) · [Os fios da ponte](#os-fios-da-ponte) · [O conector magnético na tampa](#o-conector-magnético-na-tampa) · [Vedação e envase](#vedação-e-envase) · [Massa](#massa) · [As regras do dry run](#as-regras-do-dry-run) · [Lugares reservados](#lugares-reservados)
+**Nesta página:** [O envelope](#o-envelope) · [A pilha de alturas](#a-pilha-de-alturas) · [O que segura cada peça](#o-que-segura-cada-peça) · [Os fios da ponte](#os-fios-da-ponte) · [O conector magnético na tampa](#o-conector-magnético-na-tampa) · [Vedação e envase](#vedação-e-envase) · [Massa](#massa) · [As regras do dry run](#as-regras-do-dry-run) · [Medir o sólido, não a constante](#medir-o-sólido-não-a-constante) · [Lugares reservados](#lugares-reservados)
 
 > [!WARNING]
 > **Nada foi impresso, colado nem pesado.** Toda medida abaixo sai do
@@ -19,29 +19,25 @@ não venha de um documento ou de uma medida.
 
 | Medida | Alvo de [`docs/02`](../docs/02-hardware.md#requisitos) | O que o desenho dá | Situação |
 |---|---|---|---|
-| Comprimento | 60 mm | **55,7 mm** | dentro: placa de 47 mm ([04](04-placa.md#o-contorno)), mais o canal dos fios da célula, a sala dos dois parafusos e duas paredes de 2,0 |
-| Largura | 20 mm | **19,0 mm** | dentro: placa de 14 mais 0,5 de folga e 2,0 de parede de cada lado |
-| Altura | 10 mm | **10,0 mm** | **encostado no alvo**, e é o número mais caro dos três: quem o fixa é a espessura da célula, e a célula real que cabe tem 4,0 mm, não os 2,5 que este documento supunha |
+| Comprimento | **38 mm** | **74,5 mm** | **fora**: a placa tem 50 mm ([04](04-placa.md#o-contorno)) e a célula ficou **ao lado** dela |
+| Largura | 20 mm | **21,0 mm** | **fora por 1,0**: placa de 16 mais 0,5 de folga e 2,0 de parede de cada lado |
+| Altura | 10 mm | **7,2 mm** | dentro, com 2,8 de folga |
 
-As três medidas cabem, e o caminho até aqui vale mais que o resultado: a
-face de trás passou a carregar o que não precisa ser alcançado, o que levou
-a placa de 60 para 51 mm; a vedação por anel O **custou** 7 mm de
-comprimento e 1,6 de largura; o módulo menor devolveu quase exatamente
-isso, levando a placa a 47 × 14; e a célula de verdade custou 1,5 mm de
-altura.
+As duas medidas que não fecham são consequência direta de duas decisões já
+tomadas, e nenhuma delas é um defeito de geometria:
 
-> [!IMPORTANT]
-> **A altura subiu de 8,5 para 10,0 porque a premissa de 2,5 mm estava
-> errada, e a conta que a sustentava nunca tinha sido feita.** O documento
-> dizia "célula de 100 mAh com 2,5 mm de espessura"; em 23 × 11 × 2,5 uma
-> LiPo de bolsa vale cerca de **49 mAh**, que a 1,5 mA dão 32 h contra as
-> 50 h do requisito. Não era o pod que estava apertado: era o número. A
-> célula que cabe e atende é de classe **`401123`** — 4,0 × 11 × 23 mm,
-> **≥ 78 mAh**, com dois fios e proteção integrada —, e é ela que está nos
-> desenhos ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)).
-> Com o modo duty-cycle do conversor e a ponte de 5 kΩ o consumo caiu para
-> 0,68 mA, então essas 78 mAh valem **114 h**, e não as 52 h da conta
-> anterior.
+- **O comprimento** é a placa mais a célula ao lado. A decisão do dono em
+  2026-09-30 foi tirar a célula de baixo da placa, o que levou a altura de
+  10,0 para 7,2 e o comprimento para cá. Encurtar o pod pede encurtar a
+  placa ou empilhar a célula de novo.
+- **A largura** é a placa de 16 mm mais 0,5 de folga e 2,0 de parede de cada
+  lado. A parede é 2,0 porque o sulco do anel O precisa de 1,05 mais 0,5 de
+  terra de cada lado (`PD13`); com 1,2 de parede não há vedação por anel O.
+
+O alvo de `docs/02` foi corrigido em 2026-10-01: ele é **38 × 20 × 10**
+desde 2026-09-27, e o gerador ainda media contra os 60 que o próprio
+documento diz que o projeto deixou de perseguir. A regra `PD10` passou a
+medir contra o número certo, e reprova.
 
 ### O pod não cola pela face inteira
 
@@ -86,27 +82,44 @@ O que ainda governa cada medida:
 
 ## A pilha de alturas
 
+A placa e a célula ficam **lado a lado**, e não empilhadas: quem fixa a
+altura do pod é a pilha da placa, e a célula cabe no mesmo espaço porque a
+baía dela é **cavada no piso**.
+
 ```mermaid
 flowchart TB
-    BRACO["braço do pedivela"] --> COLA["cola de fixação 0,5 · fora do pod"]
-    COLA --> FUNDO["fundo do pod 1,0"]
-    FUNDO --> CEL["célula 4,0 · envelope 23 × 11"]
-    CEL --> AR["ar 0,5"]
-    AR --> PCB["placa 0,8"]
-    PCB --> TETO["teto 2,7 · o módulo reserva 2,4 e sobra 0,3 de ar"]
-    TETO --> TAMPA["tampa 1,0"]
+    subgraph PILHA["sob a placa"]
+        BRACO["braço do pedivela"] --> COLA["cola 0,5 · fora do pod"]
+        COLA --> FUNDO["piso 1,2 · 0,7 fora da base de colagem"]
+        FUNDO --> AR["ar do verso 1,5 · as peças de trás"]
+        AR --> PCB["placa 0,8"]
+        PCB --> TETO["teto 2,7 · o módulo reserva 2,4 e sobra 0,3"]
+        TETO --> TAMPA["tampa 1,0"]
+    end
+    subgraph BAIA["ao lado, na baía"]
+        PISO["piso da baía 0,7 · cavado"] --> CEL["célula 5,0"]
+        CEL --> INCH["reserva de inchaço 0,5"]
+    end
 ```
 
 | Camada | Altura | De onde vem |
 |---|---|---|
 | Cola ao braço | 0,5 mm | fora do pod; entra só na folga até o quadro |
-| Fundo | 1,0 mm | escolha deste desenho |
-| Célula | 4,0 mm | envelope de 23 × 11 × 4,0 de uma LiPo de classe `401123`, **≥ 78 mAh**, com dois fios e proteção integrada ([`docs/02`](../docs/02-hardware.md#orçamento-de-consumo)). Era 2,5 mm, e 2,5 não existe: naquele volume a célula vale ~49 mAh e não fecha o requisito |
-| Ar sobre a célula | 0,5 mm | a célula incha com a idade |
+| Piso | 1,2 mm | fora da base de colagem a face de baixo está em `RELEVO` = 0,5, então o piso ali tem 0,7; sobre a base tem 1,2 |
+| Ar sob o verso | 1,5 mm | `cad/make_dxf.TETO_VERSO`: o que as 43 peças do verso pedem |
 | Placa | 0,8 mm | [04](04-placa.md#camadas) |
 | Teto sobre a placa | 2,7 mm | o módulo **reserva** 2,4 (o anúncio do HOLYIOT-26001-A não dá a altura), mais 0,3 de ar (`cad/make_dxf.TETO_TAMPA`). A regra `PD18` mede a peça contra essa reserva |
 | Tampa | 1,0 mm | escolha deste desenho |
-| **Total** | **10,0 mm** | com a cola, 10,5 até o braço. A regra `PD17` compara esses 10,5 com a folga do quadro, e é a única que ainda falha: ela pede que o dono meça a bicicleta dele com um paquímetro antes de colar |
+| **Total** | **7,2 mm** | com a cola, 7,7 até o braço |
+
+E a baía, ao lado:
+
+| Camada | Altura | De onde vem |
+|---|---|---|
+| Piso da baía | 0,7 mm | **cavado** 0,5 no piso, para a reserva de inchaço não levantar o teto |
+| Célula | 5,0 mm | envelope de 15 × 14 × 5,0, **≥ 81 mAh** |
+| Reserva de inchaço | 0,5 mm | 10 % da espessura: uma bolsa de lítio engorda com ciclo e temperatura. Era **0,000 mm**, com igualdade exata, enquanto a `PD2` cobrava 0,30 de ar de toda peça rígida da placa |
+| **Total** | **6,2 mm** | que é exatamente o teto da cavidade |
 
 O conector magnético é mais alto que o teto **de propósito**: ele
 atravessa a tampa ([abaixo](#o-conector-magnético-na-tampa)), e por isso
@@ -152,30 +165,71 @@ flowchart LR
 
 ## Os fios da ponte
 
-Os cinco fios (`E+`, `S+`, `S−`, `E−` e a blindagem) sobem do braço por
-um **rasgo no fundo do pod**, desenhado direto sob os cinco furos
-metalizados do `J301`, com 0,5 mm de folga em volta deles. Eles chegam à
-placa **por baixo** e são soldados nos furos: a solda no furo é o alívio
-de tração, que um pad na face de cima não daria sem dobrar o fio pela
-borda da placa. A regra `PD7` mede que os cinco furos ficam sobre o rasgo
-e que o rasgo não entra nos ressaltos.
+Os cinco fios (`E+`, `S+`, `S−`, `E−` e a blindagem) saem das ilhas da
+matriz do extensômetro **como feixe**, correm pela face do braço dentro de
+uma canaleta do pod, sobem pela perna dela até o **rasgo no fundo** e só ali
+se abrem para os cinco furos metalizados do `J301`. Eles chegam à placa
+**por baixo** e são soldados nos furos: a solda no furo é o alívio de
+tração, que um pad na face de cima não daria sem dobrar o fio pela borda da
+placa.
 
-O rasgo fica fora da sombra da célula (regra `PD5`), para que o envase
-que o fecha não empurre a célula.
+Por que a canaleta existe: a linha de cola tem **0,5 mm** e um fio 30 AWG
+com isolação tem o mesmo 0,5. Até 2026-10-01 os fios eram roteados em linha
+reta de cada ilha ao seu pad e corriam até **44,83 mm sob fundo colado** —
+o pod empenava sobre cinco cordas, ou a junta abria no meio, onde a cadeia
+de medição começa. O pod abre agora um **bolso** sobre a matriz (4,0 × 3,7
+mais 0,4 de margem) e uma canaleta de 3,5 mm sobre o feixe, as duas com a
+profundidade do relevo, e a área colada é o que sobra. A regra `PD25` mede,
+coluna por coluna no sólido, que sobra pelo menos 0,15 mm de cola livre
+acima de cada fio e da matriz.
+
+O lugar da matriz (`GAUGE_X`, `GAUGE_DESLOC_Y`) mora no `make_pod.py` e o
+`make_conjunto.py` o lê de lá: é o **pod** que reserva esse lugar, e os dois
+desenhos têm de usar o mesmo número.
+
+A regra `PD7` mede que os cinco furos ficam sobre o rasgo, que o rasgo não
+passa da parede e que a beirada de um ressalto não fica mais de 0,4 mm em
+balanço sobre ele. O rasgo fica fora da sombra da célula (regra `PD5`).
 
 ## O conector magnético na tampa
 
-A tampa tem uma janela com 0,3 mm de folga em volta do contorno de
-ocupação do conector. O conector é mais alto que o teto, então a face
-dele fica **num poço**, abaixo do topo da tampa: é onde a cabeça
-magnética do cabo assenta, e é o que impede que a peça fique acima da
-superfície do pod, onde bateria na perna do ciclista. Em volta do poço
-há uma junta plana de 1,5 mm de largura num rebaixo de 0,3.
+O requisito de [`docs/02`](../docs/02-hardware.md#requisitos) é literal:
+**"IPX7: pod envasado, junta na face do conector"**. Até 2026-10-01 o
+desenho fazia outra coisa — uma junta plana de 1,5 mm num anel em volta da
+janela, desenhada acima de uma chapa maciça, com a borda interna 0,55 mm
+por **fora** do corpo do conector nos quatro lados: ela nunca tocava a
+peça, e sobrava um anel aberto de 16,61 mm² da face do conector até a
+cavidade, fechado só pelo menisco do envase.
 
-A regra `PD3` mede as três coisas ao mesmo tempo: a janela cobre o
-contorno com a folga, a face do conector não passa do topo da tampa, e
-não fica abaixo da face de baixo dela (se ficasse, o cabo não a
-alcançaria).
+Hoje a porta tem três partes:
+
+```mermaid
+flowchart TB
+    T["tampa, 6,2 a 7,2"] --> R["ressalto da tampa<br/>desce de 6,2 a 6,0"]
+    R --> J["junta plana de 0,70 livre<br/>comprimida 0,20 = 28,6 %"]
+    J --> O["ombro do conector<br/>em z = 5,5"]
+    B["barrilete do conector<br/>atravessa a janela"] --> F["face em z = 6,7<br/>0,5 abaixo do topo"]
+```
+
+| Peça | Medida | De onde vem |
+|---|---|---|
+| Janela | o **barrilete** mais 0,15 de folga | o barrilete é o corpo menos o ombro de cada lado |
+| Ombro | 0,8 mm de largura, 2,0 mm acima da placa | **requisito de compra**, como a altura do módulo: nenhum conector está escolhido |
+| Junta | 0,70 de espessura livre, 0,65 de largura útil | a largura útil é o ombro menos a folga da janela |
+| Aperto | 0,20 mm, 28,6 % | o ressalto da tampa desce 0,2 abaixo do teto da cavidade |
+| Poço | 0,5 mm, limite **0,8** | o curso do pino do cabo magnético, **a conferir no cabo comprado** |
+
+O lábio em volta da janela e o dreno **saíram do projeto**, e por medida: o
+lábio ficava 0,40 mm acima do topo da junta e represava água sobre os
+contatos, e a soleira do dreno ficava 0,50 mm **acima** do fundo do poço,
+com queda zero em 2,65 mm — a água do poço só tinha para onde ir para
+dentro. Um canal de dreno numa tampa de 1,0 mm teria de passar abaixo da
+face de baixo dela, virando um furo para a cavidade.
+
+A regra `PD3` mede que o barrilete atravessa a janela com folga e que a
+face não passa do topo nem fica abaixo do teto; a `PD24` mede, no sólido,
+que o ressalto existe e quanto ele comprime; a `PD29` mede que nenhuma
+outra abertura da tampa come a pegada da junta.
 
 Sobre o LED há um furo de 2,5 mm na tampa, a encher com resina
 transparente: o LED fica na placa, sob a tampa, e a luz sai por ali
@@ -183,15 +237,24 @@ transparente: o LED fica na placa, sob a tampa, e a luz sai por ali
 
 ## Vedação e envase
 
-O requisito é IPX7 ([`docs/02`](../docs/02-hardware.md#requisitos)). O
-desenho fecha isso em três lugares:
+O requisito é IPX7 ([`docs/02`](../docs/02-hardware.md#requisitos)). A
+regra `PD20` não conta vedações: ela enumera os **caminhos de água** e
+cobra **duas barreiras em série** em cada um.
 
-| Onde | Como |
-|---|---|
-| Cavidade | envasada até a face de baixo da tampa, com a placa e a célula dentro |
-| Tampa | colada pela aba de 0,8 mm que desce 1,0 mm por dentro das paredes |
-| Conector | junta plana em volta do poço, e o corpo do conector envasado por trás |
-| Rasgo dos fios | fechado pelo envase, que entra nele |
+| Caminho | Primeira barreira | Segunda |
+|---|---|---|
+| Pela porta do conector | a junta plana no ombro, comprimida 28,6 % | o envase da cavidade |
+| Pela costura concha-tampa | o anel O de 0,80 num sulco de 1,05 × 0,58, 25 % de compressão **medidos no sólido** | a aba da tampa colada por dentro das paredes |
+| Pelo rasgo dos fios da ponte | a cola ao braço em volta do rasgo | o colar que represa o envase, em quatro barras |
+| Pelo furo de luz do LED | a resina transparente enchendo a espessura da tampa | o envase sob o furo |
+| Pelo furo de cada parafuso | o tampão de resina sobre a cabeça | a rosca no ressalto, acima do envase |
+
+O **nível do envase** passou a ser um número: ele para 0,4 mm abaixo do
+teto da cavidade. Antes não havia nenhum — todo texto dizia "até a face de
+baixo da tampa" —, o que punha o menisco rasante à boca dos dois furos
+cegos dos parafusos, e um M1,6 autoatarraxante não atarraxa em resina
+curada. Pelo mesmo motivo o pescoço do parafuso que atravessa a placa
+segue acima dela até passar esse nível.
 
 Nada disso foi provado: não há peça impressa, nem ensaio de imersão.
 
@@ -210,28 +273,78 @@ da conta.
 ## As regras do dry run
 
 `python hardware_powermeter/pod/dry_run_pod.py` mede o pod contra a placa
-colocada. Uma regra que não acha o que medir **falha dizendo isso**.
+colocada e contra os STL que o gerador grava. Uma regra que não acha o que
+medir **falha dizendo isso**.
 
 | Regra | O que mede |
 |---|---|
 | PD1 | a placa na cavidade, com a folga e o canal dos fios |
 | PD2 | toda peça da frente sob a tampa, com 0,3 mm de ar |
-| PD3 | a janela, o poço e a face do conector magnético |
-| PD4 | o ar sob cada peça da face de trás: contra a célula, a nervura, um pilar ou o fundo |
-| PD5 | a célula entre os ressaltos, sob a placa, longe da nervura, dos pilares e do rasgo |
-| PD6 | a célula a 5 mm da área da antena do módulo (guia de montagem do HOLYIOT-26001-A: a antena cerâmica pede a região livre de metal e sem plano de terra) |
-| PD7 | o rasgo sob os cinco furos da ponte, dentro do fundo |
-| PD8 | nenhum pad da face de trás sob um pilar ou um ressalto (os pilares deslizam em y até sair de cima dos pads) |
+| PD3 | o barrilete do conector atravessando a janela, e a face dele no poço |
+| PD4 | o ar sob cada peça da face de trás, **medido no sólido** |
+| PD5 | a célula na baía, com a folga do berço e a reserva de inchaço |
+| PD6 | **todo metal** contra a área da antena, **nos três eixos**: a célula, o braço de alumínio e os dois parafusos |
+| PD7 | o rasgo sob os cinco furos da ponte, dentro do piso |
+| PD8 | nenhum pad da face de trás sob um pilar ou um ressalto |
 | PD9 | o furo de luz sobre o corpo do LED |
-| PD10 | o envelope contra o alvo de `docs/02` |
+| PD10 | o envelope contra o alvo de `docs/02` (**38 × 20 × 10**) |
 | PD11 | a massa estimada contra os 20 g |
 | PD12 | a aba da tampa sem bater em peça da borda |
-| PD13 | o sulco do anel O: parede de cada lado, compressão entre 20 e 30 %, seção que aceita o cordão esmagado |
-| PD14 | os parafusos: ressaltos livres da placa e da célula, dentro da cavidade, com parede suficiente para um M1,6 autoatarraxante |
-| PD15 | retenção: a célula com nervura ou ressalto nos quatro lados, e a placa entre pilares e dedos da tampa |
-| PD16 | o poço do conector drena: há lábio, ele **não** é fechado, e o dreno não entope |
-| PD17 | o pod cabe no braço: a base de colagem dentro da parte plana da face, e a pilha cola + pod dentro da folga do quadro |
-| PD18 | o módulo não é mais alto que o teto reservado para ele |
+| PD13 | o sulco do anel O, com a **profundidade medida no sólido** |
+| PD14 | o que atravessa a placa **medido no sólido**, contra o furo dela e contra a reserva em volta do furo |
+| PD15 | retenção da célula e da placa |
+| PD16 | nada em pé na face de fora da tampa para represar água |
+| PD17 | o pod no braço: largura, base de colagem com margem, pilha cola + pod |
+| PD18 | o módulo não é mais alto que o teto reservado |
+| PD19 | toda abertura do pod aponta para a vedação que a fecha |
+| PD20 | **duas barreiras em série** em cada caminho de água |
+| PD21 | **nenhum par de corpos ocupa o mesmo espaço** (voxel de 0,1 mm) |
+| PD22 | caminho **contínuo** para um fio de 0,9 da baía até o J102 |
+| PD23 | a face de baixo toca o braço só na base de colagem, e o relevo existe |
+| PD24 | o ressalto da tampa comprime a junta da porta, medido no sólido |
+| PD25 | nem o fio nem a matriz correm dentro da linha de cola |
+| PD26 | toda primitiva dos STL é um sólido fechado, sem aresta de borda |
+| PD27 | **meta-regra**: nenhuma constante de geometria fica sem uso |
+| PD28 | todo furo cego tem a boca acima do envase e proporção viável |
+| PD29 | as aberturas da tampa não se comem nem comem a junta |
+| PD30 | o assento da placa é mais largo que a folga do pino |
+
+## Medir o sólido, não a constante
+
+Em 2026-10-01 dez revisores mediram este pod e acharam **sete
+interferências** que o impediam de fechar. No mesmo commit, o dry run dizia
+que **18 das 20 regras estavam cumpridas**.
+
+A causa era uma só. O desenho é uma sopa de triângulos; a classe `Malha`
+não sabia subtrair e não dava para perguntar a ela "este ponto está
+dentro?". Então sete regras liam a **constante** que deveria ter gerado a
+geometria, e uma regra assim passa com a peça desenhada ou sem ela:
+`PARAF_PESCOCO_D = 2,00` estava declarado desde sempre, o ressalto saía em
+diâmetro cheio de 3,40 por um furo de 2,20, e nenhuma regra viu.
+
+O que mudou: a `Malha` passou a registrar cada primitiva na **mesma
+chamada** que emite os triângulos, e [`medir.py`](pod/medir.py) rasteriza
+esse registro numa grade de voxels de 0,1 mm. Como o registro e a malha
+saem da mesma chamada, não podem divergir. Dez regras novas medem a
+geometria, e cada uma foi **testada por mutação**: o defeito volta ao
+gerador e a regra tem de reprovar.
+
+Os sete bloqueantes e o que fechou cada um:
+
+| Bloqueante | O que fechou | Quem mede |
+|---|---|---|
+| Ressalto de 3,40 num furo de 2,20 | o pescoço de 2,00 passou a ser desenhado | `PD14`, por raio no sólido |
+| Aba da tampa 5,565 mm³ dentro da célula e 2,315 nas nervuras | a aba virou quatro barras cortadas em tudo o que sobe na cavidade | `PD21` |
+| Os dois fios da célula sem saída (0,000 mm) | passagem de 3,4 cortada nas nervuras e no piso | `PD22`, por conectividade |
+| Colar sobre o R302 e o C304 | altura **por barra**, 0,1 abaixo do que passa sobre ela | `PD21` e `PD4` |
+| Junta da janela 0,30 enterrada no sólido | junta no ombro do conector, comprimida por um ressalto da tampa | `PD24` |
+| Dreno 0,50 acima do fundo do poço | o lábio e o dreno saíram; a vedação é a junta | `PD16` e `PD20` |
+| 44,83 mm de fio sob fundo colado | bolso sobre a matriz e canaleta sobre o feixe | `PD25` |
+
+E o relevo da base de colagem, que **acrescentava** duas caixas onde queria
+cavar: hoje a concha nasce em `z = RELEVO` e a base é um ressalto desenhado
+dentro dela. A `PD23` mede 0,00 mm² de face em z = 0 fora da base, onde
+antes havia 445,20.
 
 ## Lugares reservados
 

@@ -73,11 +73,30 @@ import make_pcb as MP         # noqa: E402
 # 1,6 mm at the bottom, and the bottom is exactly where the pod is BONDED
 # to the crank arm, so the step would cost bonding area and stiffness to
 # buy a millimetre where it does not show.
-PAREDE, FUNDO, TAMPA = 2.0, 1.0, 1.0
+PAREDE, FUNDO, TAMPA = 2.0, 1.2, 1.0
+# O `FUNDO` subiu de 1,0 para 1,2 em 2026-10-01 porque o RELEVO passou a ser
+# CAVADO e nao acrescentado (ver `RELEVO`): fora da base de colagem a face de
+# baixo esta em z = RELEVO, logo a espessura do piso ali e FUNDO - RELEVO. Com
+# FUNDO = 1,0 e RELEVO = 0,5 o piso daria 0,5 mm; com 1,2 da 0,7 fora da base
+# e 1,2 sobre ela.
 R_P = 3.0
 FOLGA_PLACA = 0.5             # board to wall, right end and both long sides
 CANAL_FIO = 2.5               # left end: the cell's leads rise here to the JST
-RESSALTO = 0.6                # the ledge under the board's edges
+# A largura minima de assento da placa em cada borda. `RESSALTO - FOLGA_PLACA`
+# dava 0,100 mm, e a folga radial do pino do parafuso e 0,100 tambem: a
+# translacao que o pino permite consumia o assento inteiro de um lado
+# (revisao de 2026-10-01).
+ASSENTO_MIN = 0.5
+# O ressalto e a FOLGA da placa mais o assento minimo: ate 2026-10-01 ele era
+# 0,6 contra uma folga de 0,5 e sobravam 0,100 mm de apoio por borda, a mesma
+# medida da folga radial do pino do parafuso - a translacao que o pino permite
+# consumia o assento inteiro de um lado (`PD30`).
+RESSALTO = FOLGA_PLACA + ASSENTO_MIN
+# Quanto da BEIRADA de um ressalto pode ficar em balanco sobre o rasgo. O
+# ressalto nasce no piso e e colado na parede; um balanco pequeno da borda
+# interna dele sobre o rasgo nao cai, e exigir zero virou falsa falha quando
+# o ressalto cresceu para dar assento a placa (`PD7`, 2026-10-01).
+RESSALTO_BALANCO = 0.4
 PLACA_W, PLACA_H, PLACA_ESP = MD.W, MD.H, MD.THICKNESS
 # the envelope reserved for the cell. It shrank on 2026-09-27 with the
 # owner's 5 kOhm decision: the meter draws 1,5 mA pedalling instead of 3,9,
@@ -161,11 +180,26 @@ PLACA_W, PLACA_H, PLACA_ESP = MD.W, MD.H, MD.THICKNESS
 # primeira execucao. Com 14 sobram 1,5 de cada lado, que e nervura de 0,8
 # mais 0,7 de folga. O volume nao muda: 15 x 14 x 5,0 = 1050 mm3.
 CELULA_W, CELULA_H, CELULA_ESP, CELULA_VAO = 15.0, 14.0, 5.0, 0.5
+# A RESERVA DE INCHACO, em z. Uma bolsa de litio engorda com ciclo e com
+# temperatura, e 8 a 10 % da espessura e a folga mecanica que os fabricantes
+# pedem. Ate 2026-10-01 o teto da cavidade era `max(PLACA_Z1 + TETO,
+# CELULA_Z1)`: a celula empatava com o teto em 0,000 mm de ar, com igualdade
+# exata, enquanto a `PD2` cobrava 0,30 de folga de TODA peca rigida da placa.
+# A unica peca do pod que cresce era justamente a que nao tinha reserva. O
+# `CELULA_VAO` nao servia: ele e a folga LATERAL, em x, contra o canal.
+CELULA_INCHACO = 0.10 * CELULA_ESP
 # The cell's own leads: a pouch of this size ships with a two-wire tail, and
 # it is what rises through the channel at the left end into J102. Drawn
 # because a battery without its wires is not the part anyone buys.
 CELULA_FIO_D = 0.9            # the lead, insulation included
 CELULA_FIO_PASSO = 2.5        # between the two leads, as J102's holes are
+# The clear width two leads side by side need: centres CELULA_FIO_PASSO apart
+# plus half a diameter outside each. Until 2026-10-01 neither of the two
+# constants above was used by any geometry and the cradle's ribs ran from the
+# floor to the ceiling across the bay's only exit: the leads had 0,000 mm to
+# come out of (flood fill, revision of 2026-10-01). This is the width of the
+# notch cut through the ribs.
+CELULA_FIO_VAO = CELULA_FIO_PASSO + CELULA_FIO_D
 # From the board's left end, and the number is set by the SLOT: the
 # bridge's five holes are at the middle of the board and the floor is cut
 # under them (pod x 30,45 to 40,95, measured on 2026-09-27), so the cell
@@ -174,15 +208,41 @@ CELULA_FIO_PASSO = 2.5        # between the two leads, as J102's holes are
 # first 6,2, which leaves 23 for the cell and 0,6 for the rib. That is why
 # the envelope is 23 mm long and not the 25 this started with, and it is
 # also why the cell cannot simply be made longer to hold more charge.
-CELULA_DESLOC = 2.5
 TETO = MD.TETO_TAMPA          # the ceiling over the front parts (2,7)
-JANELA_FOLGA = 0.3            # the lid's window round the connector's courtyard
-JUNTA_LARG, JUNTA_REBAIXO = 1.5, 0.3
-# A junta plana e' GRAMPEADA na parede: o `J101` fica rente a borda de baixo
-# da placa e o anel de 1,5 passava 0,05 mm por cima do sulco do O-ring, o
-# que poria as duas vedacoes uma sobre a outra (PD20, 2026-09-30). Onde nao
-# cabe 1,5 ela usa o que ha, e a regra cobra este minimo.
-JUNTA_MIN = 1.0
+JANELA_FOLGA = 0.15           # the lid's window round the connector's barrel
+
+# ------------------------------------------- a vedacao da janela, refeita
+# `docs/02-hardware.md` pede, literalmente, "IPX7: pod envasado, JUNTA NA FACE
+# DO CONECTOR". Ate 2026-10-01 o desenho fazia outra coisa: uma junta plana de
+# 1,5 mm de largura num anel em volta da janela, desenhada em z 6,70 a 7,20
+# sobre uma chapa macica de 6,00 a 7,00 - o rebaixo de 0,30 que a regra
+# anunciava nao existia no solido (o STL da tampa nao tem plano nenhum em
+# 6,70), o labio ficava 0,40 ACIMA do topo dela e, em planta, a borda interna
+# da junta era a propria janela, 0,55 mm por FORA do corpo do conector nos
+# quatro lados: ela nunca tocava a peca. Sobrava um anel aberto de 16,61 mm2
+# da face do conector ate a cavidade, fechado so pelo menisco do envase. E o
+# "dreno" ficava 0,50 mm ACIMA do fundo do poco, com queda zero em 2,65 mm:
+# a agua do poco so tinha para onde ir para DENTRO.
+#
+# O que ficou. A janela passa a ser o BARRILETE do conector mais folga, e a
+# junta e um anel plano apoiado no OMBRO da peca, comprimido por um ressalto
+# na face de baixo da tampa. O labio e o dreno sairam: um labio fechado em
+# volta de uma face de contato que fica 0,7 mm abaixo do topo e' uma represa,
+# e um canal de dreno na tampa de 1,0 mm teria de passar abaixo da face de
+# baixo dela, ou seja, virar um furo para dentro da cavidade.
+#
+# As duas medidas do OMBRO sao REQUISITO DE COMPRA, como a altura do modulo
+# de radio: nenhum conector esta escolhido ("o conector magnetico e generico"
+# em todo o repositorio), e a `PD24` cobra as duas da peca que chegar.
+CONECTOR_OMBRO_Z = 2.0        # altura do ombro plano acima da placa
+CONECTOR_OMBRO_L = 0.8        # largura desse ombro em volta do barrilete
+JUNTA_ESP = 0.70              # espessura da junta plana, livre
+JUNTA_APERTO = 0.20           # quanto o ressalto da tampa a comprime: 28,6 %
+# Quanto a face do conector pode ficar abaixo do topo da tampa. E o curso que
+# o pino do cabo magnetico tem de vencer; 0,8 e' o curso tipico de um pino
+# pogo, A CONFERIR no cabo comprado - se o cabo tiver menos, ou a tampa afina
+# sobre a porta ou o conector tem de ser mais alto.
+POCO_MAX = 0.80
 
 # ---------------------------------------------------------- as vedacoes
 # O aparelho fica na face interna do braco, a centimetros do chao: leva
@@ -203,8 +263,39 @@ PARAF_TAMPAO_P = 0.8
 # baixo. O colar sobe 1,5 mm dentro da cavidade: ele segura o envase (que
 # senao escorreria por ali antes de curar) e alonga o caminho da agua. Por
 # fora, o proprio adesivo que cola o pod ao braco fecha o resto.
+# ---------------------------------------- o extensometro e os fios dele
+# O S5229 fica colado no braco DEBAIXO do pod, e os cinco fios dele correm na
+# face do braco ate o rasgo. Na linha de cola de `COLA` (0,5 mm) nao cabe nem o
+# fio (0,32 desenhado, cerca de 0,5 com isolacao) nem a matriz (0,10): ate
+# 2026-10-01 o maior percurso media 44,83 mm SOB FUNDO COLADO, 64 % da linha de
+# cola tomada por cinco cordas, e o rasgo - a unica abertura inferior - ficava
+# inteiro dentro da area colada. Agora o pod abre um bolso sobre a matriz e uma
+# canaleta sobre o feixe, as duas com `RELEVO` de profundidade (a face de baixo
+# ali fica no mesmo nivel de fora da base de colagem), e a area colada e o que
+# sobra. As cotas da matriz sao do databook 2622-EN rev. 12-Aug-2019, p. 58.
+GAUGE_X = 14.0                # LUGAR RESERVADO: a medir no pedivela do dono
+GAUGE_DESLOC_Y = 4.5          # fora da linha neutra da face (docs/06)
+GAUGE_W, GAUGE_H = 4.0, 3.7   # a matriz, o que e colado
+GAUGE_ALT = 0.10              # folha mais carrier
+GAUGE_FOLGA = 0.4             # margem do bolso em volta da matriz
+FIO_PONTE_D = 0.5             # 30 AWG COM isolacao (o condutor nu e 0,255)
+FIO_PONTE_N = 5
+FIO_PONTE_PASSO = FIO_PONTE_D + 0.2
+CANALETA_L = FIO_PONTE_N * FIO_PONTE_PASSO
 RASGO_COLAR_L = 0.8
 RASGO_COLAR_ALT = 1.5
+# O ar entre o topo de cada barra do colar e o que passa sobre ela (o verso da
+# placa, o corpo de uma peca do verso, uma ilha). Sem ele o colar virava apoio
+# da placa, e apoio em cima de dois 0402 (revisao de 2026-10-01).
+COLAR_FOLGA = 0.1
+# A espessura minima de cola que tem de sobrar sob o pod depois de passar o
+# que passa por ali (o fio do extensometro, a matriz): sem ela o pod se apoia
+# em cinco cordas em vez de na pelicula.
+COLA_MIN = 0.15
+# Material minimo entre duas aberturas da tampa impressa.
+TAMPA_MIN_PAREDE = 0.6
+# Largura minima de ombro que a junta da porta precisa para vedar.
+JUNTA_MIN_L = 0.5
 LED_FURO = 2.5
 # The floor slot round the bridge's holes. 0,4 and not 0,5: at 0,5 the cut
 # ran 0,05 mm under the bottom ledge, which is what the board rests on
@@ -215,6 +306,11 @@ PILAR_D = 2.0
 PILAR_FOLGA = 0.15          # a post must not touch a pad: the solder sits proud
 NERVURA = 0.6
 COLA = 0.5                    # glue between the arm and the floor (not drawn)
+# A margem de colagem por lado: a base nao pode terminar exatamente onde a
+# face plana termina. Ate 2026-10-01 a `PD17` comparava `BASE_COLA <= util`
+# com `BASE_COLA = BRACO_LARG - 2 * RAIO_CONC = util`: uma tautologia que nao
+# podia reprovar.
+COLA_MARGEM = 0.5
 
 # ------------------------------------------------- the crank arm (2026-09-28)
 # Nobody has measured the owner's crank, and waiting for that measurement was
@@ -250,10 +346,28 @@ BRACO_LARG = 20.0
 # the flat part of the face, and outside that land the floor is relieved by
 # RELEVO so it clears the fillet with air. The pod stays 19,0 mm wide - the
 # board needs that - and the glue only ever touches flat metal.
-BASE_COLA = BRACO_LARG - 2.0 * 2.5   # 15,0 (RAIO_CONC is 2,5, defined below)
-RELEVO = 1.0                          # how far the floor lifts outside it
-BRACO_ESP_CLASSE = 13.0
+# A base de colagem e a face PLANA do braco menos uma margem por lado: ate
+# 2026-10-01 ela era a face plana inteira, e a `PD17` comparava
+# `BASE_COLA <= util` com os dois iguais - tautologia que nao reprova.
+BASE_COLA = BRACO_LARG - 2.0 * 2.5 - 2.0 * COLA_MARGEM   # RAIO_CONC = 2,5
+# Quanto a face de baixo SOBE fora da base de colagem. Ate 2026-10-01 isto
+# eram duas caixas ACRESCENTADAS de z 0 a 1,0 nas duas tiras externas - e a
+# parede e o piso ja ocupavam z 0 a 1,0 ali, entao as caixas nao levantavam
+# nada: medido no STL, 100 % de cada tira (222,60 mm2) era face macica em
+# z = 0,000, e suprimir as duas caixas mudava a area em z = 0 de 445,20 para
+# 433,55 mm2. O pod colava pelos 21,0 mm sobre uma face plana de 15,0,
+# apoiando 3,0 mm por lado na concordancia - exatamente a falha que o
+# comentario acima diz que o relevo evita. A `Malha` nao subtrai; hoje a
+# concha nasce em z = RELEVO e a base de colagem e um ressalto desenhado
+# dentro dela (`menos_retangulos` tira o rasgo).
+RELEVO = 0.5
 QUADRO = 10.0
+# A espessura do corpo do braco. Fica AQUI e nao no `make_conjunto` porque e
+# uma medida do pedivela de que o pod depende - a `PD6` mede a antena contra
+# esta chapa de aluminio -, e porque ate 2026-10-01 havia duas: um
+# `BRACO_ESP = 14,0` usado pelo desenho do conjunto e um `BRACO_ESP_CLASSE =
+# 13,0` que nao era usado por nada. LUGAR RESERVADO, a medir no pedivela.
+BRACO_ESP = 14.0
 RAIO_CONC = 2.5
 
 # And the module's height, which the advert does not give either. The same
@@ -269,7 +383,13 @@ MODULO_ALT_MAX = 2.40
 # and the one that does fit 2,5 gives 32 h against a requirement of 50.
 # The owner chose the runtime on 2026-09-28. The class reference runs to
 # 13 mm of height, so 10,0 is still inside it.
-ALVO = (60.0, 20.0, 10.0)     # docs/02, Requisitos: the envelope target
+# `docs/02-hardware.md`, Requisitos: "38 x 20 x 10 mm, nas tres medidas, com
+# prioridade para o comprimento", com a medida por fotogrametria da classe
+# (37 a 39 mm) como fonte, e a propria linha dizendo "nao nos 60 que este
+# projeto perseguia". Ate 2026-10-01 esta constante era 60,0 e citava docs/02
+# como fonte: a `PD10` media contra um alvo que o documento ja tinha trocado,
+# e imprimia "74,2 contra 60" onde o excesso real e 36,5 mm, 96 % do alvo.
+ALVO = (38.0, 20.0, 10.0)
 MASSA_ALVO = 20.0             # docs/02: module with cell, in grams
 # densities, g/cm3, for the mass ESTIMATE (page 3 says they are estimates):
 # printed resin or nylon, silicone potting, FR-4, a LiPo pouch (3,5 g for a
@@ -300,7 +420,6 @@ JUNTA_CORDAO = 0.80           # the O-ring's cord diameter
 JUNTA_SULCO_L = 1.05          # groove width
 JUNTA_SULCO_P = 0.58          # groove depth: 27,5 % of compression
 PAREDE_VEDA = 2.00            # the wall the groove needs (see PAREDE)
-VEDA_ALT = 1.60               # how far down the rim's thicker wall runs
 
 # --------------------------------------------- closing screws (2026-09-28)
 # The lid is bonded and the pod is potted, and a bonded lid still has to be
@@ -333,9 +452,6 @@ APERTO_PAD = 0.30             # the pad between the lip and the board
 # lip round it on the OUTSIDE keeps a standing puddle off the contacts, and a
 # channel takes what gets past it out to the edge instead of leaving it in
 # the well. Neither exists in a potted pod by accident.
-POCO_LABIO = 0.60             # how far the lip stands proud, outside
-POCO_LABIO_L = 0.80           # how wide that lip is
-DRENO_L, DRENO_P = 1.20, 0.50  # the channel out of the well: width and depth
 
 # ------------------------------------------------ where everything sits
 # The wall is PAREDE_VEDA everywhere, not only at the sealing rim. A stepped
@@ -366,13 +482,18 @@ _boss = PARAF_BOSS_D + 2.0 * PARAF_VAO
 PARAF_EXTRA_ESQ = max(0.0, _boss - CANAL_FIO)
 PARAF_EXTRA_DIR = 0.0
 
-W_P = (PAREDE_EFET + CELULA_W + CELULA_VAO + CANAL_FIO + PARAF_EXTRA_ESQ
+# O `BERCO_FOLGA` entra aqui porque a celula larga da parede: ate 2026-10-01
+# `CELULA_X0` era a propria face interna da parede e a bolsa encostava nela com
+# 0,000 mm, com a folga aplicada so nos outros tres lados (a nervura daquele
+# lado caia por isso, e a `PD15` chamava a parede de retencao).
+W_P = (PAREDE_EFET + BERCO_FOLGA + CELULA_W + CELULA_VAO + CANAL_FIO
+       + PARAF_EXTRA_ESQ
        + PLACA_W + FOLGA_PLACA + PARAF_EXTRA_DIR + PAREDE_EFET)
 H_P = PLACA_H + 2.0 * (FOLGA_PLACA + PAREDE_EFET)
-PLACA_X0 = (PAREDE_EFET + CELULA_W + CELULA_VAO + CANAL_FIO
+PLACA_X0 = (PAREDE_EFET + BERCO_FOLGA + CELULA_W + CELULA_VAO + CANAL_FIO
            + PARAF_EXTRA_ESQ)
 PLACA_Y0 = PAREDE_EFET + FOLGA_PLACA
-CELULA_X0 = PAREDE_EFET
+CELULA_X0 = PAREDE_EFET + BERCO_FOLGA
 CELULA_Y0 = (H_P - CELULA_H) / 2.0     # centrada entre as paredes
 
 # The two screws, on the centre line. The left one sits in the wire
@@ -391,8 +512,17 @@ PARAF_X_DIR = PLACA_X0 + MD.FUROS_DOC[0][0]
 PARAF_XY = ((PARAF_X_ESQ, H_P / 2.0), (PARAF_X_DIR, PLACA_Y0 + MD.FUROS_DOC[0][1]))
 # which of them pierces the board
 PARAF_NA_PLACA = (False, True)
-CELULA_Z0 = FUNDO
-CELULA_Z1 = FUNDO + CELULA_ESP
+# A BAIA e CAVADA no piso: o piso dela tem a mesma espessura que o piso fora
+# da base de colagem (FUNDO - RELEVO), e nao a espessura cheia. Sem isso a
+# reserva de inchaco da celula levantava o TETO DA CAVIDADE inteiro meio
+# milimetro - e o teto e o que fixa a altura do pod e a profundidade do poco do
+# conector, que tem o curso do pino do cabo como limite. Cavando a baia, a
+# celula com reserva (5,0 + 0,5) empata com a pilha da placa (0,8 + 2,7) e o
+# pod nao cresce. Sob a baia a face de baixo esta em z = 0: ela cai dentro da
+# base de colagem.
+BAIA_PISO = FUNDO - RELEVO
+CELULA_Z0 = BAIA_PISO
+CELULA_Z1 = CELULA_Z0 + CELULA_ESP
 # A placa nao sobe mais sobre a celula: ela desce ate o ar que as pecas do
 # VERSO pedem, que e o teto do verso do `make_dxf` (1,5 mm desde que os 43
 # passivos foram para la). Era esta soma que fazia o pod ter 10 mm.
@@ -400,8 +530,16 @@ SOB_A_PLACA = MD.TETO_VERSO
 PLACA_Z0 = FUNDO + SOB_A_PLACA
 PLACA_Z1 = PLACA_Z0 + PLACA_ESP
 # O teto da cavidade e o mais alto dos dois: a pilha da placa ou a celula.
-TAMPA_Z0 = max(PLACA_Z1 + TETO, CELULA_Z1)
+TAMPA_Z0 = max(PLACA_Z1 + TETO, CELULA_Z1 + CELULA_INCHACO)
 T_P = TAMPA_Z0 + TAMPA
+# O NIVEL DO ENVASE. Ate 2026-10-01 nao havia numero nenhum: a resina enchia
+# "ate a face de baixo da tampa" em todo texto, o que punha o menisco dela
+# rasante a boca dos dois furos cegos dos parafusos - e um M1,6
+# autoatarraxante nao atarraxa em resina curada - e fazia dela a unica coisa
+# que fechava o anel em volta do conector. Agora o envase para abaixo do teto,
+# e a `PD28` cobra a margem da boca de todo furo cego contra este nivel.
+ENVASE_FOLGA = 0.4
+ENVASE_NIVEL = TAMPA_Z0 - ENVASE_FOLGA
 # A celula ocupa a ponta ESQUERDA do pod, antes da placa. A esquerda e nao a
 # direita porque a antena ceramica do modulo esta na ponta direita da placa
 # e uma bolsa de LiPo e uma folha de metal: `PD6` mede essa distancia.
@@ -428,6 +566,43 @@ def contorno_arredondado(x0, y0, x1, y1, r, n=6):
             a = math.radians(a0 + 90.0 * k / n)
             pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
     return pts
+
+
+def menos_retangulos(r, buracos, minimo: float = 0.3) -> list:
+    """The rectangle R cut into the pieces that no hole covers.
+
+    `Malha` has no boolean subtraction - it is a triangle soup - and the pod
+    paid for that twice: the relief ADDED two boxes where it meant to carve
+    away, and the lid's lip was drawn as a closed ring straight through the
+    cell and three ribs. Everything the pod carves in plan is rectangular, so
+    one honest rectangle subtraction covers all of it.
+
+    Cuts in BOTH axes, keeps only pieces wider and taller than `minimo` (a
+    sliver below the process resolution is not a feature), and is exact: the
+    union of the pieces is R minus the holes, with no overlap.
+    """
+    pedacos = [tuple(r)]
+    for h in buracos:
+        if h is None:
+            continue
+        saida = []
+        for a, b, c, d in pedacos:
+            if c <= h[0] or h[2] <= a or d <= h[1] or h[3] <= b:
+                saida.append((a, b, c, d))
+                continue
+            if a < h[0]:
+                saida.append((a, b, min(c, h[0]), d))
+            if h[2] < c:
+                saida.append((max(a, h[2]), b, c, d))
+            mx0, mx1 = max(a, h[0]), min(c, h[2])
+            if mx1 > mx0:
+                if b < h[1]:
+                    saida.append((mx0, b, mx1, min(d, h[1])))
+                if h[3] < d:
+                    saida.append((mx0, max(b, h[3]), mx1, d))
+        pedacos = saida
+    return [p for p in pedacos
+            if p[2] - p[0] > minimo and p[3] - p[1] > minimo]
 
 
 def poligono_regular(cx, cy, r, n=12):
@@ -478,6 +653,21 @@ class Malha:
     def __init__(self):
         self.tris: list = []
         self.cols: list = []
+        # Every primitive, as it is drawn. The triangle soup cannot be asked
+        # "is this point inside?", so until 2026-10-01 the dry run had no way
+        # of measuring the drawn solid and every rule read a constant instead
+        # - which is how a pod with 7 interferences reported 18 rules met.
+        # These records are appended by the SAME calls that emit triangles,
+        # so they cannot drift from the mesh, and `dry_run_pod.voxels()`
+        # rasterises them.
+        self.solidos: list = []
+        # o intervalo de triangulos de cada primitiva, para `PD26` conferir que
+        # CADA UMA e um solido fechado. O STL do pod nao e uma malha manifold
+        # unica - e a uniao de solidos fechados, e e assim que o fatiador o le
+        # -, entao a pergunta certa nao e "a malha toda e manifold?" (366
+        # arestas com mais de duas faces, todas superposicao de faces vizinhas)
+        # e sim "alguma primitiva tem aresta de borda?".
+        self.faixas: list = []
 
     def tri(self, a, b, c, cor):
         self.tris.append(np.array([a, b, c], dtype=np.float64))
@@ -488,6 +678,15 @@ class Malha:
         self.tri(a, c, d, cor)
 
     def caixa(self, x0, y0, z0, x1, y1, z1, cor):
+        # A box with a side of zero or less is a bug, never a no-op: the
+        # cell's wire tail was drawn as x0 = 2,30, x1 = 2,00 and came out of
+        # `quad` as a pair of inverted triangles that the viewer showed and
+        # nobody could see was wrong (found 2026-10-01).
+        if x1 <= x0 or y1 <= y0 or z1 <= z0:
+            raise ValueError(f"caixa de lado nao positivo: ({x0:.3f}; {y0:.3f}; "
+                             f"{z0:.3f}) a ({x1:.3f}; {y1:.3f}; {z1:.3f})")
+        self.solidos.append(("caixa", (x0, y0, z0, x1, y1, z1)))
+        self.faixas.append((len(self.tris), 12))
         b = [(x0, y0, z0), (x1, y0, z0), (x1, y1, z0), (x0, y1, z0)]
         t = [(x0, y0, z1), (x1, y0, z1), (x1, y1, z1), (x0, y1, z1)]
         self.quad(b[0], b[3], b[2], b[1], cor)
@@ -498,6 +697,8 @@ class Malha:
 
     def extrusao(self, pts, z0, z1, cor):
         """Any simple polygon (plan, y down) extruded between two heights."""
+        self.solidos.append(("prisma", (tuple(map(tuple, pts)), z0, z1)))
+        self.faixas.append((len(self.tris), 2 * (len(pts) - 2) + 2 * len(pts)))
         for a, b, c in triangular(pts):
             self.tri((*pts[a], z0), (*pts[c], z0), (*pts[b], z0), cor)
             self.tri((*pts[a], z1), (*pts[b], z1), (*pts[c], z1), cor)
@@ -508,6 +709,9 @@ class Malha:
 
     def anel(self, fora, dentro, z0, z1, cor):
         """The wall between two closed polylines of equal length."""
+        self.solidos.append(("anel", (tuple(map(tuple, fora)),
+                                      tuple(map(tuple, dentro)), z0, z1)))
+        self.faixas.append((len(self.tris), 8 * len(fora)))
         n = len(fora)
         for k in range(n):
             a, b = fora[k], fora[(k + 1) % n]
@@ -578,16 +782,25 @@ class Pod:
             raise SystemExit("J101 (o conector magnetico) nao esta na placa")
         j = pecas["J101"]
         x0, y0, x1, y1 = no_pod(j["caixa"])
-        f = JANELA_FOLGA
-        self.janela = (x0 - f, y0 - f, x1 + f, y1 + f)
+        # A JANELA passa o BARRILETE com folga. O courtyard e o corpo todo; o
+        # barrilete e ele menos o ombro de cada lado, e a janela e o barrilete
+        # mais `JANELA_FOLGA`. Ate 2026-10-01 a janela era o courtyard MAIS
+        # 0,30: 0,55 mm maior que o corpo por lado, um anel aberto da face do
+        # conector ate a cavidade.
+        f = CONECTOR_OMBRO_L - JANELA_FOLGA
+        self.janela = (x0 + f, y0 + f, x1 - f, y1 - f)
+        # O que sobra de ombro para a junta apertar, por lado. E a largura
+        # efetiva da vedacao da porta, e a `PD24` cobra o minimo.
+        self.junta_larg = f
         self.conector_alt = j["altura"]
         # the well: from the lid's top down to the connector's face
         self.poco = T_P - (PLACA_Z1 + self.conector_alt)
-        # grampeada na parede: ver JUNTA_MIN
-        self.junta = (max(self.janela[0] - JUNTA_LARG, PAREDE),
-                      max(self.janela[1] - JUNTA_LARG, PAREDE),
-                      min(self.janela[2] + JUNTA_LARG, W_P - PAREDE),
-                      min(self.janela[3] + JUNTA_LARG, H_P - PAREDE))
+        # A junta plana: o anel entre a janela e a borda do corpo, apoiado no
+        # OMBRO do conector. Nao e mais um anel sobre o nada em volta da peca.
+        self.junta = (x0, y0, x1, y1)
+        self.ombro_z = PLACA_Z1 + CONECTOR_OMBRO_Z
+        # a face de baixo do ressalto que comprime a junta
+        self.junta_aperta_em = self.ombro_z + JUNTA_ESP - JUNTA_APERTO
         d = pecas.get("D201")
         self.led = None
         if d:
@@ -630,11 +843,16 @@ class Pod:
         # envase fica represado e o caminho da agua passa a ter a altura do
         # colar mais a espessura do fundo. Por fora, quem fecha o resto e o
         # proprio adesivo que cola o pod ao braco.
+        # Recortado na CAVIDADE: um colar por dentro da parede ou do ressalto
+        # e material dentro de material. Media 0,15 dentro da parede e 0,75
+        # dentro do ressalto (revisao de 2026-10-01).
         self.colar = None
         if self.rasgo:
             a, b, c, d = self.rasgo
-            self.colar = (a - RASGO_COLAR_L, b - RASGO_COLAR_L,
-                          c + RASGO_COLAR_L, d + RASGO_COLAR_L)
+            self.colar = (max(a - RASGO_COLAR_L, PAREDE),
+                          max(b - RASGO_COLAR_L, PAREDE),
+                          min(c + RASGO_COLAR_L, W_P - PAREDE),
+                          min(d + RASGO_COLAR_L, H_P - PAREDE))
 
         self.pilares = []
         for cy0 in (PLACA_Y0 + 1.5, PLACA_Y0 + PLACA_H - 1.5):
@@ -662,6 +880,22 @@ class Pod:
                 nx0 = max(self.rasgo[2] + 0.2, CELULA_X0 + CELULA_W + 0.2)
                 nx1 = min(nx0 + NERVURA, W_P - PAREDE - RESSALTO - 0.2)
         self.nervura = (nx0, nx1)
+        # A PASSAGEM dos fios da celula: da face direita da celula ate a borda
+        # da placa, na altura dos pinos do J102. Tudo o que sobe na cavidade
+        # dentro deste retangulo e cortado (berco, nervura, aba da tampa),
+        # porque este e o unico caminho que os dois fios tem - e ate
+        # 2026-10-01 ele nao existia: as tres nervuras iam do fundo ao teto e
+        # o flood fill parava em x = 17,25, com o J102 em x = 24,45.
+        j2 = pecas.get("J102")
+        meia = CELULA_FIO_VAO / 2.0
+        if j2 and j2["pads"]:
+            fy = PLACA_Y0 + sum(q["y"] for q in j2["pads"]) / len(j2["pads"])
+        else:
+            fy = CELULA_Y0 + CELULA_H / 2.0
+        # dentro da face da celula: e dela que os fios saem
+        self.fio_y = min(max(fy, CELULA_Y0 + meia), CELULA_Y0 + CELULA_H - meia)
+        self.passagem = (CELULA_X0 + CELULA_W, self.fio_y - meia,
+                         PLACA_X0, self.fio_y + meia)
         # the module's antenna band, in pod coordinates (the same 4,46 mm
         # the board's dry run measures)
         self.antena = None
@@ -728,26 +962,121 @@ class Pod:
         return ribs
 
     def _sem_rasgo(self, a, b, c, d) -> list:
-        """A rectangle cut into the pieces that do not lie over the slot.
+        """A rectangle cut clear of the slot AND of the leads' passage.
 
         In BOTH axes. Cutting only in x dropped the cradle's right rib whole,
         because it crosses the slot's x range while overlapping only 0,6 mm
-        of its y range (measured 2026-09-28).
+        of its y range (measured 2026-09-28). The passage joined the list on
+        2026-10-01: a rib across it walls the cell's leads in.
         """
-        r = self.rasgo
-        if not r or c <= r[0] or r[2] <= a or d <= r[1] or r[3] <= b:
-            return [(a, b, c, d)]
+        return menos_retangulos((a, b, c, d), [self.rasgo, self.passagem])
+
+    @property
+    def baia(self) -> tuple:
+        """A baia da celula em planta: a celula mais a folga do berco.
+
+        E o retangulo que as nervuras cercam e o que e cavado no piso,
+        recortado na cavidade: do lado da parede a folga e a que a parede da.
+        """
+        return (max(CELULA_X0 - BERCO_FOLGA, PAREDE),
+                max(CELULA_Y0 - BERCO_FOLGA, PAREDE),
+                min(CELULA_X0 + CELULA_W + BERCO_FOLGA, W_P - PAREDE),
+                min(CELULA_Y0 + CELULA_H + BERCO_FOLGA, H_P - PAREDE))
+
+    @property
+    def gauge_xy(self) -> tuple:
+        """O centro da matriz do extensometro, em coordenadas do pod."""
+        return (GAUGE_X, H_P / 2.0 - GAUGE_DESLOC_Y)
+
+    def bolso_gauge(self) -> tuple:
+        """O bolso na face de baixo sobre a matriz do extensometro."""
+        cx, cy = self.gauge_xy
+        f = GAUGE_FOLGA
+        return (cx - GAUGE_W / 2 - f, cy - GAUGE_H / 2 - f,
+                cx + GAUGE_W / 2 + f, cy + GAUGE_H / 2 + f)
+
+    def canaleta_fios(self) -> list:
+        """A canaleta do feixe dos cinco fios, do bolso ate o rasgo, em L.
+
+        Os fios saem das ilhas da matriz como FEIXE, correm em x ate o eixo do
+        rasgo e sobem em y ate ele; dentro do rasgo eles se abrem para os cinco
+        furos. Desenhada em dois trechos de `CANALETA_L` de largura, e e por
+        ela que `make_conjunto.fios()` passa - os dois leem as mesmas cotas.
+        """
+        if not self.rasgo:
+            return []
+        bx0, by0, bx1, by1 = self.bolso_gauge()
+        cy = (by0 + by1) / 2.0
+        xf = (self.rasgo[0] + self.rasgo[2]) / 2.0
+        L = CANALETA_L / 2.0
+        return [(bx1, cy - L, xf + L, cy + L),
+                (xf - L, cy - L, xf + L, self.rasgo[1])]
+
+    def base_cola(self) -> tuple:
+        """A faixa da face de baixo que encosta no braco, em planta.
+
+        `BASE_COLA` e a largura PLANA da face do braco (BRACO_LARG menos as
+        duas concordancias), centrada na largura do pod. Fora dela nao ha face
+        plana: ha a curva da concordancia, e o pod tem de livra-la com ar.
+        """
+        by0 = (H_P - BASE_COLA) / 2.0
+        return (0.0, by0, W_P, H_P - by0)
+
+    def sob_a_placa(self) -> list:
+        """O que desce do verso da placa, e ate onde: (retangulo, z de baixo).
+
+        Inclui a propria placa (em `PLACA_Z0`), o corpo de cada peca do verso
+        e cada ilha do verso - uma ilha nao desce da placa, mas nada do pod
+        pode encostar nela. E a lista contra a qual tudo o que sobe do fundo
+        tem de ser medido.
+        """
+        itens = []
+        for ref, p in self.pecas.items():
+            x0, y0, x1, y1 = no_pod(p["caixa"])
+            if p["atras"] and p["altura"] > 0.0:
+                itens.append(((x0, y0, x1, y1), PLACA_Z0 - p["altura"], ref))
+            for q in p["pads"]:
+                if not (q["camada"].startswith("B.") or not q["smd"]):
+                    continue
+                itens.append(((PLACA_X0 + q["x"] - q["hw"], PLACA_Y0 + q["y"] - q["hh"],
+                               PLACA_X0 + q["x"] + q["hw"], PLACA_Y0 + q["y"] + q["hh"]),
+                              PLACA_Z0, f"ilha de {ref}"))
+        return itens
+
+    def colar_barras(self) -> list:
+        """As quatro barras do colar, cada uma com a altura que CABE nela.
+
+        O colar represa o envase em volta do rasgo, que e a unica abertura do
+        lado de baixo. Ate 2026-10-01 ele subia `RASGO_COLAR_ALT` inteiro,
+        chegando a `FUNDO + 1,50 = PLACA_Z0`, e a barra y+ passava por baixo
+        do R302 e do C304, que descem 0,55 abaixo da placa: a placa ia parar
+        0,55 mm alta apoiada em dois 0402, ou os dois eram esmagados, e nos
+        dois casos o colar deixava de represar nada.
+
+        Agora cada barra para `COLAR_FOLGA` abaixo do mais baixo que passa
+        sobre ela. Uma barra mais baixa deixa o envase passar por cima dela
+        ANTES de curar, o que e menos do que se queria - mas o envase enche a
+        cavidade inteira de todo jeito, e represar durante o derrame e o que o
+        colar faz; prensar um resistor nao e opcao.
+        """
+        if not self.colar:
+            return []
+        a, b, c, d = self.colar
+        e, f, g, h = self.rasgo
+        barras = [r for r in [(a, b, e, d), (g, b, c, d), (e, b, g, f), (e, h, g, d)]
+                  if r[2] - r[0] > 0.05 and r[3] - r[1] > 0.05]
+        acima = self.sob_a_placa()
         saida = []
-        if a < r[0]:
-            saida.append((a, b, min(c, r[0]), d))
-        if r[2] < c:
-            saida.append((max(a, r[2]), b, c, d))
-        mx0, mx1 = max(a, r[0]), min(c, r[2])
-        if mx1 > mx0:
-            if b < r[1]:
-                saida.append((mx0, b, mx1, min(d, r[1])))
-            if r[3] < d:
-                saida.append((mx0, max(b, r[3]), mx1, d))
+        for r in barras:
+            teto = PLACA_Z0
+            for (bx0, by0, bx1, by1), z, _ref in acima:
+                if r[2] <= bx0 or bx1 <= r[0] or r[3] <= by0 or by1 <= r[1]:
+                    continue
+                teto = min(teto, z)
+            z1 = teto - COLAR_FOLGA if teto < PLACA_Z0 else PLACA_Z0 - COLAR_FOLGA
+            z1 = min(z1, FUNDO + RASGO_COLAR_ALT)
+            if z1 > FUNDO + 0.05:
+                saida.append((r, z1))
         return saida
 
     def concha(self) -> Malha:
@@ -755,34 +1084,66 @@ class Pod:
         fora, dentro = self.contornos()
         # the wall up to the groove's floor, then the two lands that frame it
         z_sulco = TAMPA_Z0 - JUNTA_SULCO_P
-        m.anel(fora, dentro, 0.0, z_sulco, COR_POD)
+        m.anel(fora, dentro, RELEVO, z_sulco, COR_POD)
         s_fora, s_dentro = self.sulco()
         m.anel(fora, s_fora, z_sulco, TAMPA_Z0, COR_POD)
         m.anel(s_dentro, dentro, z_sulco, TAMPA_Z0, COR_POD)
-        # the two screw bosses, hollow, from the floor up to the lid
-        for cx, cy in PARAF_XY:
+        # Os ressaltos dos parafusos. O que ATRAVESSA a placa estreita no
+        # pescoco, e isso nao e enfeite: o ressalto tem 3,40 de diametro e o
+        # furo da placa tem 2,20, entao desenhado em diametro cheio ele
+        # interfere 0,600 mm no raio, em todo angulo, e a placa simplesmente
+        # nao assenta. Sem a placa em z 2,50 a tampa nao desce aos 6,00, as
+        # duas terras nao encostam e o O-ring nunca comprime: as seis
+        # vedacoes do pod dependiam disto (revisao de 2026-10-01). O
+        # `PARAF_PESCOCO_D` estava declarado desde sempre e nunca tinha sido
+        # desenhado.
+        #
+        # E acima da placa nao ha ressalto nenhum: o parafuso vem de cima,
+        # pela tampa, atravessa o furo e rosqueia no ressalto de BAIXO. Um
+        # ressalto de 3,40 acima da placa passaria dos 2,80 que a reserva do
+        # furo (`make_dxf.FURO_RESERVA_R`) guarda, e bateria nas pecas.
+        for (cx, cy), na_placa in zip(PARAF_XY, PARAF_NA_PLACA):
+            furo = poligono_regular(cx, cy, PARAF_FURO_D / 2.0, 16)
+            if not na_placa:
+                m.anel(poligono_regular(cx, cy, PARAF_BOSS_D / 2.0, 16),
+                       furo, FUNDO, TAMPA_Z0, COR_POD)
+                continue
             m.anel(poligono_regular(cx, cy, PARAF_BOSS_D / 2.0, 16),
-                   poligono_regular(cx, cy, PARAF_FURO_D / 2.0, 16),
-                   FUNDO, TAMPA_Z0, COR_POD)
+                   furo, FUNDO, PLACA_Z0, COR_POD)
+            # O pescoco segue ACIMA da placa ate passar o nivel do envase: o
+            # furo do parafuso e cego e a resina enche a cavidade inteira. Sem
+            # este colar o M1,6 autoatarraxante ia atarraxar em resina curada
+            # (`PD28`). O diametro e o mesmo pescoco de 2,0, que cabe nos 2,80
+            # que a placa reserva em volta do furo (`make_dxf.FURO_RESERVA_R`):
+            # nao bate em peca nenhuma.
+            m.anel(poligono_regular(cx, cy, PARAF_PESCOCO_D / 2.0, 16),
+                   furo, PLACA_Z0,
+                   max(PLACA_Z1, ENVASE_NIVEL + ENVASE_FOLGA / 2.0), COR_POD)
         # the cell's cradle
         for r in self.berco():
-            m.caixa(r[0], r[1], FUNDO, r[2], r[3], CELULA_Z1, COR_POD)
+            m.caixa(r[0], r[1], BAIA_PISO, r[2], r[3], CELULA_Z1, COR_POD)
         furos = [self.rasgo] if self.rasgo else []
-        m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, 0.0, FUNDO, furos, COR_POD)
+        # A baia E a passagem dos fios sao cavadas no piso, no mesmo nivel: o
+        # fio sai da celula rente ao piso da baia e segue pelo canal sem ter de
+        # subir o degrau de meio milimetro que o piso cheio faria.
+        cavado = [self.baia, self.passagem]
+        m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, RELEVO, FUNDO,
+                          furos + cavado, COR_POD)
+        for r in cavado:
+            for a, b, c, d in menos_retangulos(r, furos, minimo=0.0):
+                m.caixa(a, b, RELEVO, c, d, BAIA_PISO, COR_POD)
         # o colar do rasgo, subindo do fundo para dentro da cavidade
-        if self.colar:
-            a, b, c, d = self.colar
-            e, f, g, h = self.rasgo
-            m.caixa(a, b, FUNDO, e, d, FUNDO + RASGO_COLAR_ALT, COR_POD)
-            m.caixa(g, b, FUNDO, c, d, FUNDO + RASGO_COLAR_ALT, COR_POD)
-            m.caixa(e, b, FUNDO, g, f, FUNDO + RASGO_COLAR_ALT, COR_POD)
-            m.caixa(e, h, FUNDO, g, d, FUNDO + RASGO_COLAR_ALT, COR_POD)
-        # The bonding land: the only part of the underside that touches the
-        # arm. Outside it the floor is RELEVO higher, so the pod clears the
-        # fillet of the arm's face instead of resting on it (PD17).
-        by0 = (H_P - BASE_COLA) / 2.0
-        m.caixa(0.0, 0.0, 0.0, W_P, by0, RELEVO, COR_POD)
-        m.caixa(0.0, H_P - by0, 0.0, W_P, H_P, RELEVO, COR_POD)
+        for (a, b, c, d), z1 in self.colar_barras():
+            m.caixa(a, b, FUNDO, c, d, z1, COR_POD)
+        # A BASE DE COLAGEM: a unica parte da face de baixo que toca o braco.
+        # Ela DESCE de RELEVO a zero, dentro da tira central; fora dela a
+        # concha nasce em z = RELEVO e livra a concordancia da face do braco
+        # com ar. O rasgo sai da base: ele e a unica abertura do lado de baixo
+        # e tem de ficar vazado de z 0 ate o piso (a caixa antiga tapava 15 %
+        # dele com espessura inteira).
+        vazios = [self.rasgo, self.bolso_gauge()] + self.canaleta_fios()
+        for a, b, c, d in menos_retangulos(self.base_cola(), vazios, minimo=0.0):
+            m.caixa(a, b, 0.0, c, d, RELEVO, COR_POD)
         # the ledges under the board's long edges and its right end
         m.caixa(PAREDE, PAREDE, FUNDO, W_P - PAREDE, PAREDE + RESSALTO, PLACA_Z0, COR_POD)
         m.caixa(PAREDE, H_P - PAREDE - RESSALTO, FUNDO, W_P - PAREDE, H_P - PAREDE, PLACA_Z0, COR_POD)
@@ -791,7 +1152,12 @@ class Pod:
             m.cilindro(cx, cy, PILAR_D / 2.0, FUNDO, PLACA_Z0, COR_POD)
         nx0, nx1 = self.nervura
         if nx1 > nx0:
-            m.caixa(nx0, PAREDE + RESSALTO, FUNDO, nx1, H_P - PAREDE - RESSALTO, CELULA_Z1 - 0.5, COR_POD)
+            # cortada na passagem dos fios, como o berco: ela cruza o unico
+            # caminho que os dois fios da celula tem
+            for a, b, c, d in menos_retangulos(
+                    (nx0, PAREDE + RESSALTO, nx1, H_P - PAREDE - RESSALTO),
+                    [self.passagem]):
+                m.caixa(a, b, FUNDO, c, d, CELULA_Z1 - 0.5, COR_POD)
         return m
 
     def tampa(self, dz: float = 0.0) -> Malha:
@@ -808,9 +1174,17 @@ class Pod:
             r = PARAF_D / 2.0 + 0.15
             furos.append((cx - r, cy - r, cx + r, cy + r))
         m.placa_com_furos(PAREDE, PAREDE, W_P - PAREDE, H_P - PAREDE, z0, z1, furos, COR_TAMPA)
-        # the lip round the window, on the OUTSIDE, with the drain gap
-        for a, b, c, d in self.labio():
-            m.caixa(a, b, z1, c, d, z1 + POCO_LABIO, COR_TAMPA)
+        # O RESSALTO QUE COMPRIME A JUNTA, na face de baixo, em volta da
+        # janela: ele desce do teto da cavidade ate `junta_aperta_em` e e o
+        # que faz a vedacao da porta existir. Sem ele a junta era um anel
+        # desenhado no ar.
+        jx0, jy0, jx1, jy1 = self.junta
+        wx0, wy0, wx1, wy1 = self.janela
+        zr = self.junta_aperta_em + dz
+        if zr < z0 - 1e-9:
+            for a, b, c, d in menos_retangulos((jx0, jy0, jx1, jy1),
+                                               [(wx0, wy0, wx1, wy1)], minimo=0.0):
+                m.caixa(a, b, zr, c, d, z0, COR_TAMPA)
         # the fingers that CLAMP the board. They come down over the two
         # posts, so the board is held between a post below and a finger
         # above instead of merely resting on the ledges: a chain that starts
@@ -818,47 +1192,74 @@ class Pod:
         # They stop APERTO_PAD short, and that gap is a compressible pad.
         for cx, cy in self.pilares:
             m.cilindro(cx, cy, PILAR_D / 2.0, PLACA_Z1 + APERTO_PAD + dz, z0, COR_TAMPA)
-        # the lip that drops inside the walls
-        aba_fora = contorno_arredondado(PAREDE + ABA_FOLGA, PAREDE + ABA_FOLGA, W_P - PAREDE - ABA_FOLGA,
-                                        H_P - PAREDE - ABA_FOLGA, max(0.3, R_P - PAREDE - ABA_FOLGA))
-        aba_dentro = contorno_arredondado(PAREDE + ABA_FOLGA + ABA_LARG, PAREDE + ABA_FOLGA + ABA_LARG,
-                                          W_P - PAREDE - ABA_FOLGA - ABA_LARG, H_P - PAREDE - ABA_FOLGA - ABA_LARG,
-                                          max(0.3, R_P - PAREDE - ABA_FOLGA - ABA_LARG))
-        m.anel(aba_fora, aba_dentro, z0 - ABA_ALT, z0, COR_TAMPA)
+        # the lip that drops inside the walls, in the pieces that have room
+        for a, b, c, d in self.aba():
+            m.caixa(a, b, z0 - ABA_ALT, c, d, z0, COR_TAMPA)
         return m
 
-    def labio(self) -> list:
-        """The raised lip round the window, and the gap that drains it.
+    def sobe_na_cavidade(self) -> list:
+        """O que sobe dentro da cavidade, e ate onde: (retangulo, z de cima).
 
-        The window is the only hole in the pod, so it is where the water
-        goes. The lip keeps a standing puddle off the contacts; a closed lip
-        would only trap it, so one side is CUT - DRENO_L wide, on the side
-        that faces the nearest edge of the lid, which is the shortest way
-        out. The gap is the drain: there is nothing to clog and nothing that
-        stops working when the pod is potted.
+        Tudo: as nervuras do berco, o colar, os ressaltos dos parafusos, a
+        nervura solta, os pilares, os apoios da placa, a celula e o corpo de
+        cada peca da FRENTE. E a lista contra a qual a aba e os dedos da tampa
+        tem de ser medidos - a `PD12` varria so as pecas da placa, e foi por
+        isso que a aba atravessou a celula e tres nervuras sem ninguem ver.
         """
-        x0, y0, x1, y1 = self.janela
-        L = POCO_LABIO_L
-        a0, b0, a1, b1 = x0 - L, y0 - L, x1 + L, y1 + L
-        # which side is nearest the lid's edge: that is where the water goes
-        dist = {"y0": b0 - PAREDE, "y1": (H_P - PAREDE) - b1,
-                "x0": a0 - PAREDE, "x1": (W_P - PAREDE) - a1}
-        saida = min(dist, key=dist.get)
-        cx, cy = (a0 + a1) / 2.0, (b0 + b1) / 2.0
-        g = DRENO_L / 2.0
-        barras = []
-        for lado, r in (("y0", (a0, b0, a1, b0 + L)), ("y1", (a0, b1 - L, a1, b1)),
-                        ("x0", (a0, b0, a0 + L, b1)), ("x1", (a1 - L, b0, a1, b1))):
-            if lado != saida:
-                barras.append(r)
+        itens = []
+        for r in self.berco():
+            itens.append((r, CELULA_Z1, "nervura do berco"))
+        for r, z1 in self.colar_barras():
+            itens.append((r, z1, "colar do rasgo"))
+        for (cx, cy), na_placa in zip(PARAF_XY, PARAF_NA_PLACA):
+            raio = PARAF_PESCOCO_D / 2.0 if na_placa else PARAF_BOSS_D / 2.0
+            alto = PLACA_Z1 if na_placa else TAMPA_Z0
+            itens.append(((cx - raio, cy - raio, cx + raio, cy + raio), alto,
+                          f"ressalto do parafuso em ({cx:.1f}; {cy:.1f})"))
+        nx0, nx1 = self.nervura
+        if nx1 > nx0:
+            itens.append(((nx0, PAREDE + RESSALTO, nx1, H_P - PAREDE - RESSALTO),
+                          CELULA_Z1 - 0.5, "nervura da placa"))
+        itens.append(((CELULA_X0, CELULA_Y0, CELULA_X0 + CELULA_W,
+                       CELULA_Y0 + CELULA_H), CELULA_Z1, "celula"))
+        for ref, p in self.pecas.items():
+            if p["atras"] or p["altura"] <= 0.0:
                 continue
-            if lado in ("y0", "y1"):
-                barras.append((r[0], r[1], cx - g, r[3]))
-                barras.append((cx + g, r[1], r[2], r[3]))
-            else:
-                barras.append((r[0], r[1], r[2], cy - g))
-                barras.append((r[0], cy + g, r[2], r[3]))
-        return [b for b in barras if b[2] - b[0] > 0.05 and b[3] - b[1] > 0.05]
+            itens.append((no_pod(p["caixa"]), PLACA_Z1 + p["altura"], ref))
+        return itens
+
+    def aba(self) -> list:
+        """A aba de centragem da tampa, nos pedacos que CABEM.
+
+        Ate 2026-10-01 a aba era um anel FECHADO de 0,4 de largura descendo
+        1,0 mm dentro das paredes, desenhado sem olhar o que havia ali: ela
+        entrava 5,565 mm3 dentro da bolsa de litio e 2,315 mm3 dentro de tres
+        nervuras do berco. A tampa parava 1,00 mm alta mesmo sem a celula no
+        lugar, o vao do O-ring virava 1,58 contra um cordao de 0,80 -
+        compressao zero - e os dois parafusos passavam a prensar a bolsa.
+        Nenhuma das seis vedacoes do pod fechava, e a `PD12` varria so as
+        pecas da placa.
+
+        Agora ela e quatro barras retas cortadas em tudo o que sobe at a faixa
+        dela, com `ABA_FOLGA` de ar. Barra que sobra menor que 2 mm sai: um
+        toco de aba nao centra nada.
+        """
+        fo = PAREDE + ABA_FOLGA
+        rc = max(0.0, R_P - PAREDE - ABA_FOLGA)   # fora do canto arredondado
+        x0, y0, x1, y1 = fo, fo, W_P - fo, H_P - fo
+        barras = [(x0, y0 + rc, x0 + ABA_LARG, y1 - rc),
+                  (x1 - ABA_LARG, y0 + rc, x1, y1 - rc),
+                  (x0 + rc, y0, x1 - rc, y0 + ABA_LARG),
+                  (x0 + rc, y1 - ABA_LARG, x1 - rc, y1)]
+        zb0 = TAMPA_Z0 - ABA_ALT
+        buracos = [(r[0] - ABA_FOLGA, r[1] - ABA_FOLGA, r[2] + ABA_FOLGA, r[3] + ABA_FOLGA)
+                   for r, z1, _n in self.sobe_na_cavidade() if z1 > zb0 + 1e-9]
+        saida = []
+        for b in barras:
+            saida += menos_retangulos(b, buracos, minimo=0.0)
+        return [p for p in saida
+                if max(p[2] - p[0], p[3] - p[1]) >= 2.0
+                and min(p[2] - p[0], p[3] - p[1]) > 0.05]
 
     def anel_oring(self, dz: float = 0.0) -> Malha:
         """The O-ring sitting in its groove, drawn for the views."""
@@ -869,11 +1270,17 @@ class Pod:
         return m
 
     def junta_3d(self, dz: float = 0.0) -> Malha:
-        """The flat gasket ring round the well, drawn for the views."""
+        """A junta plana, apoiada no ombro do conector, ja comprimida.
+
+        Desenhada na espessura COMPRIMIDA (`JUNTA_ESP - JUNTA_APERTO`): e
+        assim que ela fica no pod fechado, e e nessa posicao que a medida de
+        interferencia faz sentido. A espessura livre e `JUNTA_ESP`.
+        """
         m = Malha()
         jx0, jy0, jx1, jy1 = self.junta
         wx0, wy0, wx1, wy1 = self.janela
-        z0, z1 = T_P - JUNTA_REBAIXO + dz, T_P + 0.2 + dz
+        z0 = self.ombro_z + dz
+        z1 = z0 + JUNTA_ESP - JUNTA_APERTO
         m.placa_com_furos(jx0, jy0, jx1, jy1, z0, z1, [(wx0, wy0, wx1, wy1)], COR_JUNTA)
         return m
 
@@ -881,9 +1288,15 @@ class Pod:
         m = Malha()
         m.caixa(CELULA_X0, CELULA_Y0, CELULA_Z0 + dz, CELULA_X0 + CELULA_W, CELULA_Y0 + CELULA_H,
                 CELULA_Z1 + dz, COR_CELULA)
-        # the leads, folded up the channel to the JST on the board's top
-        m.caixa(PAREDE + 0.3, CELULA_Y0 + CELULA_H / 2 - 1.0, CELULA_Z0 + dz, CELULA_X0,
-                CELULA_Y0 + CELULA_H / 2 + 1.0, CELULA_Z0 + 1.0 + dz, COR_CELULA)
+        # The leads, out of the bay on the side that FACES the connector and
+        # along the passage drawn for them. Until 2026-10-01 this box was
+        # x0 = 2,30 to x1 = 2,00 - negative width, on the wall side, the
+        # opposite end from the J102, and wholly inside the cell's own body.
+        # `Malha.caixa` now refuses a box like that.
+        fy = self.fio_y
+        m.caixa(CELULA_X0 + CELULA_W, fy - CELULA_FIO_VAO / 2.0, CELULA_Z0 + dz,
+                PLACA_X0, fy + CELULA_FIO_VAO / 2.0,
+                CELULA_Z0 + CELULA_FIO_D + dz, COR_CELULA)
         return m
 
     # -------------------------------------------------------------- mass
@@ -1237,7 +1650,7 @@ def pagina_3(doc, pod: Pod):
     y = _paragrafo(page, 30, y, f"Envelope: {f2(W_P)} x {f2(H_P)} x {f2(T_P)} mm por fora (alvo de docs/02: "
                                 f"{ALVO[0]:g} x {ALVO[1]:g} x {ALVO[2]:g}), mais {f2(COLA)} de cola ao braco. Paredes {f2(PAREDE)}, "
                                 f"fundo {f2(FUNDO)}, tampa {f2(TAMPA)}, raio dos cantos {f2(R_P)}. A pilha, do braco para cima: "
-                                f"fundo {f2(FUNDO)}, celula {f2(CELULA_ESP)}, ar {f2(CELULA_VAO)}, placa {f2(PLACA_ESP)}, "
+                                f"fundo {f2(FUNDO)}, celula {f2(CELULA_ESP)}, inchaco {f2(CELULA_INCHACO)}, placa {f2(PLACA_ESP)}, "
                                 f"teto {f2(TETO)} (modulo de 2,4 mais 0,3), tampa {f2(TAMPA)}.", 9)
     y += 6
     y = _paragrafo(page, 30, y, "Massa ESTIMADA por volume e densidade, nao pesada (densidades: pod impresso 1,15; "
@@ -1249,15 +1662,18 @@ def pagina_3(doc, pod: Pod):
         y += 13
     _t(page, 50, y, f"{'total':<28} {g['total']:5.1f} g  (alvo {MASSA_ALVO:g} g)".replace(".", ","), 9, True)
     y += 20
-    y = _paragrafo(page, 30, y, "Decidido aqui (proposta): a celula deitada SOB a placa, entre os ressaltos das bordas, presa "
-                                "pela nervura na ponta direita e pelo envase, com as abas na ponta esquerda, onde um canal de "
-                                f"{f2(CANAL_FIO)} mm deixa os fios subirem ate o JST SH na frente da placa; a placa apoiada nos "
-                                "ressaltos e em dois pilares na ponta esquerda; o conector magnetico atravessa a tampa e a face "
-                                f"dele fica num poco de {f2(pod.poco)} mm onde a cabeca magnetica do cabo assenta, com uma junta "
-                                f"plana de {f2(JUNTA_LARG)} mm em volta; um furo de {f2(LED_FURO)} mm sobre o LED, a encher com "
-                                "resina transparente; os fios da ponte sobem do braco por um rasgo no fundo, direto sob os cinco "
-                                "furos metalizados da placa; a cavidade envasada ate a face de baixo da tampa e a tampa colada "
-                                "pela aba.", 9)
+    y = _paragrafo(page, 30, y, "Decidido aqui (proposta): a celula na baia AO LADO da placa, presa por nervuras com "
+                                f"{f2(BERCO_FOLGA)} mm de folga nos quatro lados e {f2(CELULA_INCHACO)} mm de reserva de inchaco "
+                                f"sob o teto, com uma passagem de {f2(CELULA_FIO_VAO)} mm cortada nas nervuras por onde os dois "
+                                "fios saem para o JST SH na frente da placa; a placa apoiada nos ressaltos das bordas e em dois "
+                                "pilares, presa por dedos da tampa; o barrilete do conector magnetico atravessa a tampa e a face "
+                                f"dele fica {f2(pod.poco)} mm abaixo do topo (limite {f2(POCO_MAX)}, o curso do pino do cabo), "
+                                f"com uma junta plana de {f2(CONECTOR_OMBRO_L)} mm apoiada no ombro da peca e comprimida "
+                                f"{f2(JUNTA_APERTO)} mm por um ressalto da tampa; um furo de {f2(LED_FURO)} mm sobre o LED, a "
+                                "encher com resina transparente; os fios da ponte sobem do braco por um rasgo no fundo, direto "
+                                "sob os cinco furos metalizados da placa, com um colar que represa o envase; a face de baixo "
+                                f"toca o braco so na base de colagem de {f2(BASE_COLA)} mm, com {f2(RELEVO)} mm de relevo fora "
+                                "dela; a cavidade envasada ate a face de baixo da tampa e a tampa colada pela aba.", 9)
     y += 6
     y = _paragrafo(page, 30, y, "LUGARES RESERVADOS, a medir no pedivela do dono antes de imprimir: largura da face interna "
                                 "do braco esquerdo (____ mm; o pod tem " + f2(H_P) + "); folga entre a face interna do braco e o "

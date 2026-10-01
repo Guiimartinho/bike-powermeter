@@ -81,8 +81,8 @@ flowchart LR
 | *Fechado: 55,7 × 19,0 × 10,0 mm, 13,3 g estimados* | *Explodido: concha, célula, placa, anel O e tampa* |
 | ![A concha aberta com a placa dentro](docs/img/hardware/pod-3d-aberta.png) | ![A célula no berço da concha, antes da placa](docs/img/hardware/pod-3d-celula-no-berco.png) |
 | *Aberto, com a placa assentada* | *A célula no berço, no passo em que ela entra* |
-| ![A tampa vista por dentro: o sulco do anel O, os dedos que prendem a placa e o lábio da janela](docs/img/hardware/pod-3d-tampa-por-dentro.png) | ![A concha vista por baixo: a base de colagem, o alívio e o rasgo dos fios](docs/img/hardware/pod-3d-por-baixo.png) |
-| *A tampa por dentro: sulco do anel O, dedos da placa, lábio e dreno da janela* | *Por baixo: a base de colagem de 15 mm, o alívio de 1,0 e o rasgo dos fios* |
+| ![A tampa vista por dentro: o sulco do anel O, os dedos que prendem a placa e o ressalto que comprime a junta da porta](docs/img/hardware/pod-3d-tampa-por-dentro.png) | ![A concha vista por baixo: a base de colagem, o relevo, o rasgo dos fios, o bolso do extensômetro e a canaleta do feixe](docs/img/hardware/pod-3d-por-baixo.png) |
+| *A tampa por dentro: sulco do anel O, dedos da placa e o ressalto que comprime a junta da porta* | *Por baixo: a base de colagem de 14 mm, o relevo de 0,5, o rasgo dos fios, o bolso do extensômetro e a canaleta do feixe* |
 
 ### A placa
 
@@ -191,7 +191,7 @@ flowchart TB
 | [07 · Status](docs/07-status.md) | o que existe, o que foi verificado e como, o que falta |
 | [Hardware](hardware_powermeter/README.md) | o esquemático, a placa, o pod, os dry runs e o que falta antes de fabricar |
 | [CAD](hardware_powermeter/cad/README.md) | os geradores, as regras e as armadilhas medidas |
-| [Pod](hardware_powermeter/pod/README.md) | o gerador do invólucro, as 18 regras do dry run e o que é decisão do desenho |
+| [Pod](hardware_powermeter/pod/README.md) | o gerador do invólucro, as 30 regras do dry run e o que é decisão do desenho |
 | [Módulo de rádio](hardware_powermeter/09-modulo-de-radio.md) | o HOLYIOT-26001-A: por que entrou, o que o nRF54L15 muda, pinagem, mecânica, a antena |
 | [CHANGELOG](CHANGELOG.md) | histórico de mudanças |
 

@@ -219,7 +219,7 @@ Decisão do dono: **a célula passa a ficar ao lado da placa**, não sob ela, pa
 
 | | Antes (célula embaixo) | Agora (célula ao lado) |
 |---|---|---|
-| Pod | 55,7 × 19,0 × **10,0** | 74,2 × 21,0 × **7,0** |
+| Pod | 55,7 × 19,0 × **10,0** | 74,5 × 21,0 × **7,2** |
 | Pilha da altura | fundo 1,0 + célula 4,0 + ar 0,5 + placa 0,8 + teto 2,7 + tampa 1,0 | fundo 1,0 + **ar do verso 1,5** + placa 0,8 + teto 2,7 + tampa 1,0 |
 | Célula | 23 × 11 × 4,0 = 1.012 mm³ ≈ 78 mAh | **15 × 14 × 5,0 = 1.050 mm³ ≈ 81 mAh** |
 | Face de trás | plana sob a sombra da célula, 1,0 mm fora dela | **1,5 mm de ponta a ponta**: não há mais sombra |
