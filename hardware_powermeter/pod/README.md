@@ -6,14 +6,14 @@ lida com o contorno de ocupação, a altura e a face de cada peça) e da
 célula, pela mesma ideia do case do ciclocomputador: um gerador e um dry
 run próprio. O que ele é e o que decide está em [07-pod.md](../07-pod.md).
 
-**73,5 × 20,0 × 7,2 mm, 13,4 g estimados.** Nada foi impresso nem montado.
+**73,5 × 20,0 × 7,7 mm, 14,5 g estimados.** Nada foi impresso nem montado.
 
 | Arquivo | O que faz |
 |---|---|
 | `make_pod.py` | desenha o pod: concha e tampa em STL, `pmeter-pod.pdf` com planta, cortes e a página das decisões, e **seis vistas** em `docs/img/hardware/`: `pod-3d-aberta`, `pod-3d-fechada`, `pod-3d-explodida`, `pod-3d-tampa-por-dentro`, `pod-3d-celula-no-berco` e `pod-3d-por-baixo` |
-| `dry_run_pod.py` | mede o pod contra a placa: **31 regras** (`PD1` a `PD31`), cada uma com a fonte, e **uma regra que não acha o que medir falha dizendo isso** |
+| `dry_run_pod.py` | mede o pod contra a placa: **32 regras** (`PD1` a `PD32`), cada uma com a fonte, e **uma regra que não acha o que medir falha dizendo isso** |
 | `medir.py` | rasteriza em voxels as primitivas que a `Malha` registrou ao desenhar, e lê as arestas dos STL: é o que permite medir o sólido em vez da constante |
-| `regras_medidas.py` | as onze regras que medem o sólido (`PD21` a `PD31`) |
+| `regras_medidas.py` | as doze regras que medem o sólido (`PD21` a `PD32`) |
 | `make_conjunto.py` | o pod no braço do pedivela: `conjunto-3d-montado`, `conjunto-3d-aberto`, `conjunto-3d-extensometros`, `conjunto-3d-produto` e `conjunto-3d-produto-lateral` |
 | `pod-concha.stl`, `pod-tampa.stl` | união de sólidos fechados para o fatiador, não sólido de CAD |
 | `pmeter-pod.pdf` | 3 páginas: planta, cortes, decisões e lugares reservados |
@@ -25,7 +25,7 @@ run próprio. O que ele é e o que decide está em [07-pod.md](../07-pod.md).
 flowchart LR
     PCB["cad/make_pcb.py → route.py<br/>→ fill_zones.py → dry_run_pcb.py"] --> GLB["cad/make_3d.py<br/>exporta o GLB"]
     GLB --> POD["pod/make_pod.py<br/>PDF, STL, 6 vistas"]
-    PCB --> DRY["pod/dry_run_pod.py<br/>31 regras"]
+    PCB --> DRY["pod/dry_run_pod.py<br/>32 regras"]
     POD --> CONJ["pod/make_conjunto.py<br/>o pod no pedivela"]
     POD --> DRY
 ```
@@ -95,12 +95,13 @@ Tudo em `make_pod.py`, em constantes com o motivo ao lado.
 | Fundo | **1,2 mm**, tampa 1,0, raio 3 | o fundo subiu de 1,0 em 2026-10-01: fora da base de colagem a face de baixo está em `RELEVO`, e com 1,0 o piso ali daria 0,5 mm |
 | Célula | **15 × 14 × 5,0 mm**, **ao lado** da placa, em baía **cavada no piso** | ≥ 81 mAh (1.050 mm³ a 0,077 mAh/mm³). Decisão do dono em 2026-09-30: ao lado, a célula sai da pilha. A baía é cavada 0,5 mm para a reserva de inchaço não levantar o teto da cavidade |
 | Reserva de inchaço | **0,5 mm** (10 % da espessura) | uma bolsa de lítio engorda com ciclo e temperatura; era 0,000 mm, com igualdade exata, enquanto a `PD2` cobrava 0,30 de toda peça rígida |
-| Passagem dos fios | **3,4 mm** cortados nas nervuras e no piso | `CELULA_FIO_PASSO + CELULA_FIO_D`; até 2026-10-01 as nervuras iam do piso ao teto e a saída real era **0,000 mm** |
+| Passagem dos fios | **3,4 mm** cortados nas nervuras e no piso | `CELULA_FIO_PASSO + CELULA_FIO_D`; até 2026-10-01 as nervuras iam do piso ao teto e a saída real era **0,000 mm**. Por ela passam os dois fios **e o plugue**, e a `PD32` mede o curso de encaixe |
+| Conector da célula | **JST SH `SM02B-SRSS-TB`**, entrada lateral, 2,90 mm | a célula entra por conector, não por fio soldado (decisão do dono em 2026-10-01). A série é requisito de compra: com PH de 2,0 o pod iria a 9,7 mm e o conector magnético teria de mudar |
 | Vedação da caixa | anel O de cordão **0,60 mm** em sulco de 0,78 × 0,45 | **23,3 % de compressão medidos no sólido**, dentro da faixa de 20 a 30 %. O cordão de 0,60 é requisito de compra |
 | Vedação da porta | junta plana de **0,65 mm** no **ombro do conector**, comprimida 0,20 de 0,70 (28,6 %) por um ressalto da tampa | `docs/02`: "junta na face do conector". O lábio e o dreno saíram: o lábio ficava 0,40 acima da junta e o dreno 0,50 **acima** do fundo do poço |
 | Fechamento | **dois parafusos M1,6** autoatarraxantes, ressalto de 3,40, furo-guia de 1,35, cabeça **cilíndrica saliente sobre anilha vedante** de 4,0 comprimida 30 % | um deles passa **pelo furo da placa** por um pescoço de 2,00, que segue acima dela até passar o nível do envase. O tampão de resina sobre cabeça escareada não cabia: 0,96 de cabeça mais 0,80 de tampão contra 1,00 de tampa, e um escareado de 3,20 não entra num furo de 1,90 |
 | Assento da placa | **0,5 mm** por borda (`RESSALTO = FOLGA_PLACA + ASSENTO_MIN`) | eram 0,100 mm, a mesma medida da folga radial do pino: a placa saía do ressalto só deslizando |
-| Teto sobre a placa | 2,7 mm | `cad/make_dxf.TETO_TAMPA`; quem o fixa é o módulo, com 2,40 mais 0,3 de ar |
+| Teto sobre a placa | **3,2 mm** | `cad/make_dxf.TETO_TAMPA`, que desde 2026-10-01 **sai** da altura do conector da célula (`footprints.CONECTOR_CELULA`): o JST SH tem 2,90 mais 0,3 de ar, e é ele a peça mais alta sob a tampa |
 | Base de colagem | **14 mm** de largura, com relevo de **0,5 mm** cavado em volta | a face do braço só é plana em 15 dos 20 mm, e a base guarda 0,5 de margem por lado. O relevo era **acrescentado** onde queria cavar: 100 % das tiras externas era face maciça em z = 0 |
 | Bolso e canaleta | sobre a matriz do extensômetro e sobre o feixe dos cinco fios | na linha de cola de 0,5 não cabe nem o fio (0,5 com isolação) nem a matriz; o maior percurso media **44,83 mm sob fundo colado** |
 | Nível do envase | **0,4 mm abaixo do teto** | não existia número nenhum: o menisco ficava rasante à boca dos furos cegos dos parafusos, e um M1,6 autoatarraxante não atarraxa em resina curada |

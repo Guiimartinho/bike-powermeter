@@ -194,7 +194,8 @@ endereços: cada um serve como `i2c`, `spi` **ou** `uart`, um de cada vez.
 ## O que falta confirmar
 
 1. **A altura do corpo**, que não consta no anúncio e entra no teto da tampa
-   do pod (`PD2`, hoje 2,7 mm com o ME54BS13 de 2,4).
+   do pod (`PD2`, hoje 3,2 mm: quem fixa o teto e o conector da celula, de
+   2,90, e nao o modulo de 2,4).
 2. **Quanto de folga a antena cerâmica pede**: o anúncio diz "several mm"
    sem número. Enquanto não houver número, o projeto mantém a zona livre que
    já usava, que é mais conservadora.

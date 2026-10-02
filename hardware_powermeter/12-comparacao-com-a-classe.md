@@ -5,7 +5,7 @@ como referência, **pelo que os fabricantes publicam**, lida em 2026-10-01. E
 a conta de quanto do nosso excesso de comprimento e de altura é escolha e
 quanto é consequência da lista de peças.
 
-**Nesta página:** [O que eles publicam](#o-que-eles-publicam) · [Comprimento](#comprimento-7445-mm-contra-cerca-de-38) · [Altura](#altura-720-mm-contra-550) · [Autonomia](#autonomia-119-h-contra-800) · [O que caberia no alvo](#o-que-caberia-no-alvo-de-38--20) · [Apple Find My e Samsung Find](#apple-find-my-e-samsung-find) · [O que decidir](#o-que-decidir)
+**Nesta página:** [O que eles publicam](#o-que-eles-publicam) · [Comprimento](#comprimento-7345-mm-contra-cerca-de-38) · [Altura](#altura-770-mm-contra-550) · [Autonomia](#autonomia-119-h-contra-800) · [O que caberia no alvo](#o-que-caberia-no-alvo-de-38--20) · [Apple Find My e Samsung Find](#apple-find-my-e-samsung-find) · [O que decidir](#o-que-decidir)
 
 > [!WARNING]
 > **Nenhum dos dois publica as três dimensões.** O 4iiii publica massa e
@@ -20,10 +20,10 @@ quanto é consequência da lista de peças.
 
 | | **4iiii Precision 3+** | **U2e V4** | **Nosso** |
 |---|---|---|---|
-| Massa | **9 g** | **20 g** | 14,2 g (estimada) |
-| Perfil / altura | **5,5 mm** | não publica | 7,2 mm (8,65 nos parafusos) |
-| Comprimento | não publica (**37 a 39** por fotogrametria) | não publica | **74,45 mm** |
-| Largura | não publica (**18 a 22** por fotogrametria) | não publica | 21,0 mm |
+| Massa | **9 g** | **20 g** | 14,5 g (estimada) |
+| Perfil / altura | **5,5 mm** | não publica | 7,7 mm (9,15 nos parafusos) |
+| Comprimento | não publica (**37 a 39** por fotogrametria) | não publica | **73,45 mm** |
+| Largura | não publica (**18 a 22** por fotogrametria) | não publica | **20,0 mm** |
 | Bateria | **CR2032** | Li-Po recarregável | Li-Po ~81 mAh |
 | Carga | troca a pilha | **USB magnético** | conector magnético de 6 pinos |
 | Autonomia | **até 800 h** | **máximo de 52 h** | 119 h (projeto) |
@@ -45,13 +45,13 @@ leve, 2,3× mais autonomia e 0,5 ponto melhor de precisão**. O **4iiii é outra
 arquitetura**: pilha-botão trocável, sem circuito de carga, sem conector de
 dados. É contra ele que perdemos, e as três perdas têm causa medida.
 
-## Comprimento: 74,45 mm contra cerca de 38
+## Comprimento: 73,45 mm contra cerca de 38
 
 A parcela, medida no gerador:
 
 | Parcela | mm |
 |---|---|
-| parede | 2,00 |
+| parede | 1,50 |
 | folga do berço | 0,25 |
 | célula | 15,00 |
 | folga lateral da célula | 0,50 |
@@ -59,8 +59,8 @@ A parcela, medida no gerador:
 | sala do parafuso esquerdo | 1,70 |
 | **placa** | **50,00** |
 | folga da placa | 0,50 |
-| parede | 2,00 |
-| **total** | **74,45** |
+| parede | 1,50 |
+| **total** | **73,45** |
 
 Metade do excesso é a **célula ao lado** (19,95 mm) e metade é a **forma da
 placa**. E a forma é o ponto, porque a área não é:
@@ -81,26 +81,26 @@ comprimento são, medidas em x:
 | `J301`, conector da ponte | 20,75 a 31,25 (10,5) | 22,1 mm² |
 | `J101`, conector magnético | 19,25 a 28,75 (9,5) | 52,2 mm² |
 
-## Altura: 7,20 mm contra 5,50
+## Altura: 7,70 mm contra 5,50
 
 | Camada | mm | Quem a fixa |
 |---|---|---|
 | piso | 1,20 | o relevo da base de colagem precisa de 0,5, e sobra 0,7 de piso |
 | ar do verso | 1,50 | os 43 passivos que foram para o verso **para encurtar a placa** |
 | placa | 0,80 | 4 camadas |
-| teto | 2,70 | o **módulo de rádio**: 2,40 de peça mais 0,30 de ar |
+| teto | 3,20 | o **conector da célula**: JST SH de 2,90 mais 0,30 de ar |
 | tampa | 1,00 | |
-| **total** | **7,20** | mais 1,45 nos dois parafusos, com a cabeça e a anilha |
+| **total** | **7,70** | mais 1,45 nos dois parafusos, com a cabeça e a anilha |
 
 Os 5,5 mm do 4iiii não cabem nesta pilha por dois motivos estruturais: eles
 **não usam módulo de rádio** (um SoC nu com antena na placa custa cerca de
-1,0 mm, não 2,7) e a pilha-botão de 3,2 mm é a própria tampa do aparelho —
+1,0 mm, não 2,4) e **não têm conector de célula** (a pilha-botão não tem fio) e a pilha-botão de 3,2 mm é a própria tampa do aparelho —
 eles vendem a portinhola da bateria como peça de reposição, o que diz que a
 vedação deles é uma junta de face na portinhola, não um anel O em sulco de
 parede como o nosso.
 
-**O módulo e o anel O custam, juntos, cerca de 2,7 mm de altura e 4,0 mm de
-largura.** Os dois foram decisão sua, e os dois compram coisas reais:
+**O módulo, o conector da célula e o anel O custam, juntos, cerca de 3,2 mm de
+altura e 3,0 mm de largura.** Os dois foram decisão sua, e os dois compram coisas reais:
 certificação de rádio pronta e uma vedação que não depende de uma peça
 moldada.
 
@@ -341,11 +341,48 @@ LiPo de 100 mAh**. Quem as vende aqui são os anunciantes de marketplace
 (Mercado Livre, Shopee) e os importadores — e é por ali, ou por importação
 direta, que a `501415` vai ser comprada. O código de tamanho é o termo de busca.
 
+### O conector da célula: medido, não escolhido
+
+O padrão de mercado é **JST PH 2,0** — confirmado em três peças documentadas:
+Adafruit **1570** (3,7 V 100 mAh, 11,5 × 31 × 3,8 mm, "2-pin JST-PH" com
+proteção), Adafruit **1769** (o receptáculo de entrada lateral do link que o
+dono mandou) e SparkFun (40 mAh, "JST-PH"). Então o PH foi **posto na placa** e
+o pod foi medido com ele, junto com as duas alternativas:
+
+| Série | Altura sobre a placa | Planta | Pod | Massa | Regras |
+|---|---|---|---|---|---|
+| PH 2,0 `S2B-PH-SM4-TB` | 4,85 mm | 5,9 × 7,6 | 9,70 | 17,7 g | 24 de 32 |
+| GH 1,25 `SM02B-GHS-TB` | 4,24 mm | 5,8 × 5,0 | 9,04 | — | — |
+| **SH 1,0 `SM02B-SRSS-TB`** | **2,90 mm** | 4,3 × 4,0 | **7,70** | **14,5 g** | **30 de 32** |
+
+As alturas vêm dos modelos 3D da biblioteca do KiCad, não de memória.
+
+**O PH não fecha, e o motivo não é só a altura.** Ele obriga a trocar o
+conector magnético por um de **5,35 mm** (o lugar reservado tem 3,2, e com o
+teto em 5,15 a face dele ficaria 2,0 mm **abaixo** da tampa — a porta de carga
+deixaria de existir), alarga o canal em 1,8 mm para o plugue caber, deixa a
+cabeça dos parafusos **1,1 mm acima do alvo de altura**, leva o furo cego do
+parafuso a 5,5:1 e põe a pilha cola + pod em **10,2 mm contra os 10,0 de folga
+de quadro** que o projeto reservou: o aparelho deixaria de caber entre o
+pedivela e o quadro.
+
+**Decisão: SH 1,0**, e o preço é **uma linha no pedido da célula** — os
+fabricantes de bolsa vendem o conector como opção ("PH2.0 / SH1.0 / sem
+conector"). Trocar `footprints.CONECTOR_CELULA` e rodar a cadeia desfaz a
+escolha, porque desde 2026-10-01 o teto da tampa e a altura exigida do conector
+magnético **saem** dessa constante em vez de serem escritos ao lado dela.
+
+E o receptáculo é de **entrada lateral**: a boca é paralela à placa, não
+perpendicular. O plugue entra na horizontal vindo da baía, pelo corte que o pod
+abre nas nervuras e no piso, e a `PD32` mede o **curso de encaixe** — porque um
+conector emparedado cabe e não monta.
+
 ### A especificação de compra
 
 | Requisito | Valor | De onde vem |
 |---|---|---|
-| Química | LiPo de bolsa, com **fios soldados e PCM integrado** | não há espaço na placa para proteção discreta |
+| Química | LiPo de bolsa, com **PCM integrado** | não há espaço na placa para proteção discreta |
+| **Conector** | **JST SH de 1,0 mm (`SHR-02V-S`)**, dois fios | é o que entra no `J102`; PH de 2,0 **não serve** (ver acima). Peça ao vendedor: a maioria oferece a escolha |
 | Carga | **≥ 70 mAh**, e ≥ 81 preferível | 65,7 mAh é a guarda de 6 meses a 15 µA |
 | Envelope, arranjo de hoje | **15 × 14 × 5,0 mm** máximo — `501415` ou `501414` | a baía ao lado da placa |
 | Envelope, se a célula for para baixo | **18 × 14 × 3,5 mm** máximo — `351418` | o bolso que o verso reagrupado libera; 3,9 é o teto absoluto pela altura |

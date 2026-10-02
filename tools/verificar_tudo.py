@@ -58,11 +58,23 @@ VERIFICACOES = [
                   and "faltam [" not in s,
      "reprova em peça faltando ou ligação sem pad; a serigrafia é relato"),
 
+    # Esta verificação nasceu em 2026-10-01, e o motivo é um defeito que ficou
+    # escondido por dias: a reserva do furo de fixação passou a invadir o
+    # courtyard do conector magnético, o colocador não conseguia mais pôr o
+    # `J101` em lugar nenhum, e NINGUÉM SOUBE — porque tudo aqui rodava sobre o
+    # ARQUIVO da placa e nunca sobre o gerador dela. A placa publicada vinha de
+    # um estado anterior do código e não era mais reproduzível. `--conferir`
+    # coloca sem gravar, então ela não destrói o roteamento.
+    ("a placa ainda é a que o gerador produz",
+     [PY, "hardware_powermeter/cad/make_pcb.py", "--conferir"],
+     lambda c, s: c == 0 and "NAO COLOCADAS" not in s,
+     "reprova quando alguma peça não tem mais onde ficar"),
+
     ("dry run da placa: regras das fichas e da IPC-2221B",
      [PY, "hardware_powermeter/cad/dry_run_pcb.py"], lambda c, s: True,
      "relata quantas mediu, cumpriu e não pôde medir"),
 
-    ("dry run do pod: 31 regras, 11 delas medindo o sólido",
+    ("dry run do pod: 32 regras, 12 delas medindo o sólido",
      [PY, "hardware_powermeter/pod/dry_run_pod.py"],
      lambda c, s: "2 violadas" in s and "0 nao medidas" in s,
      "PD6 e PD10 ficam abertas, e as duas são decisão do dono, não defeito "

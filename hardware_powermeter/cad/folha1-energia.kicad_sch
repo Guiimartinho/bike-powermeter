@@ -858,7 +858,7 @@
 				(at -11.430 -5.080 0)
 				(effects (font (size 1.27 1.27)) (justify left top))
 			)
-			(property "Footprint" "pmeter:Furos_Celula_2x1.5mm_P2.5mm"
+			(property "Footprint" "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal"
 				(at 0 0 0)
 				(effects (font (size 1.27 1.27)) (hide yes))
 			)
@@ -3687,7 +3687,7 @@
 			(at 76.200 149.980 0)
 			(effects (font (size 1.27 1.27)) (justify left top))
 		)
-		(property "Footprint" "pmeter:Furos_Celula_2x1.5mm_P2.5mm"
+		(property "Footprint" "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal"
 			(at 87.63 144.78 0)
 			(effects (font (size 1.27 1.27)) (hide yes))
 		)

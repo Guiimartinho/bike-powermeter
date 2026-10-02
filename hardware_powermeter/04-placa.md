@@ -18,18 +18,25 @@ em [08](08-dry-run-2026-09-27.md).
 > cobre e as trilhas.
 >
 > **A placa está roteada com 0 erros de DRC**, e mesmo assim **não pode ser
-> fabricada**: 3 ligações de sinal continuam sem cobre e 7 dos 17
-> capacitores de desacoplamento estão além do limite da ficha
+> fabricada**: **2 ligações de sinal continuam sem cobre** (`CHG_N` e `VBAT`)
+> e 10 dos 19 capacitores de desacoplamento estão além do limite da ficha
 > ([o que falta](#o-que-falta)).
+>
+> **E ela voltou a ser reproduzível pelo gerador em 2026-10-01.** Antes disso
+> não era: a reserva do furo de fixação invadia o courtyard do conector
+> magnético, o colocador não conseguia mais pôr o `J101` em lugar nenhum, e a
+> placa publicada vinha de um estado anterior do código. Ninguém soube porque
+> a verificação rodava sobre o **arquivo** e nunca sobre o gerador —
+> `make_pcb.py --conferir` existe por causa disso.
 
 ## O contorno
 
 | Item | Valor |
 |---|---|
-| Tamanho | **47 × 14 mm** |
+| Tamanho | **50 × 16 mm** |
 | Espessura | 0,8 mm |
 | Raio dos cantos | 1,5 mm |
-| Furo de fixação | **um**, M1,6 passante em (30,5; 7,0), Ø 2,2 mm, com reserva de 1,4 mm de raio; o outro extremo da placa é preso pelos ressaltos ([07](07-pod.md)) |
+| Furo de fixação | **um**, M1,6 passante em **(30,5; 8,0)**, Ø 2,2 mm, com reserva de 1,4 mm de raio; o outro extremo da placa é preso pelos ressaltos ([07](07-pod.md)). Ele estava em y = 7,0 até 2026-10-01, onde a reserva dele invadia o courtyard do conector magnético em 2,65 × 0,45 mm e **o colocador não conseguia mais pôr o `J101` em lugar nenhum** — a placa publicada vinha de um estado anterior do código. Na linha de centro ele livra o conector por 0,55 e prende melhor |
 | Recorte | **nenhum**: a antena do módulo é cerâmica e pede zona livre, não placa vazada |
 
 O alvo de [`docs/02`](../docs/02-hardware.md#placa) era 48 × 16. A placa é
@@ -78,7 +85,7 @@ alimentação.
 ```mermaid
 flowchart LR
     E["0 a 14<br/>ENERGIA<br/>nPM1100 · indutor<br/>medidor · J102"]
-    C["14 a 34<br/>conector magnético na borda de cima<br/>Tag-Connect e LED · ADS1220 e filtro<br/>furos da ponte na borda de baixo · sensores<br/>furo M1,6 em (30,5; 7,0)"]
+    C["14 a 34<br/>conector magnético na borda de cima<br/>Tag-Connect e LED · ADS1220 e filtro<br/>furos da ponte na borda de baixo · sensores<br/>furo M1,6 em (30,5; 8,0)"]
     M["34 a 47<br/>MÓDULO<br/>antena cerâmica encostando<br/>na borda direita"]
     E --- C --- M
 ```
@@ -119,7 +126,7 @@ célula cobre só 23 dos 47 mm: passada ela o fundo do pod desce, e a regra
 |---|---|---|
 | `KEEPOUT_ANTENA_MODULO` | 4,3 mm da borda direita: sem cobre, sem componente, sem metal, sem plano de terra | guia de montagem do HOLYIOT-26001-A ([09](09-modulo-de-radio.md#a-antena-manda-no-layout)) |
 | `SOMBRA_CELULA_MAX_0-0MM` | a sombra da célula na face de trás: nenhuma peça pode ficar sob ela | derivada das cotas da própria célula em `make_dxf` |
-| `SOMBRA_TAMPA_MAX_2-7MM` | teto de 2,7 mm sobre a face da frente | [07](07-pod.md#a-pilha-de-alturas) |
+| `SOMBRA_TAMPA_MAX_3-2MM` | teto de 3,2 mm sobre a face da frente | [07](07-pod.md#a-pilha-de-alturas) |
 
 **O recorte vazado saiu.** A antena de traço do módulo antigo pedia a placa
 aberta sob ela; a cerâmica do HOLYIOT pede o contrário — corpo dielétrico
@@ -129,12 +136,14 @@ zona livre **e** se toca uma borda da placa, e não mais se existe um furo
 vazado.
 
 O teto é o de `make_dxf.TETO_TAMPA` e o nome da zona sai dele, então os dois
-nunca divergem. Quem o fixa é a peça mais alta que fica **sob a tampa**: hoje
-o módulo, com 2,40 mm mais 0,3 de ar. Ele já foi 3,2, quando a célula
-chegava por um conector JST SH de 2,90 mm; desde que ela passou a ser
-soldada em dois furos (`J102`, sem corpo), o teto voltou para 2,7. A regra
-`PD2` do dry run do pod é quem mede isso a cada execução, e o único que
-atravessa a tampa é o conector magnético (`make_dxf.ATRAVESSA_TAMPA`).
+nunca divergem. Quem o fixa é a peça mais alta que fica **sob a tampa**, e
+desde 2026-10-01 essa peça é o **conector da célula**: o JST SH tem 2,90 mm e
+o teto é **3,20**. Ele foi 2,7 — o módulo, com 2,40 mais 0,3 de ar — enquanto
+a célula chegava soldada em dois furos, e voltou a 3,2 quando o dono decidiu
+que ela entra por conector
+([06](06-conectores-e-pontos-de-teste.md#j102--célula)). A regra `PD2` do dry
+run do pod é quem mede isso a cada execução, e o único que atravessa a tampa é
+o conector magnético (`make_dxf.ATRAVESSA_TAMPA`).
 
 ## O land pattern do módulo
 
@@ -264,9 +273,26 @@ curto na placa fabricada, e uma ligação sem trilha é uma falta visível.
 
 ## O que falta
 
-Em ordem de gravidade, tudo medido em [10](10-dry-run-2026-09-28.md):
+Em ordem de gravidade:
 
-1. **7 de 17 capacitores de desacoplamento além do limite da ficha**, o
+0. **Duas ligações de sinal sem cobre: `CHG_N` e `VBAT`.** A placa rotea com
+   0 erros de DRC e para sempre nessas duas. O que foi **medido** em
+   2026-10-02, para que a próxima tentativa não repita:
+
+   | Hipótese | Como foi testada | Resultado |
+   |---|---|---|
+   | Falta de esforço do roteador | 100 e 500 passagens, ~40 passadas | **refutada**: sempre 2 em aberto |
+   | Posição de peça | furo em (30,5; 7,0), (30,5; 8,0) e (34,0; 12,0); `J102` em y 3,4 e 8,0 | **refutada**: (34; 12) piorou para 12 erros e 3 em aberto; o resto empatou |
+   | **Fuga de pad** — a ponta não consegue mudar de camada | `medir_fuga.py`: varre um anel em volta de cada pad e pergunta ao `route.via_cabe_aqui` | **refutada**: os 13 pads têm lugar de via, vários a 0,5 mm |
+   | Folga inflada no DSN apertando os corredores | as regras sem via baixadas de 115 para os 88,9 reais | **refutada** para o roteamento (mas a correção fica: pedir 115 entre duas trilhas era errado) |
+
+   O que sobrou e ainda não foi medido: **se existe corredor livre** entre as
+   duas ilhas de cada rede, em alguma camada. `CHG_N` precisa ir de (20,5; 9,5)
+   no verso até o pino do módulo em (46,0; 12,8) na frente — 25 mm. O
+   `fechar_ultimas.py` não serve para isso: o raio de busca dele é 5 mm, ele é
+   a ferramenta do último milímetro.
+
+1. **10 de 19 capacitores de desacoplamento além do limite da ficha**, o
    pior a 7,7 mm de um pino que pede 2. O colocador foi instrumentado por
    dentro e **decide certo**: o melhor lugar **livre** está mesmo a 2,90 mm
    do pino do `C302` e a 6,25 do `C402`. Quem come esse raio é o

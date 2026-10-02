@@ -206,7 +206,7 @@ O primeiro desenho fechou em 65,4 × 19,4 × 10,5 mm, acima do alvo em comprimen
 | Onde | De | Para | Como |
 |---|---|---|---|
 | Espessura da célula | 5,0 mm | ~~2,5 mm~~ ~~4,0 mm~~ **5,0 mm** | **esta linha estava errada e foi refeita duas vezes**: em 2026-09-28, porque em 23 × 11 × 2,5 uma LiPo de bolsa vale cerca de 49 mAh e não 100; e em 2026-09-30, quando a célula saiu de baixo da placa e passou a ficar AO LADO dela, o que mudou o envelope de 23 × 11 × 4,0 para **15 × 14 × 5,0 (≥ 81 mAh)**. A 0,68 mA ela dá **119 h** |
-| Teto sobre a placa | 3,2 mm | 2,7 mm | quem obrigava os 3,2 era o conector da célula; a célula passa a ser soldada por fio, que num pod envasado é mais robusto que conector |
+| Teto sobre a placa | 3,2 mm | ~~2,7~~ **3,2 mm** | quem obriga os 3,2 é o conector da célula. Ele virou dois furos de solda em 2026-09-26 e o teto caiu para 2,7; em 2026-10-01 o dono o trouxe de volta — a célula que se compra já vem com plugue — e o teto voltou a 3,2 ([06](../hardware_powermeter/06-conectores-e-pontos-de-teste.md#j102--célula)) |
 | **Altura total** | **10,5 mm** | **10,0 mm** | com a célula de 4,0 mm de verdade, é o alvo, exatamente |
 | Comprimento da placa | 60 mm | cerca de 55 mm | passivos baixos na face de trás **fora da sombra da célula**: ela cobre 23 a 25 mm dos 60, e os outros 35 ficam sobre o fundo do pod. Um passivo 0402 pede 0,6 mm de vão, contra os 2,5 da célula, então não custa altura |
 | **Comprimento total** | **65,4 mm** | **cerca de 60 mm** | a placa menor, mais as paredes e a folga; o canal dos fios da célula na ponta deixa de existir, porque os fios saem pelo rebaixo do fundo |
@@ -219,7 +219,7 @@ Decisão do dono: **a célula passa a ficar ao lado da placa**, não sob ela, pa
 
 | | Antes (célula embaixo) | Agora (célula ao lado) |
 |---|---|---|
-| Pod | 55,7 × 19,0 × **10,0** | 73,5 × **20,0** × **7,2** |
+| Pod | 55,7 × 19,0 × **10,0** | 73,5 × **20,0** × **7,7** |
 | Pilha da altura | fundo 1,0 + célula 4,0 + ar 0,5 + placa 0,8 + teto 2,7 + tampa 1,0 | fundo 1,0 + **ar do verso 1,5** + placa 0,8 + teto 2,7 + tampa 1,0 |
 | Célula | 23 × 11 × 4,0 = 1.012 mm³ ≈ 78 mAh | **15 × 14 × 5,0 = 1.050 mm³ ≈ 81 mAh** |
 | Face de trás | plana sob a sombra da célula, 1,0 mm fora dela | **1,5 mm de ponta a ponta**: não há mais sombra |

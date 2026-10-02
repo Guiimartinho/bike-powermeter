@@ -35,6 +35,14 @@ RELATORIO = HERE / "_drc_all.json"
 # resolve. `clearance` fica de fora de proposito: ela e quase sempre dois
 # vizinhos legitimos perto demais, e apagar um dos dois e exagero.
 TIPOS = ("shorting_items", "tracks_crossing", "solder_mask_bridge")
+# E mais um caso, com uma condicao: `clearance` quando o culpado e uma trilha
+# de GND. `clearance` esta fora da lista acima de proposito - ela e quase
+# sempre dois vizinhos legitimos perto demais, e apagar um dos dois e exagero.
+# Mas uma trilha de GND e diferente: GND tem PLANO, e o plano a refaz. Apagar
+# uma trilha de GND que roca num pad vizinho nao tira ligacao nenhuma, e foi o
+# que destravou a placa em 2026-10-01 (duas trilhas de GND a 0,0840 mm do pad
+# do D101, contra os 0,0889 da classe).
+REDE_COM_PLANO = "GND"
 
 
 def main() -> int:
@@ -43,12 +51,17 @@ def main() -> int:
     dados = json.loads(RELATORIO.read_text(encoding="utf-8"))
     culpadas: dict[str, str] = {}
     for v in dados.get("violations", []):
-        if v.get("severity") != "error" or v.get("type") not in TIPOS:
+        if v.get("severity") != "error":
+            continue
+        so_terra = v.get("type") == "clearance"
+        if v.get("type") not in TIPOS and not so_terra:
             continue
         for it in v.get("items", []):
             d = it.get("description", "")
             if not d.startswith("Trilha"):
                 continue                 # ilha e via ficam
+            if so_terra and f"[{REDE_COM_PLANO}]" not in d:
+                continue                 # so a trilha de terra sai por folga
             u = it.get("uuid")
             if u:
                 culpadas[u] = d

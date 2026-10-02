@@ -116,13 +116,29 @@ do pod pelos contatos sem cabo.
 
 ## J102 · Célula
 
-**JST SM02B-SRSS-TB** na placa (série SH, passo 1,0 mm, 2 vias, entrada
-lateral, 2,9 mm de altura, 1 A por contato) e SHR-02V-S no cabo do pack.
-Fica **na ponta esquerda** da placa, a 270°, com a boca virada para a
-ponta: a célula deita **sob** a placa com as abas nessa ponta, e o fio
-dobra em volta da ponta pelo canal de 2,5 mm do pod
-([07](07-pod.md)). O `orientacao.py` mede a boca do footprint e confere o
-giro.
+**JST SM02B-SRSS-TB** na placa (série SH, passo 1,0 mm, 2 vias, **entrada
+lateral**, 2,90 mm de altura, 1 A por contato) e **SHR-02V-S** no cabo do
+pack. Fica em (3,5; 3,0) a **270°**, com a boca virada para a ponta
+**esquerda** da placa: a baía da célula fica ao lado dela, naquela ponta, e o
+plugue entra na horizontal pelo canal do pod ([07](07-pod.md)). O
+`orientacao.py` mede a boca do footprint e confere o giro — foi ele que disse
+que 270° é o ângulo.
+
+> [!IMPORTANT]
+> **A série importa, e é requisito de compra.** O SH tem 2,90 mm e é o que
+> fixa o teto da tampa do pod em 3,20. Uma célula que chegue com **JST PH de
+> 2,0 mm** — o conector comum nas células de hobby — tem receptáculo de 6 mm:
+> **o pod não fecha com ele.** Ou a célula vem com SH, ou o plugue dela é
+> trocado.
+
+**Ele saiu e voltou.** Em 2026-09-26 o conector virou **dois furos
+metalizados** para fio soldado, e o argumento era bom: tirava a peça mais alta
+da placa — 2,90 mm, que fixava o teto sozinho — e, num pod envasado, fio
+soldado segura melhor que trava. O que esse argumento não via é que a célula
+que se **compra** já vem com dois fios e um plugue: com furos, montar o
+aparelho significa cortar o plugue, soldar fio nu de 30 AWG dentro de uma
+caixa de 20 mm e perder a possibilidade de trocar a célula. **Decisão do dono
+em 2026-10-01:** o conector volta, e o pod paga os 0,5 mm de altura.
 
 > [!IMPORTANT]
 > **A polaridade é escolha deste projeto** e vai ao fabricante do pack
@@ -133,9 +149,10 @@ giro.
 | 1 | `VBAT+` | alim | o fio vermelho, na convenção usual |
 | 2 | `GND` | alim | |
 
-A célula é de 100 a 150 mAh **com proteção própria** (a placa não tem
-proteção de sobredescarga além do que o nPM1100 faz); o envelope reservado
-no pod é 25 × 15 × 4 mm.
+A célula é de **≥ 81 mAh com proteção própria** (a placa não tem proteção de
+sobredescarga além do que o nPM1100 faz); o envelope reservado no pod é
+**15 × 14 × 5,0 mm** — códigos `501415` ou `501414`
+([12](12-comparacao-com-a-classe.md#a-célula-o-levantamento-nas-lojas-e-o-que-comprar)).
 
 ## J201 · Tag-Connect
 

@@ -108,6 +108,9 @@ def marcar_plano(dsn: pathlib.Path) -> int:
 # vias e trilhas do PROPRIO Freerouting, todos por um centesimo. Pedindo
 # 0,115 de cobre, o furo fica a 0,215 e sobra margem.
 FOLGA_DSN_UM = 115.0
+# E a folga de cobre do projeto, para as regras que NAO envolvem via: e a
+# mesma que o fabricante aceita e que o DRC do KiCad cobra.
+FOLGA_COBRE_UM = 88.9
 
 
 def folga_que_cobre_o_furo(texto: str) -> tuple[str, int]:
@@ -122,10 +125,23 @@ def folga_que_cobre_o_furo(texto: str) -> tuple[str, int]:
 
     def troca(m):
         nonlocal n
-        if float(m.group(1)) >= FOLGA_DSN_UM:
+        # SO as regras que envolvem VIA sobem para 115. As outras vao para a
+        # folga de cobre do projeto, 88,9.
+        #
+        # O 115 existe por causa do FURO da via, e so a via tem furo: pedir
+        # 115 entre duas trilhas e entre trilha e ilha aperta todo corredor da
+        # placa em 26 um por lado sem comprar nada. Medido em 2026-10-02: com
+        # 115 em tudo, duas redes longas - `CHG_N` do carregador ao modulo e
+        # `VBAT` - nao fechavam em NENHUMA das tres colocacoes tentadas nem em
+        # trinta passadas do roteador, com 0 erros de DRC e 2 ligacoes em
+        # aberto sempre. A fuga de pad foi medida e estava boa (`medir_fuga.py`
+        # achou lugar de via para os treze pads das redes em aberto, varios a
+        # 0,5 mm): o que faltava era largura de corredor.
+        alvo = FOLGA_DSN_UM if "via" in m.group(2) else FOLGA_COBRE_UM
+        if float(m.group(1)) >= alvo:
             return m.group(0)
         n += 1
-        return f"(clearance {FOLGA_DSN_UM:g}{m.group(2)})"
+        return f"(clearance {alvo:g}{m.group(2)})"
 
     # TODAS as regras de folga, inclusive `smd_smd`.
     #

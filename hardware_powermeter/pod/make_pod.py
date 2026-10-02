@@ -90,7 +90,7 @@ JUNTA_SULCO_L = 1.30 * JUNTA_CORDAO    # 0,78: a largura usual de sulco de face
 JUNTA_SULCO_P = 0.75 * JUNTA_CORDAO    # 0,45: 25 % de compressao
 JUNTA_TERRA = 0.36            # a terra de cada lado do sulco (`PD13` pede 0,35)
 PAREDE_VEDA = JUNTA_SULCO_L + 2.0 * JUNTA_TERRA
-PAREDE, FUNDO, TAMPA = PAREDE_VEDA, 1.2, 1.0
+PAREDE, FUNDO, TAMPA = PAREDE_VEDA, 1.2, FPS.TAMPA_ESP
 # O `FUNDO` subiu de 1,0 para 1,2 em 2026-10-01 porque o RELEVO passou a ser
 # CAVADO e nao acrescentado (ver `RELEVO`): fora da base de colagem a face de
 # baixo esta em z = RELEVO, logo a espessura do piso ali e FUNDO - RELEVO. Com
@@ -217,6 +217,23 @@ CELULA_FIO_PASSO = 2.5        # between the two leads, as J102's holes are
 # come out of (flood fill, revision of 2026-10-01). This is the width of the
 # notch cut through the ribs.
 CELULA_FIO_VAO = CELULA_FIO_PASSO + CELULA_FIO_D
+
+# O PLUGUE DA CELULA, encaixado no J102 (decisao do dono em 2026-10-01: a
+# celula entra por CONECTOR, nao por fio soldado). O receptaculo na placa e um
+# JST SH de entrada LATERAL, entao o plugue entra na horizontal, vindo da baia,
+# e o corpo dele avanca para dentro do canal do pod - que ate agora so tinha de
+# passar dois fios de 0,9 mm.
+#
+# As tres cotas sao REQUISITO DE COMPRA, como o ombro do conector magnetico:
+# saem da serie SH e tem de ser conferidas na ficha do plugue que vier com a
+# celula. Uma celula que chegue com JST PH de 2,0 mm nao serve - o receptaculo
+# dela tem 6 mm de altura contra os 2,90 do SH.
+PLUGUE_SAI = 2.0              # quanto o corpo avanca alem da boca do receptaculo
+PLUGUE_LARG = 4.0             # a largura do corpo do plugue
+PLUGUE_ALT = FPS.ALTURA[FPS.CONECTOR_CELULA][0]   # a mesma altura da capa
+# E o curso que o encaixe pede alem do corpo: um conector emparedado cabe e
+# nao monta. Dedo ou pinca atras do plugue, com o fio saindo dele.
+PLUGUE_INSERCAO = 2.0
 # From the board's left end, and the number is set by the SLOT: the
 # bridge's five holes are at the middle of the board and the floor is cut
 # under them (pod x 30,45 to 40,95, measured on 2026-09-27), so the cell
@@ -259,7 +276,7 @@ JUNTA_APERTO = 0.20           # quanto o ressalto da tampa a comprime: 28,6 %
 # o pino do cabo magnetico tem de vencer; 0,8 e' o curso tipico de um pino
 # pogo, A CONFERIR no cabo comprado - se o cabo tiver menos, ou a tampa afina
 # sobre a porta ou o conector tem de ser mais alto.
-POCO_MAX = 0.80
+POCO_MAX = FPS.POCO_MAX
 
 # ---------------------------------------------------------- as vedacoes
 # O aparelho fica na face interna do braco, a centimetros do chao: leva
@@ -411,7 +428,9 @@ RAIO_CONC = 2.5
 # a 0,8 mm PCB is 1,8 to 2,2 mm in this class, so 2,40 has margin - but the
 # part that gets bought has to be measured against it, and PD2 is what
 # measures it (09-modulo-de-radio.md).
-MODULO_ALT_MAX = 2.40
+# Do `make_dxf`, e nao escrito de novo aqui: o mesmo numero em dois lugares e
+# como a parede do pod ficou em 2,0 depois que o cordao ja podia ser menor.
+MODULO_ALT_MAX = FPS.MODULO_ALT_MAX
 # 10,0 of height and not 8,5. The 8,5 came from a capacity that was wrong
 # (see CELULA_ESP): no cell of 23 x 11 mm holds 100 mAh at 2,5 mm thick,
 # and the one that does fit 2,5 gives 32 h against a requirement of 50.
@@ -535,7 +554,15 @@ PARAF_X_ESQ = (CELULA_X0 + CELULA_W + CELULA_VAO
 # taken from the BOARD's hole and not computed again here: the two have to
 # be the same point, and deriving it twice is how they drift apart
 PARAF_X_DIR = PLACA_X0 + MD.FUROS_DOC[0][0]
-PARAF_XY = ((PARAF_X_ESQ, H_P / 2.0), (PARAF_X_DIR, PLACA_Y0 + MD.FUROS_DOC[0][1]))
+# O parafuso esquerdo SAI DA LINHA DE CENTRO. Ele dividia o canal com os fios
+# da celula, e isso funcionava enquanto por ali passavam dois fios nus de 0,9.
+# Com o conector (decisao do dono em 2026-10-01) quem passa e o PLUGUE, e o
+# ressalto de 3,4 ficava bem na frente dele: 11,1 mm3 de fio dentro da concha,
+# 9,3 do plugue dentro dela e 0,00 mm de curso para encaixar (`PD21`, `PD32`).
+# Entao ele vai para a borda de baixo da cavidade, e o corredor do plugue fica
+# livre na altura dos pinos do J102.
+PARAF_Y_ESQ = PAREDE + PARAF_BOSS_D / 2.0 + 0.2
+PARAF_XY = ((PARAF_X_ESQ, PARAF_Y_ESQ), (PARAF_X_DIR, PLACA_Y0 + MD.FUROS_DOC[0][1]))
 # which of them pierces the board
 PARAF_NA_PLACA = (False, True)
 # A BAIA e CAVADA no piso: o piso dela tem a mesma espessura que o piso fora
@@ -1354,19 +1381,54 @@ class Pod:
                    z0, z0 + PARAF_ANILHA_ESP - PARAF_ANILHA_APERTO, COR_JUNTA)
         return m
 
+    def plugue_3d(self, dz: float = 0.0) -> Malha:
+        """O plugue da celula encaixado no J102, como corpo.
+
+        Ele entra pela LATERAL - o receptaculo e de entrada lateral -, vindo da
+        baia, e o corpo dele avanca `PLUGUE_SAI` para dentro do canal do pod.
+        E desenhado para a `PD21` poder medi-lo contra a tampa, a parede e o
+        ressalto do parafuso esquerdo, que dividem esse canal com ele.
+        """
+        m = Malha()
+        j = self.pecas.get("J102")
+        if not j:
+            return m
+        x0, _y0, _x1, _y1 = no_pod(j["caixa"])
+        cy = self.fio_y
+        m.caixa(x0 - PLUGUE_SAI, cy - PLUGUE_LARG / 2.0, PLACA_Z1 + dz,
+                x0, cy + PLUGUE_LARG / 2.0, PLACA_Z1 + PLUGUE_ALT + dz,
+                COR_CELULA)
+        return m
+
     def celula_3d(self, dz: float = 0.0) -> Malha:
         m = Malha()
         m.caixa(CELULA_X0, CELULA_Y0, CELULA_Z0 + dz, CELULA_X0 + CELULA_W, CELULA_Y0 + CELULA_H,
                 CELULA_Z1 + dz, COR_CELULA)
-        # The leads, out of the bay on the side that FACES the connector and
-        # along the passage drawn for them. Until 2026-10-01 this box was
-        # x0 = 2,30 to x1 = 2,00 - negative width, on the wall side, the
-        # opposite end from the J102, and wholly inside the cell's own body.
-        # `Malha.caixa` now refuses a box like that.
+        # Os fios, saindo da baia pelo lado que ENCARA o conector e seguindo
+        # pela passagem desenhada para eles. Ate 2026-10-01 esta caixa ia de
+        # x0 = 2,30 a x1 = 2,00 - largura negativa, do lado da parede, na ponta
+        # oposta ao J102 e inteira dentro do corpo da propria celula; a
+        # `Malha.caixa` recusa uma caixa dessas agora.
+        #
+        # Em dois trechos desde que a celula passou a entrar por PLUGUE: o
+        # feixe corre rente ao piso da baia ate debaixo da ponta do plugue, e
+        # ali SOBE ate a altura dele. O trecho que sobe divide o canal com o
+        # ressalto do parafuso esquerdo, e e a `PD21` que mede isso.
         fy = self.fio_y
-        m.caixa(CELULA_X0 + CELULA_W, fy - CELULA_FIO_VAO / 2.0, CELULA_Z0 + dz,
-                PLACA_X0, fy + CELULA_FIO_VAO / 2.0,
-                CELULA_Z0 + CELULA_FIO_D + dz, COR_CELULA)
+        meia = CELULA_FIO_VAO / 2.0
+        plug = self.plugue_3d()
+        x_sobe = PLACA_X0
+        if plug.solidos:
+            x_sobe = plug.solidos[0][1][0]      # a ponta de fora do plugue
+        # o fio sai pela face de FORA do plugue, entao o trecho que sobe fica
+        # imediatamente antes dele, e nao por dentro dele
+        x_fim = max(x_sobe - CELULA_FIO_D, CELULA_X0 + CELULA_W + 0.2)
+        m.caixa(CELULA_X0 + CELULA_W, fy - meia, CELULA_Z0 + dz,
+                x_fim, fy + meia, CELULA_Z0 + CELULA_FIO_D + dz, COR_CELULA)
+        if plug.solidos:
+            z_plug = plug.solidos[0][1][5]      # o topo do plugue
+            m.caixa(x_fim, fy - meia, CELULA_Z0 + dz,
+                    x_sobe, fy + meia, z_plug + dz, COR_CELULA)
         return m
 
     # -------------------------------------------------------------- mass

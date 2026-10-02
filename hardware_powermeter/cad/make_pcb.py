@@ -267,7 +267,18 @@ BORDA_FIXA: dict[str, tuple[float, float, int]] = {
     # The cell's two solder holes at the left end: the wires come up from
     # the cell through the recess in the pod's floor, so they enter from
     # below and the holes only have to be clear of the cell's own shadow.
-    "J102": (4.0, 2.0, 0),
+    # O conector da celula, a 270 graus para a BOCA olhar a ponta esquerda
+    # da placa, que e de onde vem o plugue do pack (`orientacao.py` mede a
+    # boca do footprint e confere o giro). Girado, o courtyard dele mede
+    # 6,56 em x por 5,80 em y, e o centro fica na LINHA DE CENTRO da placa:
+    # e por ali que o plugue entra, vindo da baia da celula.
+    #
+    # O x de 3,7 e MEDIDO, nao escolhido. Em 3,5 o plugue tinha 1,80 mm de
+    # curso livre antes do corpo dele e o encaixe pede 2,00 (`PD32` do dry run
+    # do pod): um conector emparedado cabe e nao monta. Cada decimo que o
+    # conector anda para dentro da placa e um decimo a mais de corredor, e isso
+    # nao custa milimetro nenhum de pod - alargar o canal custaria.
+    "J102": (3.7, 8.0, 270),
 }
 
 
@@ -1780,6 +1791,24 @@ def main() -> int:
                      '(justify left top))\n\t)')
 
     out = HERE / "pmeter.kicad_pcb"
+    # `--conferir` COLOCA mas NAO GRAVA. Serve para a verificacao do projeto
+    # perguntar, sem destruir o roteamento, se a placa que esta no repositorio
+    # ainda e a que este gerador produz.
+    #
+    # Em 2026-10-01 ela nao era. A reserva do furo de fixacao tinha passado a
+    # invadir o courtyard do conector magnetico - 2,65 x 0,45 mm -, o colocador
+    # nao conseguia mais pôr o `J101` em lugar nenhum, e ninguem soube, porque a
+    # verificacao do projeto rodava o `check_pcb` e o `dry_run_pcb` sobre o
+    # ARQUIVO e nunca o gerador. A placa publicada vinha de um estado anterior
+    # do codigo.
+    if "--conferir" in sys.argv:
+        print(f"conferencia da colocacao: {len(lugar)} pecas, "
+              f"{len(numeros) - 1} redes (nada gravado)")
+        if falhas:
+            print(f"  NAO COLOCADAS: {len(falhas)}")
+            for f in falhas:
+                print(f"    {f}")
+        return 1 if falhas else 0
     out.write_text(cabecalho(len(numeros), numeros) + "\n" + "\n".join(saida) + "\n)\n",
                    encoding="utf-8", newline="\n")
     print(f"{out.name}: {len(lugar)} pecas, {len(numeros) - 1} redes, "

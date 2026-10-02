@@ -36,7 +36,7 @@ A fonte é [`cad/parts.py`](cad/parts.py) e [`cad/footprints.py`](cad/footprints
 | D101 | ESD dos quatro sinais do conector | TI TPD4E05U06DQAR, USON-10 | `pmeter:TPD4E05U06_USON-10_1x2.5mm_P0.5mm` | 1 | C138714 |
 | U101 | Carregador Li-ion e buck de 3,0 V | Nordic nPM1100-QDAB, QFN-24 4 × 4 | `Package_DFN_QFN:QFN-24-1EP_4x4mm_P0.5mm_EP2.7x2.7mm` | 1 | C2903119, a conferir |
 | U102 | Medidor de carga ModelGauge, 0x36 | Analog Devices MAX17048G+T10, TDFN-8 | `Package_DFN_QFN:TDFN-8-1EP_2x2mm_P0.5mm_EP0.8x1.2mm` | 1 | C2680383, a conferir |
-| J102 | Fios da célula: dois furos metalizados, soldados à mão | sem peça: a célula já vem com dois fios | `pmeter:Furos_Celula_2x1.5mm_P2.5mm` (Ø 1,5 mm, passo 2,5) | — | — |
+| J102 | Conector da célula | **JST `SM02B-SRSS-TB`** — série SH, 1,0 mm, 2 vias, **entrada lateral**, 2,90 mm. A célula entra pelo plugue `SHR-02V-S` do próprio pack, que é **requisito de compra** dela | `Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal` | — | a série é o que fixa o teto da tampa do pod ([06](06-conectores-e-pontos-de-teste.md#j102--célula)) |
 | L101 | Indutor do buck | 2,2 µH, ≤ 400 mΩ, Isat ≥ 350 mA (Murata DFE201610E-2R2M) | `Inductor_SMD:L_0805_2012Metric` | 1 | C296426 |
 | C101 | `VBUS` do nPM1100 | 2,2 µF, 25 V | 0603 | 1 | — |
 | C102 | `VOUTB`, o trilho `3V0` | 22 µF | 0603 | 1 | — |

@@ -85,11 +85,20 @@ RADIUS_DRAWING = 1.5
 # The left screw has no such window - the cell is there - and keeps a boss
 # outside the board.
 # 30,5 and not 29,2: at 29,2 the hole's own clearance still reached into the
-# magnetic connector's courtyard, which ends at x 28,25, and the connector is
-# at a FIXED position - it had nowhere to go. The window is x 29,2 to 31,8
-# (past the cell's end at 27,5 plus the boss, before the module's courtyard
-# at 33,5), and 30,5 is the middle of it.
-FUROS_DOC: list[tuple[float, float]] = [(30.5, 7.0)]
+# magnetic connector's courtyard, and the connector is at a FIXED position -
+# it had nowhere to go.
+#
+# E o Y FOI PARA A LINHA DE CENTRO em 2026-10-01, porque o argumento acima
+# tinha envelhecido: ele dizia que o courtyard do conector acaba em x 28,25, e
+# hoje ele acaba em 31,75. Com o furo em y = 7,0 a reserva dele (29,10 a 31,90
+# por 5,60 a 8,40) invadia o conector em 2,65 x 0,45 mm, e o colocador nao
+# conseguia mais pôr o `J101` em lugar nenhum: a placa do repositorio vinha de
+# um estado anterior do codigo e NAO ERA MAIS REPRODUZIVEL pelo proprio
+# gerador. Em y = 8,0 - o meio da placa de 16 - a reserva vai de 6,60 a 9,40 e
+# livra o conector por 0,55; e um parafuso no meio prende melhor que um fora
+# dele. `make_pcb.py --conferir` passou a existir para que isso nao volte a
+# passar despercebido.
+FUROS_DOC: list[tuple[float, float]] = [(30.5, 8.0)]
 FURO_PARAFUSO_D = 2.2
 # What the placer has to keep clear round it, and it is NOT the 2,45 mm of
 # KiCad's M2 mounting hole: that radius is for a screw HEAD or a washer
@@ -131,13 +140,23 @@ MOD_Y0 = H / 2.0 - _MOD_ALT / 2.0
 MOD_Y1 = H / 2.0 + _MOD_ALT / 2.0
 
 # The lid of the pod over the whole board: the ceiling for the parts on the
-# front face. 2,7 mm - the module's 2,40 plus 0,3 of air - and it is 2,7
-# again because the cell lost its connector: the JST SH was 2,90 mm and
-# was the only part that pushed this to 3,2. The magnetic connector goes
-# THROUGH the lid's window, so it is exempt here and PD3 measures it
-# against the lid instead; 2,7 mm is the minimum height of the connector
-# that gets chosen (06-conectores-e-pontos-de-teste.md).
-TETO_TAMPA = 2.7
+# front face. 3,2 mm - the cell's JST SH at 2,90 plus 0,3 of air - since
+# 2026-10-01, when the owner put the cell's CONNECTOR back. It had been 2,7
+# (the module's 2,40 plus air) while the cell arrived on two soldered wires;
+# the connector is the tallest part on the board and sets this number by
+# itself, which is what the 2026-09-26 decision had removed. It costs 0,5 mm
+# of pod height and buys a cell that plugs in and out. The magnetic connector
+# goes THROUGH the lid's window, so it is exempt here and PD3 measures it
+# against the lid instead (06-conectores-e-pontos-de-teste.md).
+# E ele SAI da altura do conector da celula, que e a peca mais alta sob a
+# tampa, em vez de ser escrito a mao: trocar a serie do conector em
+# `footprints.CONECTOR_CELULA` passa a baixar ou subir o teto sozinho. Escrever
+# os dois numeros separados foi o que deixou este 2,7 sobreviver a volta do
+# conector por tempo demais.
+import footprints as _FPS  # noqa: E402
+
+MODULO_ALT_MAX = _FPS.MODULO_ALT_MAX
+TETO_TAMPA = _FPS.TETO_TAMPA
 ATRAVESSA_TAMPA = {"J101"}
 SOMBRA_TAMPA = f"SOMBRA_TAMPA_MAX_{TETO_TAMPA:.1f}MM".replace(".", "-")
 # A CELULA SAIU DE BAIXO DA PLACA (2026-09-30, decisao do dono): ela passa a

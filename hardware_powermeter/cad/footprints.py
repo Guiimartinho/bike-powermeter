@@ -75,8 +75,52 @@ _fp("U402", "Package_SON:WSON-6-1EP_2x2mm_P0.65mm_EP1x1.6mm", "ENCAPSULAMENTO",
     "DRV0006B); o pad termico e o pino 7")
 
 # ---------------------------------------------------------------- conectores
-_fp("J102", "pmeter:Furos_Celula_2x1.5mm_P2.5mm", "GERADO",
-    "dois furos metalizados para os fios da celula, soldados a mao")
+# O CONECTOR DA CELULA VOLTOU (decisao do dono, 2026-10-01). Em 2026-09-26 ele
+# tinha virado dois furos metalizados para fio soldado, e o argumento era bom:
+# tirava a peca mais alta da placa - o JST SH tem 2,90 mm e fixava o teto da
+# tampa sozinho - e, num pod envasado, fio soldado segura melhor que trava.
+#
+# O que esse argumento nao via: a celula que se COMPRA ja vem com dois fios e
+# um plugue. Com furos, montar o aparelho significa cortar o plugue da celula e
+# soldar os fios nus na placa - e aí a celula deixa de ser trocavel, o pack
+# chega com o circuito de protecao perturbado pela solda, e a montagem passa a
+# depender de ferro de solda na ponta de um fio de 30 AWG dentro de uma caixa
+# de 20 mm. O conector custa 0,5 mm de altura do pod (o teto vai de 2,7 para
+# 3,2) e devolve uma celula que entra e sai.
+#
+# A SERIE IMPORTA, e e requisito de compra: SH de 1,0 mm, que tem 2,90 mm de
+# altura. Uma celula que chegue com JST PH de 2,0 mm - o conector vermelho
+# comum nas celulas de hobby - tem 6 mm de receptaculo e NAO FECHA o pod.
+# A SERIE FICA NUMA LINHA SO. Trocar de serie e trocar esta constante e rodar
+# a cadeia: a altura dela sai da tabela `ALTURA` e vai para o teto da tampa do
+# pod (`make_dxf.TETO_TAMPA`), que por sua vez fixa a altura do aparelho.
+#
+# SH de 1,0 mm, e a conta esta medida. As tres alternativas foram postas na
+# placa e o pod foi medido com cada uma (2026-10-01):
+#
+#                            altura    planta      pod     massa   regras
+#   PH 2,0 (S2B-PH-SM4-TB)   4,85 mm   5,9 x 7,6   9,70    17,7 g  24 de 32
+#   GH 1,25 (SM02B-GHS-TB)   4,24 mm   5,8 x 5,0   9,04      -        -
+#   SH 1,0 (SM02B-SRSS-TB)   2,90 mm   4,3 x 4,0   7,20    13,4 g  29 de 31
+#
+# O PH e o que as celulas de bolsa trazem de fabrica, e por isso foi tentado
+# primeiro. A conta dele nao fecha: alem dos 2,5 mm de altura e dos 4,3 g, ele
+# obriga a trocar o CONECTOR MAGNETICO por um de 5,35 mm (o lugar reservado tem
+# 3,2), alarga o canal em 1,8 mm para o plugue caber, deixa a cabeca dos
+# parafusos 1,1 mm acima do alvo de altura, leva o furo cego do parafuso a
+# 5,5:1 e - o pior - poe a pilha cola + pod em 10,2 mm contra os 10,0 de folga
+# de quadro que o projeto reservou: o aparelho deixa de caber entre o pedivela
+# e o quadro.
+#
+# Com SH nada disso acontece, e o preco e uma linha no pedido da celula: os
+# fabricantes de bolsa vendem o conector como opcao ("PH2.0 / SH1.0 / sem
+# conector"). Trocar esta constante e rodar a cadeia desfaz a escolha.
+CONECTOR_CELULA = ("Connector_JST:"
+                   "JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal")
+_fp("J102", CONECTOR_CELULA, "EXATO",
+    "JST SH de 2 vias, entrada LATERAL (angulada): a boca e paralela a placa, "
+    "2,90 mm de altura; a celula entra pelo plugue SHR-02V-S do proprio pack, "
+    "que e REQUISITO DE COMPRA dela")
 import parts as _P  # noqa: E402
 
 _fp([t[0] for t in _P.TESTE], "TestPoint:TestPoint_Pad_D1.0mm", "EXATO", "")
@@ -132,12 +176,11 @@ CORPO: dict[str, tuple[float, float, float]] = {
     "pmeter:TPS22916_DSBGA-4_0.78x0.78mm_P0.4mm": (0.78, 0.78, 0.50),
     # o conector magnetico GENERICO: 6 contatos a 2,5 mais os dois imas,
     # 18 x 5 em planta e 3,0 de altura - lugar reservado, nao peca
-    # 3,20 of height is not a maker's number, it is the pod's REQUIREMENT:
-    # the lid sits 3,2 mm over the board (make_dxf.TETO_TAMPA, set by the
-    # cell connector's 2,9) and this one has to reach it to be met by the
-    # cable's magnetic head. The part chosen has to be at least this tall
-    # (06-conectores-e-pontos-de-teste.md).
-    "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm": (9.00, 5.00, 3.20),
+    # A altura NAO e cota de fabricante: e o REQUISITO do pod, e por isso ela
+    # e calculada em `ALT_CONECTOR_MAG`, logo abaixo, em vez de escrita aqui.
+    # Escrita, ela ficou em 3,20 depois que o teto da tampa subiu para 5,15 - e
+    # a `PD3` so pegou porque mede o solido (06-conectores-e-pontos-de-teste).
+    "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm": (9.00, 5.00, 0.0),  # ver abaixo
 }
 
 
@@ -303,24 +346,6 @@ def pogo_magnetico() -> str:
                   "tres, GENERICO, a trocar pelo desenho do fornecedor")
 
 
-def furos_celula() -> str:
-    """Two plated holes for the cell's wires, soldered by hand.
-
-    There is no connector: the pod is potted and sealed to IPX7, and in
-    that a soldered wire holds better than a latch. It also takes the
-    tallest part off the board - the JST SH was 2,90 mm and set the lid's
-    height all by itself - so the ceiling goes back to the module's 2,4
-    plus air (make_dxf.TETO_TAMPA). The wires come up from the cell, which
-    lies under the board, through the recess in the pod's floor.
-    """
-    pads = [_pad(str(i + 1), -1.25 + i * 2.5, 0.0, 1.5, 1.5, tipo="thru_hole",
-                 forma="circle", drill=0.9, camadas='"*.Cu" "*.Mask"')
-            for i in range(2)]
-    return _corpo("pmeter:Furos_Celula_2x1.5mm_P2.5mm", 5.0, 1.6, pads,
-                  "VBAT+ e GND da celula, furos metalizados; o fio sobe pelo "
-                  "rebaixo do fundo do pod")
-
-
 def furos_ponte() -> str:
     """Five plated holes for the bridge's wires and the shield: 0,9 mm
     drill in a 1,5 mm ring at 2,0 mm of pitch, soldered by hand when the
@@ -351,7 +376,6 @@ def _gerar():
         "pmeter:LED_RGB_3528_3.5x2.8mm")
     GERADOS["pmeter:Pogo_Magnetico_6P_2x3_P2.5mm"] = pogo_magnetico()
     GERADOS["pmeter:Furos_Ponte_5x1.5mm_P2mm"] = furos_ponte()
-    GERADOS["pmeter:Furos_Celula_2x1.5mm_P2.5mm"] = furos_celula()
 
 
 _gerar()
@@ -364,6 +388,12 @@ ALTURA: dict[str, tuple[float, str]] = {
     "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal": (2.90,
         "JST SH de entrada lateral: 2,9 mm de altura sobre a placa (catalogo "
         "da serie SH) - CONFERIR no desenho da peca"),
+    "Connector_JST:JST_PH_S2B-PH-SM4-TB_1x02-1MP_P2.00mm_Horizontal": (4.85,
+        "JST PH de entrada lateral: 4,85 mm MEDIDOS no modelo 3D da "
+        "biblioteca do KiCad (JST_PH_S2B-PH-K ... Horizontal.wrl, mesma capa, "
+        "z de -3,40 a +4,85 em mm). Bate com a Adafruit, que publica 9 mm de "
+        "altura com os pinos para a versao de furo passante (3,40 + 4,85 = "
+        "8,25) e 8 mm de largura contra os 7,60 do modelo"),
     "Package_DFN_QFN:Texas_RVA_VQFN-16-1EP_3.5x3.5mm_P0.5mm_EP2.14x2.14mm": (1.00,
         "altura maxima corrente de um VQFN de 3,5 mm - o desenho RVA0016 da "
         "TI nao foi lido: CONFERIR"),
@@ -373,6 +403,35 @@ ALTURA: dict[str, tuple[float, str]] = {
     "Package_LGA:LGA-12_2x2mm_P0.5mm": (1.00,
         "BMA400: 1,00 MAX no desenho 8.1 da ficha (0,95 tipico)"),
 }
+
+
+# ------------------------------------------------- A CADEIA DE ALTURAS
+# Tudo o que decide a altura do aparelho sai DAQUI, e cada numero sai do
+# anterior. Escrever qualquer um deles de novo noutro arquivo e o defeito que
+# este projeto ja cometeu tres vezes: a parede do pod ficou em 2,0 depois que o
+# cordao do anel O ja podia ser menor, o teto da tampa ficou em 2,7 depois que
+# o conector da celula voltou, e a altura exigida do conector magnetico ficou
+# em 3,20 depois que o teto mudou - e nos tres casos o numero velho era uma
+# COPIA de um numero que tinha se mexido.
+#
+#   conector da celula  ->  teto da tampa  ->  altura exigida do conector
+#                                              magnetico
+MODULO_ALT_MAX = 2.40     # o modulo de radio: requisito de compra (09)
+FOLGA_SOB_TAMPA = 0.30    # o ar entre a peca mais alta e a face de baixo
+TAMPA_ESP = 1.00          # a espessura da tampa do pod
+POCO_MAX = 0.80           # o curso do pino do cabo magnetico
+# o teto da cavidade: a peca mais alta sob a tampa, mais ar
+TETO_TAMPA = round(max(MODULO_ALT_MAX, ALTURA[CONECTOR_CELULA][0])
+                   + FOLGA_SOB_TAMPA, 2)
+# E a altura que o conector magnetico PRECISA ter para a face dele ficar ao
+# alcance do pino do cabo: ele atravessa a tampa, entao tem de vencer o teto
+# mais a espessura dela, menos o curso do pino. Nao e cota de fabricante
+# nenhum - e o que o pod exige da peca que for comprada.
+ALT_CONECTOR_MAG = round(TETO_TAMPA + TAMPA_ESP - POCO_MAX, 2)
+# e o CORPO do conector magnetico recebe essa altura, em vez de carregar
+# uma copia dela
+CORPO["pmeter:Pogo_Magnetico_6P_2x3_P2.5mm"] = (9.00, 5.00, ALT_CONECTOR_MAG)
+
 
 
 def altura_de(nome: str) -> tuple[float, str] | None:
@@ -392,8 +451,7 @@ def altura_de(nome: str) -> tuple[float, str] | None:
 # Tag-Connect is only pads and holes; the bridge pads are pads.
 SEM_CORPO = {"TestPoint:TestPoint_Pad_D1.0mm",
              "Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical",
-             "pmeter:Furos_Ponte_5x1.5mm_P2mm",
-             "pmeter:Furos_Celula_2x1.5mm_P2.5mm"}
+             "pmeter:Furos_Ponte_5x1.5mm_P2mm"}
 
 
 def fab_do_footprint(nome: str) -> tuple[float, float] | None:

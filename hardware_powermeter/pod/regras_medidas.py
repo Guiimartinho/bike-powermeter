@@ -52,6 +52,10 @@ def corpos_do_pod(pod, g):
         "junta": pod.junta_3d(),
         "oring": pod.anel_oring(),
         "anilhas": pod.anilhas_3d(),
+        # O plugue da celula entrou na lista em 2026-10-01, quando o conector
+        # voltou: o corpo dele avanca para dentro do canal do pod, que divide
+        # com o ressalto do parafuso esquerdo e com a parede.
+        "plugue": pod.plugue_3d(),
     }
     return malhas, {k: g.solido(m) for k, m in malhas.items()}
 
@@ -137,10 +141,18 @@ def pd22_caminho_do_fio(pod, r, g, corpos) -> None:
     # existe (visto na primeira execucao desta regra, 2026-10-01).
     na_baia = rotulos(pod.passagem[0], pod.fio_y - 1.0, C.BAIA_PISO,
                       pod.passagem[0] + 1.5, pod.fio_y + 1.0, C.CELULA_Z1)
-    xs = [C.PLACA_X0 + q["x"] for q in j2["pads"]]
-    ys = [C.PLACA_Y0 + q["y"] for q in j2["pads"]]
-    no_j102 = rotulos(min(xs) - 0.6, min(ys) - 0.6, C.PLACA_Z1,
-                      max(xs) + 0.6, max(ys) + 0.6, C.TAMPA_Z0)
+    # E a semente do outro lado e a BOCA DO PLUGUE, nao o espaco sobre as ilhas
+    # do J102: desde que a celula entra por conector, o que ha sobre as ilhas e
+    # o corpo do receptaculo, e o fio termina no plugue.
+    plug = pod.plugue_3d()
+    if plug.solidos:
+        px0, py0, pz0, px1, py1, pz1 = plug.solidos[0][1]
+        no_j102 = rotulos(px0 - 0.5, py0, pz0, px0 + 0.5, py1, pz1)
+    else:
+        xs = [C.PLACA_X0 + q["x"] for q in j2["pads"]]
+        ys = [C.PLACA_Y0 + q["y"] for q in j2["pads"]]
+        no_j102 = rotulos(min(xs) - 0.6, min(ys) - 0.6, C.PLACA_Z1,
+                          max(xs) + 0.6, max(ys) + 0.6, C.TAMPA_Z0)
     if not na_baia:
         r.falha("PD22", f"nao passa fio de {f2(C.CELULA_FIO_D)} nem dentro da "
                         "baia da celula")
@@ -551,6 +563,54 @@ def pd31_cabeca_do_parafuso(pod, r, g, corpos) -> None:
                      f"parafusos, contra o alvo de {C.ALVO[2]:g}")
 
 
+def pd32_encaixe_do_plugue(pod, r, g, corpos) -> None:
+    """O plugue da celula tem por onde ENTRAR, e nao so por onde ficar.
+
+    Um conector precisa de curso: o corpo dele avanca `PLUGUE_SAI` alem da boca
+    do receptaculo, mas para encaixar ele tem de vir de mais longe, com dedo ou
+    pinca atras. Medir so se o corpo encostado cabe (que e o que a `PD21` faz)
+    aprovaria um conector emparedado, impossivel de montar.
+
+    Aqui a medida e o CURSO LIVRE: do plano da boca, ao longo do eixo de
+    encaixe, ate o primeiro solido da concha na faixa de altura e largura do
+    plugue.
+    """
+    j = pod.pecas.get("J102")
+    if not j:
+        r.falha("PD32", "nao mede nada: o J102 nao esta na placa")
+        return
+    plug = pod.plugue_3d()
+    if not plug.solidos:
+        r.falha("PD32", "nao mede nada: o plugue da celula nao foi desenhado")
+        return
+    px0, py0, pz0, _px1, py1, pz1 = plug.solidos[0][1]
+    k0, k1 = g.faixa_k(pz0, pz1)
+    if k1 <= k0:
+        r.falha("PD32", "a faixa de altura do plugue nao cai na grade")
+        return
+    # marcha para -x a partir da ponta de fora do plugue
+    livre = 0.0
+    x = px0
+    while x > C.PAREDE:
+        faixa = g.planta_rect(x - g.passo, py0, x, py1)
+        if (corpos["concha"][:, :, k0:k1] & faixa[:, :, None]).any():
+            break
+        livre += g.passo
+        x -= g.passo
+    preciso = C.PLUGUE_SAI + C.PLUGUE_INSERCAO
+    if livre + C.PLUGUE_SAI < preciso - 1e-9:
+        r.falha("PD32", f"o plugue da celula tem {f2(livre)} de curso livre "
+                        f"antes do corpo dele e precisa de "
+                        f"{f2(C.PLUGUE_INSERCAO)}: com {f2(C.PLUGUE_SAI)} de "
+                        f"corpo, o encaixe pede {f2(preciso)} do plano da boca "
+                        f"e ha {f2(livre + C.PLUGUE_SAI)}")
+    else:
+        r.ok("PD32", f"o plugue da celula tem {f2(livre + C.PLUGUE_SAI)} livres "
+                     f"do plano da boca ({f2(C.PLUGUE_SAI)} de corpo mais "
+                     f"{f2(livre)} de curso), contra os {f2(preciso)} que o "
+                     f"encaixe pede; medido no solido da concha")
+
+
 def pd30_assento_da_placa(pod, r) -> None:
     """A placa assenta numa borda mais larga que a folga do pino.
 
@@ -595,3 +655,4 @@ def todas(pod, r) -> None:
     pd29_aberturas_da_tampa(pod, r)
     pd30_assento_da_placa(pod, r)
     pd31_cabeca_do_parafuso(pod, r, g, corpos)
+    pd32_encaixe_do_plugue(pod, r, g, corpos)

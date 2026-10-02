@@ -7,7 +7,7 @@ e medido por [`pod/dry_run_pod.py`](pod/dry_run_pod.py), pela mesma ideia
 do case do ciclocomputador: um gerador, um dry run, e nenhum número que
 não venha de um documento ou de uma medida.
 
-**Nesta página:** [O envelope](#o-envelope) · [A pilha de alturas](#a-pilha-de-alturas) · [O que segura cada peça](#o-que-segura-cada-peça) · [Os fios da ponte](#os-fios-da-ponte) · [O conector magnético na tampa](#o-conector-magnético-na-tampa) · [Vedação e envase](#vedação-e-envase) · [Massa](#massa) · [As regras do dry run](#as-regras-do-dry-run) · [Medir o sólido, não a constante](#medir-o-sólido-não-a-constante) · [Lugares reservados](#lugares-reservados)
+**Nesta página:** [O envelope](#o-envelope) · [A pilha de alturas](#a-pilha-de-alturas) · [O que segura cada peça](#o-que-segura-cada-peça) · [Os fios da ponte](#os-fios-da-ponte) · [A célula e o conector dela](#a-célula-o-conector-dela-e-o-corte-dos-cabos) · [O conector magnético na tampa](#o-conector-magnético-na-tampa) · [Vedação e envase](#vedação-e-envase) · [Massa](#massa) · [As regras do dry run](#as-regras-do-dry-run) · [Medir o sólido, não a constante](#medir-o-sólido-não-a-constante) · [Lugares reservados](#lugares-reservados)
 
 > [!WARNING]
 > **Nada foi impresso, colado nem pesado.** Toda medida abaixo sai do
@@ -19,9 +19,9 @@ não venha de um documento ou de uma medida.
 
 | Medida | Alvo de [`docs/02`](../docs/02-hardware.md#requisitos) | O que o desenho dá | Situação |
 |---|---|---|---|
-| Comprimento | **38 mm** | **74,5 mm** | **fora**: a placa tem 50 mm ([04](04-placa.md#o-contorno)) e a célula ficou **ao lado** dela |
-| Largura | 20 mm | **21,0 mm** | **fora por 1,0**: placa de 16 mais 0,5 de folga e 2,0 de parede de cada lado |
-| Altura | 10 mm | **7,2 mm** | dentro, com 2,8 de folga |
+| Comprimento | **38 mm** | **73,5 mm** | **fora**: a placa tem 50 mm ([04](04-placa.md#o-contorno)) e a célula ficou **ao lado** dela |
+| Largura | 20 mm | **20,0 mm** | **dentro, exato**: placa de 16 mais 0,5 de folga e 1,5 de parede de cada lado |
+| Altura | 10 mm | **7,7 mm** | dentro, com 2,3 de folga |
 
 As duas medidas que não fecham são consequência direta de duas decisões já
 tomadas, e nenhuma delas é um defeito de geometria:
@@ -108,9 +108,9 @@ flowchart TB
 | Piso | 1,2 mm | fora da base de colagem a face de baixo está em `RELEVO` = 0,5, então o piso ali tem 0,7; sobre a base tem 1,2 |
 | Ar sob o verso | 1,5 mm | `cad/make_dxf.TETO_VERSO`: o que as 43 peças do verso pedem |
 | Placa | 0,8 mm | [04](04-placa.md#camadas) |
-| Teto sobre a placa | 2,7 mm | o módulo **reserva** 2,4 (o anúncio do HOLYIOT-26001-A não dá a altura), mais 0,3 de ar (`cad/make_dxf.TETO_TAMPA`). A regra `PD18` mede a peça contra essa reserva |
+| Teto sobre a placa | **3,2 mm** | a peça mais alta sob a tampa é o **conector da célula**, um JST SH de 2,90, mais 0,3 de ar. O número **sai** de `footprints.CONECTOR_CELULA` desde 2026-10-01: trocar a série do conector sobe ou desce o teto sozinho. O módulo reserva 2,4 e a `PD18` mede a peça contra essa reserva |
 | Tampa | 1,0 mm | escolha deste desenho |
-| **Total** | **7,2 mm** | com a cola, 7,7 até o braço |
+| **Total** | **7,7 mm** | com a cola, 8,2 até o braço |
 
 E a baía, ao lado:
 
@@ -119,7 +119,7 @@ E a baía, ao lado:
 | Piso da baía | 0,7 mm | **cavado** 0,5 no piso, para a reserva de inchaço não levantar o teto |
 | Célula | 5,0 mm | envelope de 15 × 14 × 5,0, **≥ 81 mAh** |
 | Reserva de inchaço | 0,5 mm | 10 % da espessura: uma bolsa de lítio engorda com ciclo e temperatura. Era **0,000 mm**, com igualdade exata, enquanto a `PD2` cobrava 0,30 de ar de toda peça rígida da placa |
-| **Total** | **6,2 mm** | que é exatamente o teto da cavidade |
+| **Total** | **6,2 mm** | menos que o teto da cavidade (6,7): quem manda nele é a pilha da placa |
 
 O conector magnético é mais alto que o teto **de propósito**: ele
 atravessa a tampa ([abaixo](#o-conector-magnético-na-tampa)), e por isso
@@ -190,6 +190,45 @@ desenhos têm de usar o mesmo número.
 A regra `PD7` mede que os cinco furos ficam sobre o rasgo, que o rasgo não
 passa da parede e que a beirada de um ressalto não fica mais de 0,4 mm em
 balanço sobre ele. O rasgo fica fora da sombra da célula (regra `PD5`).
+
+## A célula, o conector dela e o corte dos cabos
+
+A célula entra por **conector**, e não por fio soldado: ela chega de fábrica
+com dois fios e um plugue, e cortar esse plugue para soldar fio nu de 30 AWG
+dentro de uma caixa de 20 mm tiraria a possibilidade de trocá-la. **Decisão do
+dono em 2026-10-01**, revertendo a de 2026-09-26.
+
+| Peça | O que é |
+|---|---|
+| Na placa | **JST `SM02B-SRSS-TB`** — série SH, 1,0 mm, 2 vias, **entrada lateral**: a boca é paralela à placa |
+| No cabo da célula | **`SHR-02V-S`**, o plugue do próprio pack |
+| Altura | 2,90 mm, e é ela quem fixa o teto da tampa em 3,20 |
+
+> [!IMPORTANT]
+> **A série é requisito de compra.** As células de bolsa costumam vir com JST
+> **PH de 2,0 mm**, e o receptáculo dele tem 4,85 mm: o pod iria a 9,7, o
+> conector magnético teria de ser trocado por um de 5,35, e a pilha cola + pod
+> passaria da folga de quadro reservada. Peça a célula com **SH** — os
+> fabricantes vendem o conector como opção. A conta das três séries está em
+> [12](12-comparacao-com-a-classe.md#o-conector-da-célula-medido-não-escolhido).
+
+**O corte por onde os cabos passam.** O pod abre uma **passagem de 3,4 mm**
+(`CELULA_FIO_PASSO + CELULA_FIO_D`) cortada nas nervuras do berço **e no piso**,
+da face da célula até a borda da placa, na altura dos pinos do `J102`. Por ela
+passam os dois fios e, na ponta, o **plugue**; a tampa fecha por cima depois.
+Até 2026-10-01 as nervuras iam do piso ao teto e a saída real era **0,000 mm**.
+
+Três regras medem isso, e nenhuma delas lê constante:
+
+| Regra | O que mede |
+|---|---|
+| `PD22` | caminho **contínuo** para um fio de 0,9 mm, da baía até o plugue, por conectividade no sólido erodido pelo raio do fio |
+| `PD21` | que o plugue não invade a concha — foi ela que pegou o ressalto do parafuso esquerdo na frente dele |
+| `PD32` | o **curso de encaixe**: um conector emparedado cabe e não monta |
+
+Foi a `PD32` que mandou o parafuso esquerdo sair da linha de centro (ele
+dividia o canal com os fios, o que servia para fio nu e não para plugue) e o
+`J102` andar 0,2 mm para dentro da placa.
 
 ## O conector magnético na tampa
 
@@ -314,6 +353,7 @@ medir **falha dizendo isso**.
 | PD29 | as aberturas da tampa não se comem nem comem a junta |
 | PD30 | o assento da placa é mais largo que a folga do pino |
 | PD31 | a cabeça do parafuso e a anilha que a veda cabem onde estão |
+| PD32 | o plugue da célula tem **curso para entrar**, e não só lugar para ficar |
 
 ## Medir o sólido, não a constante
 
