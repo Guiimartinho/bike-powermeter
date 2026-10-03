@@ -69,7 +69,7 @@ flowchart LR
 | | |
 |---|---|
 | ![O conjunto em vista explodida de produto: tampa, anel O, placa, célula e concha, um sobre o outro](docs/img/hardware/conjunto-3d-produto.png) | ![A mesma pilha vista de lado, mostrando as alturas de cada camada](docs/img/hardware/conjunto-3d-produto-lateral.png) |
-| *A pilha inteira: tampa, anel O, placa, célula e concha* | *De lado: 10,0 mm do fundo ao topo da tampa* |
+| *A pilha inteira: tampa, anel O, placa, célula e concha* | *De lado: 7,7 mm do fundo ao topo da tampa* |
 | ![O conjunto em vista explodida: a tampa, o pod com a placa dentro, os cinco fios descendo e a ponte colada no braço](docs/img/hardware/conjunto-3d-aberto.png) | ![Os extensômetros no braço, sob o pod](docs/img/hardware/conjunto-3d-extensometros.png) |
 | *Aberto: a ponte fica no **braço**, não no pod, e cinco fios sobem por um rasgo no fundo* | *A ponte S5229 colada na face interna do braço* |
 
@@ -78,7 +78,7 @@ flowchart LR
 | | |
 |---|---|
 | ![O pod fechado, visto em ângulo](docs/img/hardware/pod-3d-fechada.png) | ![O pod em vista explodida: concha, célula, placa, anel O e tampa](docs/img/hardware/pod-3d-explodida.png) |
-| *Fechado: 55,7 × 19,0 × 10,0 mm, 13,3 g estimados* | *Explodido: concha, célula, placa, anel O e tampa* |
+| *Fechado: 73,5 × 20,0 × 7,7 mm, 14,3 g estimados* | *Explodido: concha, célula, placa, anel O e tampa* |
 | ![A concha aberta com a placa dentro](docs/img/hardware/pod-3d-aberta.png) | ![A célula no berço da concha, antes da placa](docs/img/hardware/pod-3d-celula-no-berco.png) |
 | *Aberto, com a placa assentada* | *A célula no berço, no passo em que ela entra* |
 | ![A tampa vista por dentro: o sulco do anel O, os dedos que prendem a placa e o ressalto que comprime a junta da porta](docs/img/hardware/pod-3d-tampa-por-dentro.png) | ![A concha vista por baixo: a base de colagem, o relevo, o rasgo dos fios, o bolso do extensômetro e a canaleta do feixe](docs/img/hardware/pod-3d-por-baixo.png) |
@@ -88,8 +88,8 @@ flowchart LR
 
 | | |
 |---|---|
-| ![A placa vista pela frente: o módulo de rádio à direita, o conector magnético na borda de cima, o conversor no meio](docs/img/hardware/placa-3d-frente.png) | ![A placa pelo verso: os pontos de teste e os passivos que não precisam ser alcançados](docs/img/hardware/placa-3d-tras.png) |
-| *A placa, 47 × 14 mm em 4 camadas, 58 peças* | *O verso: pads de teste e o que não precisa ser alcançado, sobre o fundo rebaixado do pod* |
+| ![A placa vista pela frente: o módulo de rádio à direita, o conector magnético na borda de cima, o conversor no meio e o conector da célula na ponta esquerda](docs/img/hardware/placa-3d-frente.png) | ![A placa pelo verso: os pontos de teste e os passivos que não precisam ser alcançados](docs/img/hardware/placa-3d-tras.png) |
+| *A placa, 50 × 16 mm em 4 camadas, 58 peças* | *O verso: pads de teste e o que não precisa ser alcançado, sobre o fundo rebaixado do pod* |
 | ![A placa vista em ângulo, com os corpos 3D de cada peça](docs/img/hardware/placa-3d-angulo.png) | ![A placa com os nomes de cada peça, para a montagem](docs/img/hardware/placa-3d-montagem.png) |
 | *Em ângulo, com o corpo real de cada peça* | *O mapa de montagem, peça a peça* |
 

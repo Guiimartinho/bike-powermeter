@@ -12,6 +12,10 @@ Formato do [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/); versões
 
 ### Medido
 
+- **As quatro imagens da placa estavam velhas, e o conector não aparecia nelas.** Elas eram de antes de tudo: o `make_3d.py` e o `montagem.py` não tinham sido rodados depois da troca do `J102`. Regerados — e, de quebra, o `04-placa.md` e o `README.md` ainda traziam **47 × 14 mm** de placa e **55,7 × 19,0 × 10,0 mm, 13,3 g** de pod, de um desenho anterior a tudo isso.
+
+- **E o conector deixou de ser um tijolo: ele é desenhado peça a peça, com a BOCA aberta.** A biblioteca do KiCad 8 não traz modelo 3D do `SM02B-SRSS-TB`, então o que havia era a caixa de 4,00 × 4,25 × 2,90 que o gerador faz para footprint sem modelo. O motivo de desenhar não é estético: **a propriedade que importa deste conector é para onde a boca aponta**, e uma caixa não mostra isso — agora dá para conferir no 3D, a olho, que ela encara a baía da célula. São nove formas: parede de fundo, duas laterais, piso, teto, os dois contatos dourados no passo de 1,0 visíveis pela abertura, e as duas unhas de fixação. A abertura foi **medida**, não olhada: nenhuma forma cruza a faixa z 0,55 a 2,35 no meio da face +Y.
+
 - **O conector da célula voltou, e é um JST SH de entrada lateral** (`SM02B-SRSS-TB`, 2 vias, 1,0 mm, boca paralela à placa). Ele tinha virado dois furos metalizados em 2026-09-26, para tirar da placa a peça mais alta; o que esse argumento não via é que a célula que se **compra** já vem com dois fios e um plugue, e com furos a montagem vira cortar o plugue e soldar fio nu de 30 AWG dentro de uma caixa de 20 mm, com a célula deixando de ser trocável. O teto da tampa sobe de 2,7 para 3,2 e o pod de 7,2 para **7,7 mm**.
 
 - **As três séries foram postas na placa e o pod foi medido com cada uma**, em vez de escolhidas por intuição:

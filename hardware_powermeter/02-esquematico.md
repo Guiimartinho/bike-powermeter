@@ -83,7 +83,7 @@ flowchart LR
     TVS -->|"D+, D−"| NPM
     TVS -->|"D+, D−"| MOD(("módulo, pads 7 e 8"))
     TVS -->|"SWDIO_J, SWCLK_J"| RS["R107, R108<br/>100 Ω"] --> SWD(("SWDIO, SWDCLK"))
-    CELL["LiPo 100 a 150 mAh<br/>com proteção"] -->|"J102"| VBAT(("VBAT"))
+    CELL["LiPo 501415<br/>≥ 81 mAh, com proteção"] -->|"J102 JST SH"| VBAT(("VBAT"))
     VBAT --> NPM
     VBAT --> GAUGE["U102 MAX17048"]
     NPM -->|"SW · L101 2,2 µH"| R3V0(("3V0"))

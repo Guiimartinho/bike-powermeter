@@ -929,12 +929,63 @@ def wrl_pogo_magnetico(caminho, w: float, h: float, alt: float) -> None:
         "".join(partes), encoding="utf-8", newline=NL)
 
 
+def wrl_jst_sh_lateral(caminho, w: float, h: float, alt: float) -> None:
+    """O JST SH de 2 vias e ENTRADA LATERAL, com a boca aberta.
+
+    Desenhado peca a peca, e nao como caixa, por um motivo que nao e estetico:
+    a propriedade que importa deste conector e **para onde a boca aponta**, e
+    uma caixa nao mostra isso. Com a boca desenhada da para conferir no 3D, a
+    olho, que ela encara a baia da celula - que e a razao de ele ser de entrada
+    lateral e estar a 270 graus (`orientacao.py` mede o giro, isto so mostra).
+
+    A biblioteca do KiCad 8 nao traz modelo 3D do `SM02B-SRSS-TB`: o que havia
+    era a caixa de 4,00 x 4,25 x 2,90 que o gerador faz para footprint sem
+    modelo. As cotas do corpo sao essas; a parede, o piso e o teto do capuz
+    sao proporcao de desenho, nao cota de ficha, e estao registrados como tal.
+
+    A boca fica em +Y no referencial do footprint - o mesmo lado que o
+    `orientacao.frente_do_footprint` mede, porque o corpo fica a 0,60 mm do
+    centro das ilhas naquele sentido.
+    """
+    CAPUZ = (0.93, 0.93, 0.90)      # o capuz do SH e natural, quase branco
+    OURO = (0.83, 0.69, 0.22)
+    ESTANHO = (0.74, 0.75, 0.77)
+    cw, ch = w - 0.2, h - 0.2
+    par, piso, teto = 0.45, 0.35, 0.35
+    partes = [
+        # o fundo do capuz, atras, onde os contatos entram
+        _bloco(-cw / 2, -ch / 2, 0.0, cw / 2, -ch / 2 + par, alt, CAPUZ),
+        # as duas paredes laterais, do fundo ate a boca
+        _bloco(-cw / 2, -ch / 2, 0.0, -cw / 2 + par, ch / 2, alt, CAPUZ),
+        _bloco(cw / 2 - par, -ch / 2, 0.0, cw / 2, ch / 2, alt, CAPUZ),
+        # o piso e o teto do capuz: entre eles fica a BOCA, aberta em +Y
+        _bloco(-cw / 2, -ch / 2, 0.0, cw / 2, ch / 2, piso, CAPUZ),
+        _bloco(-cw / 2, -ch / 2, alt - teto, cw / 2, ch / 2, alt, CAPUZ),
+    ]
+    # os dois contatos, no piso, visiveis pela boca, no passo de 1,0
+    for sx in (-1, 1):
+        partes.append(_bloco(sx * 0.5 - 0.15, -ch / 2 + par, piso,
+                             sx * 0.5 + 0.15, ch / 2 - 0.3, piso + 0.12, OURO))
+    # as duas unhas de fixacao, soldadas, uma de cada lado
+    for sx in (-1, 1):
+        partes.append(_bloco(sx * (cw / 2 - 0.1) - 0.25, -ch / 2 - 0.35, 0.0,
+                             sx * (cw / 2 - 0.1) + 0.25, -ch / 2 + 0.45, 0.1,
+                             ESTANHO))
+    caminho.write_text(
+        "#VRML V2.0 utf8" + NL +
+        "# JST SM02B-SRSS-TB: serie SH, 1,0 mm, 2 vias, entrada LATERAL, "
+        "4,00 x 4,25 x 2,90; a boca abre em +Y" + NL +
+        "".join(partes), encoding="utf-8", newline=NL)
+
+
 DESENHADOS = {
     "pmeter:MinewSemi_ME54BS13_16.5x12mm":
         lambda c, w, h, a: wrl_me54bs13(c),
     "pmeter:LED_RGB_3528_3.5x2.8mm": wrl_led_3528,
     "pmeter:Pogo_Magnetico_6P_2x3_P2.5mm": wrl_pogo_magnetico,
     "pmeter:HOLYIOT_26001A_10x12.5mm": lambda c, w, h, a: wrl_holyiot_26001a(c),
+    "Connector_JST:JST_SH_SM02B-SRSS-TB_1x02-1MP_P1.00mm_Horizontal":
+        wrl_jst_sh_lateral,
 }
 
 
